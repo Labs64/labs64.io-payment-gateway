@@ -1,0 +1,11 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: module-b-core
+dapr:
+  #grpc:
+  #  port: "50001"
+  pubsub:
+    name: redis-pubsub
+    topic: sample-topic

@@ -1,0 +1,13 @@
+moduleA:
+  image: localhost:5005/module-a-core:latest
+  replicas: 1
+moduleB:
+  image: localhost:5005/module-b-core:latest
+  replicas: 1
+
+dapr:
+  createRedisPubSub: true
+
+redis:
+  host: redis.default.svc.cluster.local:6379
+  password: ""
