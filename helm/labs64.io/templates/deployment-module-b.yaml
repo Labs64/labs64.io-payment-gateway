@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: module-b-core
+spec:
+  replicas: {{ .Values.moduleB.replicas }}
+  selector:
+    matchLabels:
+      app: module-b-core
+  template:
+    metadata:
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: module-b-core
+        dapr.io/app-port: "8080"
+      labels:
+        app: module-b-core
+    spec:
+      containers:
+        - name: module-b-core
+          image: {{ .Values.moduleB.repository }}/{{ .Values.moduleB.image }}:{{ .Values.moduleB.tag }}
+          ports:
+            - containerPort: 8080

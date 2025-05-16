@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: module-d-core
+spec:
+  selector:
+    app: module-d-core
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  

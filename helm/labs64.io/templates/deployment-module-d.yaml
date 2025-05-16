@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: module-d-core
+spec:
+  replicas: {{ .Values.moduleD.replicas }}
+  selector:
+    matchLabels:
+      app: module-d-core
+  template:
+    metadata:
+      labels:
+        app: module-d-core
+    spec:
+      containers:
+        - name: module-d-core
+          image: {{ .Values.moduleD.repository }}/{{ .Values.moduleD.image }}:{{ .Values.moduleD.tag }}
+          envFrom:
+            - configMapRef:
+                name: labs64-io-config
+            - secretRef:
+                name: labs64-io-secret
+          ports:
+            - containerPort: 8080

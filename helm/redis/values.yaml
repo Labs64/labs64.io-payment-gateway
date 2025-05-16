@@ -1,0 +1,9 @@
+auth:
+  enabled: false
+  password: ""
+master:
+  persistence:
+    enabled: true
+    size: 8Gi
+replica:
+  replicaCount: 2

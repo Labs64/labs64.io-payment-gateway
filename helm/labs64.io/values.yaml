@@ -1,0 +1,44 @@
+moduleA:
+  repository: localhost:5005
+  image: module-a-core
+  tag: latest
+  replicas: 1
+moduleB:
+  repository: localhost:5005
+  image: module-b-core
+  tag: latest
+  replicas: 1
+moduleC:
+  repository: localhost:5005
+  image: module-c-core
+  tag: latest
+  replicas: 1
+moduleD:
+  repository: localhost:5005
+  image: module-d-core
+  tag: latest
+  replicas: 1
+
+dapr:
+  createRedisPubSub: true
+
+app:
+  defaultBroker: kafka
+  destination: labs64-topic
+
+redis:
+  host: redis-master.default.svc.cluster.local:6379
+  password: ""
+
+kafka:
+  brokers: kafka.default.svc.cluster.local:9092
+  securityProtocol: SASL_PLAINTEXT
+  saslMechanism: SCRAM-SHA-256
+  username: labs64
+  password: labs64pw
+
+rabbit:
+  host: rabbitmq.default.svc.cluster.local
+  port: "5672"
+  username: labs64
+  password: labs64pw
