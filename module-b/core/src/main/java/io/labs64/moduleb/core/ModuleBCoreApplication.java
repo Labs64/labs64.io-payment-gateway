@@ -1,11 +1,11 @@
-package com.labs64.vanguard.modulea.core;
+package io.labs64.moduleb.core;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ModuleACoreApplication {
+public class ModuleBCoreApplication {
     public static void main(String[] args) {
-        SpringApplication.run(ModuleACoreApplication.class, args);
+        SpringApplication.run(ModuleBCoreApplication.class, args);
     }
 }

@@ -1,0 +1,39 @@
+<configuration>
+    <springProperty name="appName" source="spring.application.name" defaultValue="local"/>
+    <property name="APP_NAME" value="${SPRING_APPLICATION_NAME:-unknown-app}"/>
+    <property name="POD_NAME" value="${HOSTNAME:-unknown-pod}"/>
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <fieldName>timestamp</fieldName>
+                    <pattern>yyyy-MM-dd HH:mm:ss.SSSZ</pattern>
+                </timestamp>
+                <pattern>
+                    <pattern>
+                        {
+                            "app": "${appName}",
+                            "pod": "${HOSTNAME:-unknown}"
+                        }
+                    </pattern>
+                </pattern>
+                <logLevel>
+                    <fieldName>level</fieldName>
+                </logLevel>
+                <threadName>
+                    <fieldName>thread</fieldName>
+                </threadName>
+                <loggerName>
+                    <fieldName>logger</fieldName>
+                </loggerName>
+                <message>
+                    <fieldName>message</fieldName>
+                </message>
+            </providers>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="console"/>
+    </root>
+</configuration>

@@ -1,3 +1,0 @@
-redis:
-  image: redis:7
-  replicas: 2

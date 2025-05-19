@@ -1,3 +1,9 @@
-redis:
-  image: redis:8
-  replicas: 1
+auth:
+  enabled: false
+  password: ""
+master:
+  persistence:
+    enabled: true
+    size: 8Gi
+replica:
+  replicaCount: 2

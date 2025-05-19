@@ -18,6 +18,6 @@ spec:
     spec:
       containers:
         - name: module-a-core
-          image: {{ .Values.moduleA.image }}
+          image: {{ .Values.moduleA.repository }}/{{ .Values.moduleA.image }}:{{ .Values.moduleA.tag }}
           ports:
             - containerPort: 8080

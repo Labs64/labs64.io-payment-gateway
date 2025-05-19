@@ -1,0 +1,4 @@
+apiVersion: v2
+name: labs64.io
+description: Helm chart for labs64.io project
+version: 1.0.0

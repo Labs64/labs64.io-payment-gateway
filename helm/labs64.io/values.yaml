@@ -1,0 +1,17 @@
+moduleA:
+  repository: localhost:5005
+  image: module-a-core
+  tag: latest
+  replicas: 1
+moduleB:
+  repository: localhost:5005
+  image: module-b-core
+  tag: latest
+  replicas: 1
+
+dapr:
+  createRedisPubSub: true
+
+redis:
+  host: redis-master.default.svc.cluster.local:6379
+  password: ""
