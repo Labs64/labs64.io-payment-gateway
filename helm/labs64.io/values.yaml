@@ -8,6 +8,16 @@ moduleB:
   image: module-b-core
   tag: latest
   replicas: 1
+moduleC:
+  repository: localhost:5005
+  image: module-c-core
+  tag: latest
+  replicas: 1
+moduleD:
+  repository: localhost:5005
+  image: module-d-core
+  tag: latest
+  replicas: 1
 
 dapr:
   createRedisPubSub: true

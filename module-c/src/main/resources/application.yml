@@ -1,0 +1,21 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: module-c-core
+  cloud:
+    stream:
+      defaultBinder: rabbit
+      bindings:
+        send-out-0:
+          destination: my-topic
+      rabbit:
+        bindings:
+          send-out-0:
+            producer:
+              exchangeType: topic
+  rabbitmq:
+    host: rabbitmq.default.svc.cluster.local
+    port: 5672
+    username: labs64
+    password: labs64pw

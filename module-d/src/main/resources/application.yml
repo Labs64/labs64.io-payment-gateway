@@ -1,0 +1,17 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: module-d-core
+  cloud:
+    stream:
+      defaultBinder: rabbit
+      bindings:
+        receive-in-0:
+          destination: my-topic
+          group: subscriber-group
+  rabbitmq:
+    host: rabbitmq.default.svc.cluster.local
+    port: 5672
+    username: labs64
+    password: labs64pw
