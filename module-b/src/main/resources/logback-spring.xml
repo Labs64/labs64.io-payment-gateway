@@ -2,7 +2,9 @@
     <springProperty name="appName" source="spring.application.name" defaultValue="local"/>
     <property name="APP_NAME" value="${SPRING_APPLICATION_NAME:-unknown-app}"/>
     <property name="POD_NAME" value="${HOSTNAME:-unknown-pod}"/>
-    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+
+    <!-- JSON Appender -->
+    <appender name="console-json" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
             <providers>
                 <timestamp>
@@ -17,23 +19,35 @@
                         }
                     </pattern>
                 </pattern>
-                <logLevel>
-                    <fieldName>level</fieldName>
-                </logLevel>
                 <threadName>
                     <fieldName>thread</fieldName>
                 </threadName>
+                <logLevel>
+                    <fieldName>level</fieldName>
+                </logLevel>
                 <loggerName>
                     <fieldName>logger</fieldName>
                 </loggerName>
                 <message>
                     <fieldName>message</fieldName>
                 </message>
+                <throwable>
+                    <fieldName>exception</fieldName>
+                    <rootCauseFirst>true</rootCauseFirst>
+                </throwable>
             </providers>
         </encoder>
     </appender>
 
+    <!-- Plain Text Appender -->
+    <appender name="console-plain" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSSZ} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
     <root level="INFO">
-        <appender-ref ref="console"/>
+        <appender-ref ref="console-json"/>
+        <!-- appender-ref ref="console-plain"/ -->
     </root>
 </configuration>

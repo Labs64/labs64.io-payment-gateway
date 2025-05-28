@@ -22,6 +22,23 @@ moduleD:
 dapr:
   createRedisPubSub: true
 
+app:
+  defaultBroker: kafka
+  destination: labs64-topic
+
 redis:
   host: redis-master.default.svc.cluster.local:6379
   password: ""
+
+kafka:
+  brokers: kafka.default.svc.cluster.local:9092
+  securityProtocol: SASL_PLAINTEXT
+  saslMechanism: SCRAM-SHA-256
+  username: labs64
+  password: labs64pw
+
+rabbit:
+  host: rabbitmq.default.svc.cluster.local
+  port: "5672"
+  username: labs64
+  password: labs64pw

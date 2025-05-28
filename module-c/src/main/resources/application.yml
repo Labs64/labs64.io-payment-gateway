@@ -1,7 +1,7 @@
 server:
   port: 8080
 app:
-  default-broker: rabbit # rabbit or kafka
+  default-broker: ${APP_DEFAULT_BROKER:kafka} # rabbit or kafka
 spring:
   application:
     name: module-c-core
@@ -9,10 +9,10 @@ spring:
     stream:
       bindings:
         rabbit-out-0:
-          destination: labs64-topic
+          destination: ${LABS64_DESTINATION:labs64-topic}
           binder: rabbit
         kafka-out-0:
-          destination: labs64-topic
+          destination: ${LABS64_DESTINATION:labs64-topic}
           binder: kafka
       rabbit:
         bindings:
@@ -21,19 +21,28 @@ spring:
               exchangeType: topic
       kafka:
         binder:
-          brokers: kafka.default.svc.cluster.local:9092
+          brokers: ${KAFKA_BROKERS:kafka.default.svc.cluster.local:9092}
+          auto-create-topics: true
           configuration:
-            security.protocol: SASL_PLAINTEXT
-            sasl.mechanism: SCRAM-SHA-256
-            sasl.jaas.config: org.apache.kafka.common.security.scram.ScramLoginModule required username="labs64" password="labs64pw";
+            security.protocol: ${KAFKA_SECURITY_PROTOCOL:SASL_PLAINTEXT}
+            sasl.mechanism: ${KAFKA_SASL_MECHANISM:SCRAM-SHA-256}
+            sasl.jaas.config: ${KAFKA_SASL_JAAS_CONFIG}
+          health-indicator:
+            enabled: true
         bindings:
           kafka-out-0:
             producer:
               configuration:
                 key.serializer: org.apache.kafka.common.serialization.StringSerializer
-                value.serializer: org.apache.kafka.common.serialization.StringSerializer
+                value.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
   rabbitmq:
-    host: rabbitmq.default.svc.cluster.local
-    port: 5672
-    username: labs64
-    password: labs64pw
+    host: ${RABBITMQ_HOST:rabbitmq.default.svc.cluster.local}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+
+logging:
+  level:
+    io.labs64: DEBUG
+    org.springframework.cloud.stream: INFO
+    org.springframework.kafka: INFO

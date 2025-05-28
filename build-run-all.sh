@@ -81,7 +81,7 @@ kubectl get pods
 # kubectl port-forward service/kafka 9092:9092
 # kubectl port-forward service/redis-master 6379:6379
 
-# kubectl scale deployment module-b-core --replicas=0/1/2
+# kubectl scale deployment module-d-core --replicas=0/1/2
 
 # kubectl logs -l app=module-a-core -f
 # kubectl logs -l app=module-b-core -f
