@@ -58,6 +58,12 @@ helm search repo bitnami/rabbitmq
 #helm show values bitnami/rabbitmq > helm/rabbitmq/rabbitmq-values.orig.yaml
 helm upgrade --install rabbitmq bitnami/rabbitmq -f helm/rabbitmq/values.yaml
 
+## Kafka
+#helm uninstall kafka
+helm search repo bitnami/kafka
+#helm show values bitnami/kafka > helm/kafka/kafka-values.orig.yaml
+helm upgrade --install kafka bitnami/kafka -f helm/kafka/values.yaml
+
 ## Labs64.io
 helm upgrade --install labs64.io ./helm/labs64.io
 
@@ -72,6 +78,7 @@ kubectl get pods
 # kubectl port-forward service/module-a-core 8080:80
 # kubectl port-forward service/module-c-core 8080:80
 # kubectl port-forward service/rabbitmq 15672:15672
+# kubectl port-forward service/kafka 9092:9092
 # kubectl port-forward service/redis-master 6379:6379
 
 # kubectl scale deployment module-b-core --replicas=0/1/2

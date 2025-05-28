@@ -1,19 +1,37 @@
 server:
   port: 8080
+app:
+  default-broker: rabbit # rabbit or kafka
 spring:
   application:
     name: module-c-core
   cloud:
     stream:
-      defaultBinder: rabbit
       bindings:
-        send-out-0:
-          destination: my-topic
+        rabbit-out-0:
+          destination: labs64-topic
+          binder: rabbit
+        kafka-out-0:
+          destination: labs64-topic
+          binder: kafka
       rabbit:
         bindings:
-          send-out-0:
+          rabbit-out-0:
             producer:
               exchangeType: topic
+      kafka:
+        binder:
+          brokers: kafka.default.svc.cluster.local:9092
+          configuration:
+            security.protocol: SASL_PLAINTEXT
+            sasl.mechanism: SCRAM-SHA-256
+            sasl.jaas.config: org.apache.kafka.common.security.scram.ScramLoginModule required username="labs64" password="labs64pw";
+        bindings:
+          kafka-out-0:
+            producer:
+              configuration:
+                key.serializer: org.apache.kafka.common.serialization.StringSerializer
+                value.serializer: org.apache.kafka.common.serialization.StringSerializer
   rabbitmq:
     host: rabbitmq.default.svc.cluster.local
     port: 5672
