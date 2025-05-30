@@ -1,1 +1,0 @@
-Application: ${spring.application.name}
