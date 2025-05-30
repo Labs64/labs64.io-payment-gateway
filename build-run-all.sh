@@ -77,7 +77,9 @@ kubectl get pods
 
 # kubectl port-forward service/module-a-core 8080:80
 # kubectl port-forward service/module-c-core 8080:80
+# => http://localhost:8080/swagger-ui/index.html
 # kubectl port-forward service/rabbitmq 15672:15672
+# => http://localhost:15672
 # kubectl port-forward service/kafka 9092:9092
 # kubectl port-forward service/redis-master 6379:6379
 
@@ -90,3 +92,29 @@ kubectl get pods
 
 # curl -X POST "http://localhost:8080/publish" -d "message=msg"
 # curl -X POST "http://localhost:8080/publish" -H "Content-Type: application/json" -d '{"message":"msg"}'
+
+
+## Links
+- Kubernetes – https://kubernetes.io
+  Open-source container orchestration platform for automating deployment, scaling, and management of containerized applications
+
+- Helm – https://helm.sh
+  Package manager for Kubernetes that uses charts to define, install, and manage applications in a Kubernetes cluster
+
+- Spring Cloud Stream – https://spring.io/projects/spring-cloud-stream
+  Framework for building event-driven microservices connected to messaging systems like Kafka or RabbitMQ using binders
+
+- Kafka – https://kafka.apache.org
+  Distributed streaming platform for building real-time data pipelines and event-driven applications with scalable publish-subscribe messaging
+
+- RabbitMQ – https://www.rabbitmq.com
+  Message broker implementing AMQP and other protocols, enabling reliable inter-service communication in distributed systems
+
+- OpenAPI – https://www.openapis.org
+  Standard for describing RESTful APIs in a machine-readable format to support documentation, validation, and code generation
+
+- Promtail Logfmt Stage – https://grafana.com/docs/loki/latest/send-data/promtail/stages/logfmt/
+  Documentation for parsing logfmt log lines into structured fields in Promtail, used with Grafana Loki for log aggregation
+
+- FastAPI – https://fastapi.tiangolo.com
+  High-performance Python web framework for building APIs with automatic docs, type validation, and async support

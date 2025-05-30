@@ -1,0 +1,64 @@
+openapi: 3.1.1
+info:
+  title: Message Publisher API
+  version: 1.0.0
+  description: API for publishing messages to a message broker.
+paths:
+  /publish:
+    post:
+      summary: Publish a message to the configured broker
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Message sent successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Failed to send message
+          content:
+            text/plain:
+              schema:
+                type: string
+      tags:
+        - MessagePublisher
+  /publish_logs:
+    post:
+      summary: Publish a log message to the configured broker
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogMessage'
+      responses:
+        '200':
+          description: Message sent successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Failed to send message
+          content:
+            text/plain:
+              schema:
+                type: string
+      tags:
+        - LogPublisher
+components:
+  schemas:
+    LogMessage:
+      type: object
+      properties:
+        level:
+          type: string
+          enum: [DEBUG, INFO, WARN, ERROR]
+        message:
+          type: string
