@@ -14,8 +14,8 @@
                 <pattern>
                     <pattern>
                         {
-                            "app": "${appName}",
-                            "pod": "${HOSTNAME:-unknown}"
+                        "app": "${appName}",
+                        "pod": "${HOSTNAME:-unknown}"
                         }
                     </pattern>
                 </pattern>
@@ -46,8 +46,24 @@
         </encoder>
     </appender>
 
+    <!-- Logfmt Appender -->
+    <appender name="console-logfmt" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>
+                timestamp=%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}
+                app=${appName}
+                pod=${POD_NAME}
+                thread=%thread
+                level=%-5level
+                logger=%logger{36}
+                message="%msg"%n%ex
+            </Pattern>
+        </encoder>
+    </appender>
+
     <root level="INFO">
         <appender-ref ref="console-json"/>
         <!-- appender-ref ref="console-plain"/ -->
+        <!-- appender-ref ref="console-logfmt"/ -->
     </root>
 </configuration>

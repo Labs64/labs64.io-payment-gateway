@@ -1,4 +1,4 @@
-package io.labs64.moduleb.core.service;
+package io.labs64.moduled.core.service;
 
 import java.util.function.Consumer;
 

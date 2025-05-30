@@ -1,7 +1,7 @@
-package io.labs64.modulea.core.controller;
+package io.labs64.modulec.core.controller;
 
 import io.labs64.api.MessagePublisherApi;
-import io.labs64.modulea.core.service.MessagePublisherService;
+import io.labs64.modulec.core.service.MessagePublisherService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

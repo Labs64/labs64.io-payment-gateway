@@ -1,11 +1,11 @@
-package io.labs64.moduleb.core;
+package io.labs64.moduled.core;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ModuleBCoreApplication {
+public class ModuleDCoreApplication {
     public static void main(String[] args) {
-        SpringApplication.run(ModuleBCoreApplication.class, args);
+        SpringApplication.run(ModuleDCoreApplication.class, args);
     }
 }

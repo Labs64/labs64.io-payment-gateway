@@ -1,4 +1,4 @@
-package io.labs64.modulea.core.service;
+package io.labs64.modulec.core.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

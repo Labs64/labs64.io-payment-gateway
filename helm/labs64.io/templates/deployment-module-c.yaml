@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: module-c-core
-          image: {{ .Values.moduleC.repository }}/{{ .Values.moduleC.image }}:{{ .Values.moduleC.tag }}
+          image: {{ .Values.repository }}/{{ .Values.moduleC.image }}:{{ .Values.moduleC.tag }}
           envFrom:
             - configMapRef:
                 name: labs64-io-config

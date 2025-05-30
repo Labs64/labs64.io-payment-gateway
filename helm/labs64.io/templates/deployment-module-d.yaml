@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: module-d-core
-          image: {{ .Values.moduleD.repository }}/{{ .Values.moduleD.image }}:{{ .Values.moduleD.tag }}
+          image: {{ .Values.repository }}/{{ .Values.moduleD.image }}:{{ .Values.moduleD.tag }}
           envFrom:
             - configMapRef:
                 name: labs64-io-config
