@@ -5,18 +5,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.stream.function.StreamBridge;
-import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.stereotype.Service;
 
-@RestController
+@Service
 public class MessagePublisherService {
 
     private static final Logger logger = LoggerFactory.getLogger(MessagePublisherService.class);
 
     private final StreamBridge streamBridge;
 
-    @Value("${app.default-broker:rabbit}")
+    @Value("${app.default-broker}")
     private String defaultBroker;
 
     @Autowired
@@ -24,17 +23,9 @@ public class MessagePublisherService {
         this.streamBridge = streamBridge;
     }
 
-    @PostMapping("/publish")
-    public ResponseEntity<String> publishMessage(@RequestBody String message) {
+    public boolean publishMessage(String message) {
         logger.info("Publish message: '{}' to '{}'", message, defaultBroker + "-out-0");
-
-        boolean sent = streamBridge.send(defaultBroker + "-out-0", MessageBuilder.withPayload(message).build());
-
-        if (sent) {
-            return ResponseEntity.ok("Message sent: " + message);
-        } else {
-            return ResponseEntity.status(500).body("Failed to send message");
-        }
+        return streamBridge.send(defaultBroker + "-out-0", MessageBuilder.withPayload(message).build());
     }
 
 }
