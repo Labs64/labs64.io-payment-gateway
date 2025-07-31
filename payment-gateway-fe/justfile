@@ -1,0 +1,5 @@
+APP_NAME := "payment-gateway"
+
+# build application
+build:
+    npm ci
