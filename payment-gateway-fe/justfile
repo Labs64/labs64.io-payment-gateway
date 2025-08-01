@@ -2,4 +2,4 @@ APP_NAME := "payment-gateway"
 
 # build application
 build:
-    npn ci
+    npm ci
