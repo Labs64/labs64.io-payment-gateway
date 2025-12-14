@@ -3,3 +3,21 @@ APP_NAME := "payment-gateway"
 # build application
 build:
     mvn clean package
+
+# build docker image
+docker: build
+    docker build -t {{APP_NAME}}:latest .
+    docker tag {{APP_NAME}}:latest localhost:5005/{{APP_NAME}}:latest
+    docker push localhost:5005/{{APP_NAME}}:latest
+    docker images | grep "{{APP_NAME}}"
+
+# run application
+run: build
+    mvn spring-boot:run -Dspring-boot.run.profiles=local
+
+# check maven dependencies/plugins/properties updates
+check-updates:
+    mvn versions:display-plugin-updates -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*'
+    mvn versions:display-property-updates -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*'
+    mvn versions:display-dependency-updates -DprocessDependencyManagement=false -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*'
+    docker scout cves {{APP_NAME}}:latest
