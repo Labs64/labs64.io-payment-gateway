@@ -2,6 +2,8 @@
 
 # Labs64.IO :: Payment Gateway - Unified Payment Gateway Platform
 
+[![📖 Documentation](https://img.shields.io/badge/📖-Documentation-AB6543.svg)](https://github.com/Labs64/labs64.io-docs)
+
 The Labs64 Unified Payment Gateway Platform is a strategic solution within the Labs64 IO Ecosystem, aimed at consolidating various Payment Service Providers (PSPs) into a single, cohesive and flexible infrastructure. This gateway enables seamless payment processing, improved operational efficiency, and enhanced scalability for businesses seeking to manage and optimize their digital payment flows.
 
 The platform is designed with modular architecture and open integration standards, allowing companies to onboard and switch between multiple PSPs based on regional availability, performance, cost-efficiency, and compliance requirements. By centralizing payment operations, businesses can reduce technical complexity, ensure high availability, and gain better insights into transactional data.
