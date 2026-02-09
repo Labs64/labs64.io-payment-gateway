@@ -1,0 +1,439 @@
+openapi: 3.0.3
+info:
+  title: Payment Gateway API
+  version: 1.0.0
+  description: Payment gateway module API for PSP-agnostic payment processing.
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+paths:
+  /payment-methods:
+    get:
+      tags: [PaymentMethods]
+      summary: Retrieve payment methods
+      parameters:
+        - name: currency
+          in: query
+          schema:
+            type: string
+        - name: country
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: List of payment methods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentMethod"
+              example:
+                - id: card
+                  name: Card
+                  description: Card payments
+                  recurring: true
+                  configured: true
+                  provider: stripe
+                  currencies: [USD, EUR]
+                  countries: [US, DE]
+                - id: paypal
+                  name: PayPal
+                  description: PayPal checkout
+                  recurring: true
+                  configured: false
+                  provider: paypal
+                  currencies: [USD, EUR]
+                  countries: [US, DE]
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+
+  /payment-methods/{paymentMethodId}:
+    post:
+      tags: [PaymentMethods]
+      summary: Configure PSP for tenant
+      parameters:
+        - name: paymentMethodId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfigurePspRequest"
+            example:
+              pspConfig:
+                apiKey: "sk_test_xxx"
+                publishableKey: "pk_test_xxx"
+      responses:
+        "204":
+          description: Configured
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+
+  /payments:
+    post:
+      tags: [Payments]
+      summary: Initiate payment
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentCreateRequest"
+            example:
+              paymentMethodId: card
+              purchaseOrder:
+                orderId: "ord_123"
+                amount: 99.99
+                currency: USD
+              recurring: false
+              billingInfo:
+                email: "user@example.com"
+                name: "John Doe"
+      responses:
+        "200":
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+              example:
+                payment:
+                  id: "550e8400-e29b-41d4-a716-446655440000"
+                  status: INCOMPLETE
+                  paymentMethodId: card
+                  tenantId: "tenant-1"
+                  recurring: false
+                  createdAt: "2025-02-09T12:00:00Z"
+                nextAction:
+                  type: redirect
+                  details:
+                    url: "https://psp.example.com/checkout/session/xxx"
+                    sessionId: "cs_xxx"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+
+  /payments/{paymentId}/pay:
+    post:
+      tags: [Payments]
+      summary: Execute payment
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Transaction result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+              example:
+                transaction:
+                  id: "660e8400-e29b-41d4-a716-446655440001"
+                  paymentId: "550e8400-e29b-41d4-a716-446655440000"
+                  status: SUCCESS
+                  pspData:
+                    chargeId: "ch_xxx"
+                    receiptUrl: "https://stripe.com/receipts/xxx"
+                  createdAt: "2025-02-09T12:05:00Z"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+
+  /payments/{paymentId}:
+    get:
+      tags: [Payments]
+      summary: Get payment status
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Payment details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+
+  /payments/{paymentId}/close:
+    post:
+      tags: [Payments]
+      summary: Close payment
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "204":
+          description: Closed
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+
+  /transactions/{transactionId}:
+    get:
+      tags: [Transactions]
+      summary: Get transaction status
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Transaction details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+
+  /webhooks/stripe:
+    post:
+      tags: [Webhooks]
+      summary: Stripe webhook callback
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StripeWebhookRequest"
+      responses:
+        "204":
+          description: Accepted
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+
+  /webhooks/paypal:
+    post:
+      tags: [Webhooks]
+      summary: PayPal webhook callback
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayPalWebhookRequest"
+      responses:
+        "204":
+          description: Accepted
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: false
+      schema:
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+  responses:
+    ErrorResponse:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            timestamp: "2025-02-09T12:00:00Z"
+            status: 400
+            error: "Bad Request"
+            message: "Validation failed"
+            correlationId: "550e8400-e29b-41d4-a716-446655440000"
+  schemas:
+    PaymentMethod:
+      type: object
+      required: [id, name, description, recurring, configured]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        icon:
+          type: string
+          description: Base64-encoded icon
+        recurring:
+          type: boolean
+        configured:
+          type: boolean
+        provider:
+          type: string
+        currencies:
+          type: array
+          items:
+            type: string
+        countries:
+          type: array
+          items:
+            type: string
+    ConfigurePspRequest:
+      type: object
+      required: [pspConfig]
+      properties:
+        pspConfig:
+          type: object
+          additionalProperties: true
+    PaymentCreateRequest:
+      type: object
+      required: [paymentMethodId, purchaseOrder, recurring]
+      properties:
+        paymentMethodId:
+          type: string
+        purchaseOrder:
+          type: object
+          additionalProperties: true
+        recurring:
+          type: boolean
+        billingInfo:
+          type: object
+          additionalProperties: true
+        shippingInfo:
+          type: object
+          additionalProperties: true
+        extra:
+          type: object
+          additionalProperties: true
+    NextAction:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    Payment:
+      type: object
+      required: [id, status, paymentMethodId, tenantId, recurring, createdAt]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, INCOMPLETE, PAUSED, CLOSED]
+        paymentMethodId:
+          type: string
+        tenantId:
+          type: string
+        recurring:
+          type: boolean
+        purchaseOrder:
+          type: object
+          additionalProperties: true
+        billingInfo:
+          type: object
+          additionalProperties: true
+        shippingInfo:
+          type: object
+          additionalProperties: true
+        extra:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+    Transaction:
+      type: object
+      required: [id, paymentId, status, createdAt]
+      properties:
+        id:
+          type: string
+        paymentId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, SUCCESS, FAILED]
+        pspData:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+    PaymentResponse:
+      type: object
+      required: [payment]
+      properties:
+        payment:
+          $ref: "#/components/schemas/Payment"
+        nextAction:
+          $ref: "#/components/schemas/NextAction"
+    TransactionResponse:
+      type: object
+      required: [transaction]
+      properties:
+        transaction:
+          $ref: "#/components/schemas/Transaction"
+    ErrorResponse:
+      type: object
+      required: [timestamp, status, error, message, correlationId]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        correlationId:
+          type: string
+    StripeWebhookRequest:
+      type: object
+      properties:
+        type:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+    PayPalWebhookRequest:
+      type: object
+      properties:
+        eventType:
+          type: string
+        resource:
+          type: object
+          additionalProperties: true
