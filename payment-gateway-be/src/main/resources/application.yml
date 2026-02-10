@@ -1,0 +1,55 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: labs64.io-payment-gateway
+
+  # RabbitMQ Configuration
+  rabbitmq:
+    host: rabbitmq.default.svc.cluster.local
+    port: 5672
+    username: ${RABBITMQ_USERNAME:}
+    password: ${RABBITMQ_PASSWORD:}
+    connection-timeout: 10s
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+
+  # Distributed Tracing
+  tracing:
+    sampling:
+      probability: 1.0
+
+  # Metrics
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    io.labs64: DEBUG
+    org.springframework.cloud.stream: INFO
+    org.springframework.amqp: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

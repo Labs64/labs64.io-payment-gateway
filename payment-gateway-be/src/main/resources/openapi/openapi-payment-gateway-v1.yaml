@@ -1,0 +1,40 @@
+openapi: 3.0.0
+info:
+  title: Labs64 Payment Gateway API
+  version: 1.0.0
+  description: API for payment processing and management, allowing clients to integrate with the Labs64 Payment Gateway for secure and efficient payment handling.
+  contact:
+    name: Labs64
+    url: https://labs64.io
+    email: info@labs64.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local Development Server
+  - url: /api/v1
+    description: Default API base path
+tags:
+  - name: PaymentGateway
+    description: Operations to manage payment processing, transactions, and related functionalities within the Labs64 Payment Gateway.
+paths:
+  /ping:
+    get:
+      summary: Health check endpoint
+      description: Returns a simple pong response to indicate the service is running.
+      operationId: ping
+      tags:
+        - PaymentGateway
+      responses:
+        '200':
+          description: Pong response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: pong
+

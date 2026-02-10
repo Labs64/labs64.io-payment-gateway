@@ -1,0 +1,73 @@
+<configuration>
+    <springProperty name="appName" source="spring.application.name" defaultValue="local"/>
+    <property name="APP_NAME" value="${SPRING_APPLICATION_NAME:-unknown-app}"/>
+    <property name="POD_NAME" value="${HOSTNAME:-unknown-pod}"/>
+
+    <!-- JSON Appender -->
+    <appender name="console-json" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <fieldName>timestamp</fieldName>
+                    <pattern>yyyy-MM-dd HH:mm:ss.SSSZ</pattern>
+                </timestamp>
+                <pattern>
+                    <pattern>
+                        {
+                        "app": "${appName}",
+                        "pod": "${HOSTNAME:-unknown}"
+                        }
+                    </pattern>
+                </pattern>
+                <threadName>
+                    <fieldName>thread</fieldName>
+                </threadName>
+                <logLevel>
+                    <fieldName>level</fieldName>
+                </logLevel>
+                <loggerName>
+                    <fieldName>logger</fieldName>
+                </loggerName>
+                <message>
+                    <fieldName>message</fieldName>
+                </message>
+                <stackTrace>
+                    <fieldName>stack_trace</fieldName>
+                    <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                        <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                        <maxLength>2048</maxLength>
+                        <rootCauseFirst>true</rootCauseFirst>
+                    </throwableConverter>
+                </stackTrace>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- Plain Text Appender -->
+    <appender name="console-plain" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSSZ} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Logfmt Appender -->
+    <appender name="console-logfmt" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>
+                timestamp=%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}
+                app=${appName}
+                pod=${POD_NAME}
+                thread=%thread
+                level=%-5level
+                logger=%logger{36}
+                message="%msg"%n%ex
+            </Pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="console-json"/>
+        <!-- appender-ref ref="console-plain"/ -->
+        <!-- appender-ref ref="console-logfmt"/ -->
+    </root>
+</configuration>

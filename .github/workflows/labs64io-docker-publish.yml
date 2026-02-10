@@ -1,0 +1,52 @@
+name: Labs64.IO - Payment Gateway - Publish Docker
+
+permissions:
+  contents: read
+  packages: write
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn -B package --file ./payment-gateway-be/pom.xml
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Get release tag name
+        id: get_release_tag
+        run: echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./payment-gateway-be
+          push: true
+          platforms: linux/amd64,linux/arm64/v8
+          tags: |
+            labs64/payment-gateway:latest
+            labs64/payment-gateway:${{ steps.get_release_tag.outputs.RELEASE_TAG }}
+          cache-from: type=gha,scope=${{ github.workflow }}
+          cache-to: type=gha,mode=max,scope=${{ github.workflow }}
