@@ -2,7 +2,11 @@ APP_NAME := "payment-gateway"
 
 # build application
 build:
-    mvn clean package
+    mvn clean package -DskipTests
+
+# build and run tests
+test:
+    mvn clean verify
 
 # build docker image
 docker: build
@@ -11,9 +15,21 @@ docker: build
     docker push localhost:5005/{{APP_NAME}}:latest
     docker images | grep "{{APP_NAME}}"
 
-# run application
+# start local dev infrastructure (PostgreSQL + Redis + RabbitMQ)
+infra-up:
+    docker compose -f docker-compose.dev.yml up -d
+
+# stop local dev infrastructure
+infra-down:
+    docker compose -f docker-compose.dev.yml down
+
+# run application with local profile
 run: build
     mvn spring-boot:run -Dspring-boot.run.profiles=local
+
+# open documentation
+docu:
+    open "http://localhost:8080/swagger-ui.html"
 
 # check maven dependencies/plugins/properties updates
 check-updates:

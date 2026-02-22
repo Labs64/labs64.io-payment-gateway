@@ -23,5 +23,7 @@
 hs_err_pid*
 replay_pid*
 .vscode
-target
+target/
 .idea
+.DS_Store
+node_modules/
