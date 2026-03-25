@@ -2,7 +2,11 @@ openapi: 3.0.0
 info:
   title: Labs64 Payment Gateway API
   version: 1.0.0
-  description: API for payment processing and management, allowing clients to integrate with the Labs64 Payment Gateway for secure and efficient payment handling.
+  description: >-
+    API for payment processing and management, allowing clients to integrate
+    with the Labs64 Payment Gateway for secure and efficient payment handling.
+    Supports multiple PSPs (Stripe, PayPal, NoOp) via a standardized adapter
+    interface with full transaction traceability and multi-tenant support.
   contact:
     name: Labs64
     url: https://labs64.io
@@ -10,22 +14,34 @@ info:
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
+
 servers:
   - url: http://localhost:8080/api/v1
     description: Local Development Server
   - url: /api/v1
     description: Default API base path
+
 tags:
-  - name: PaymentGateway
-    description: Operations to manage payment processing, transactions, and related functionalities within the Labs64 Payment Gateway.
+  - name: PaymentMethods
+    description: Operations to retrieve and configure available payment methods and tenant PSP settings.
+  - name: Payments
+    description: Operations to create, execute, and manage payment instances.
+  - name: Transactions
+    description: Operations to retrieve payment transaction details and status.
+  - name: Webhooks
+    description: Endpoints for receiving PSP webhook notifications.
+  - name: Health
+    description: Service health check endpoints.
+
 paths:
+  # ─── Health ──────────────────────────────────────────────────────────
   /ping:
     get:
       summary: Health check endpoint
       description: Returns a simple pong response to indicate the service is running.
       operationId: ping
       tags:
-        - PaymentGateway
+        - Health
       responses:
         '200':
           description: Pong response
@@ -33,8 +49,1157 @@ paths:
             application/json:
               schema:
                 type: object
+                additionalProperties: false
                 properties:
                   message:
                     type: string
                     example: pong
 
+  # ─── Payment Methods ────────────────────────────────────────────────
+  /payment-methods:
+    get:
+      summary: Retrieve payment methods
+      description: >-
+        Returns the list of available payment methods for the tenant, filtered
+        by YAML config and tenant PSP configuration.
+      operationId: getPaymentMethods
+      tags:
+        - PaymentMethods
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: currency
+          in: query
+          required: false
+          description: Filter by supported currency code (ISO-4217).
+          schema:
+            type: string
+            example: USD
+        - name: country
+          in: query
+          required: false
+          description: Filter by supported country code (ISO-3166-1 alpha-2).
+          schema:
+            type: string
+            example: US
+      responses:
+        '200':
+          description: List of available payment methods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethod'
+              example:
+                - id: stripe
+                  name: Stripe
+                  description: Credit/Debit Card via Stripe
+                  icon: null
+                  recurring: true
+                - id: paypal
+                  name: PayPal
+                  description: PayPal Checkout
+                  icon: null
+                  recurring: false
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /payment-methods/{paymentMethodId}/config:
+    put:
+      summary: Configure PSP for a tenant
+      description: >-
+        Configure or update PSP-specific settings for the tenant. The tenant is
+        determined from the JWT token.
+      operationId: configurePsp
+      tags:
+        - PaymentMethods
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/PaymentMethodIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PspConfigRequest'
+            example:
+              pspConfig:
+                apiKey: sk_test_abc123
+                webhookSecret: whsec_xyz789
+                merchantId: acct_12345
+      responses:
+        '204':
+          description: PSP configuration saved successfully.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      summary: Retrieve PSP configuration for a tenant
+      description: >-
+        Retrieve the current PSP configuration for the tenant. Sensitive fields
+        (API keys) are masked in the response.
+      operationId: getPspConfig
+      tags:
+        - PaymentMethods
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/PaymentMethodIdPath'
+      responses:
+        '200':
+          description: Current PSP configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PspConfigResponse'
+              example:
+                paymentMethodId: stripe
+                tenantId: tenant-abs
+                enabled: true
+                config:
+                  apiKey: "sk_test_...****"
+                  webhookSecret: "whsec_...****"
+                  merchantId: "acct_..."
+                createdAt: "2026-01-15T10:00:00Z"
+                updatedAt: "2026-02-01T14:30:00Z"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ─── Payments ───────────────────────────────────────────────────────
+  /payments:
+    post:
+      summary: Initiate payment instance
+      description: >-
+        Initiate a new payment instance (one-time or recurring) and capture
+        payment details. No actual charge is performed yet. The tenant is
+        determined from the JWT token.
+      operationId: createPayment
+      tags:
+        - Payments
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+            example:
+              paymentMethodId: stripe
+              purchaseOrder:
+                referenceId: "order-12345"
+                items:
+                  - name: "Widget Pro"
+                    quantity: 2
+                    unitPrice: 1500
+                    currency: USD
+                totalAmount: 3000
+                currency: USD
+                recurring: false
+              billingInfo:
+                firstName: "John"
+                lastName: "Doe"
+                email: "john@example.com"
+                address1: "123 Main St"
+                city: "San Francisco"
+                state: "CA"
+                postalCode: "94102"
+                country: "US"
+      responses:
+        '201':
+          description: Payment instance created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatePaymentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /payments/{paymentId}:
+    get:
+      summary: Get payment status
+      description: >-
+        Retrieve the status and details of an existing payment. Can be used to
+        restore (possibly incomplete) nextAction processing.
+      operationId: getPayment
+      tags:
+        - Payments
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/PaymentIdPath'
+      responses:
+        '200':
+          description: Payment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /payments/{paymentId}/pay:
+    post:
+      summary: Execute payment
+      description: >-
+        Execute a payment via the external PSP using stored captured payment
+        details and create a payment transaction. For non-recurring payments,
+        this operation closes the payment on success. PSP may require delayed
+        completion with later webhook notification.
+      operationId: executePayment
+      tags:
+        - Payments
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/PaymentIdPath'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: >-
+            Unique key per tenantId + paymentId combination to prevent
+            duplicate charges during network failures.
+          schema:
+            type: string
+            example: "idem_abc123_pay_456"
+      responses:
+        '200':
+          description: Payment executed synchronously (SUCCESS or FAILED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutePaymentResponse'
+        '202':
+          description: >-
+            Payment accepted for async processing. Transaction is PENDING
+            and will be updated via PSP webhook.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutePaymentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Conflict — idempotency key reused or payment not payable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                idempotencyConflict:
+                  summary: Idempotency key conflict
+                  value:
+                    code: IDEMPOTENCY_CONFLICT
+                    message: "Idempotency-Key reused with different request body."
+                    timestamp: "2026-02-10T12:34:56Z"
+                    traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                paymentNotPayable:
+                  summary: Payment not in payable state
+                  value:
+                    code: PAYMENT_NOT_PAYABLE
+                    message: "Payment is in CLOSED state and cannot be executed."
+                    timestamp: "2026-02-10T12:34:56Z"
+                    traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '502':
+          $ref: '#/components/responses/PspError'
+
+  /payments/{paymentId}/close:
+    post:
+      summary: Close payment
+      description: >-
+        Close an existing payment. No further pay operations can be executed
+        after closing.
+      operationId: closePayment
+      tags:
+        - Payments
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/PaymentIdPath'
+      responses:
+        '200':
+          description: Payment closed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Payment is already closed or in a non-closable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /payments/{paymentId}/retry:
+    post:
+      summary: Retry failed payment
+      description: >-
+        Manually retry a failed payment transaction. Creates a new transaction
+        attempt for the payment.
+      operationId: retryPayment
+      tags:
+        - Payments
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/PaymentIdPath'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Unique key per tenantId + paymentId to prevent duplicate retries.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment retry executed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutePaymentResponse'
+        '202':
+          description: Payment retry accepted for async processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutePaymentResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Payment not in a retryable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '502':
+          $ref: '#/components/responses/PspError'
+
+  # ─── Transactions ───────────────────────────────────────────────────
+  /transactions/{transactionId}:
+    get:
+      summary: Get transaction status
+      description: Retrieve the status and details of a payment transaction.
+      operationId: getTransaction
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/TransactionIdPath'
+      responses:
+        '200':
+          description: Transaction details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ─── Webhooks ───────────────────────────────────────────────────────
+  /webhooks/{provider}:
+    post:
+      summary: Receive PSP webhook
+      description: >-
+        Receive and process webhook notifications from a PSP. The provider
+        path parameter determines which adapter handles verification and
+        processing. Webhook signatures are verified using PSP-specific mechanisms.
+      operationId: handleWebhook
+      tags:
+        - Webhooks
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          description: The PSP provider identifier (e.g., stripe, paypal, noop).
+          schema:
+            type: string
+            example: stripe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: PSP-specific webhook payload
+              additionalProperties: true
+      responses:
+        '200':
+          description: Webhook processed successfully
+        '400':
+          description: Invalid webhook payload or signature verification failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+# ═══════════════════════════════════════════════════════════════════════
+# Components
+# ═══════════════════════════════════════════════════════════════════════
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        JWT token containing tenantId claim. Scopes: payment-method:read,
+        payment-method:admin, payment:read, payment:write, transaction:read.
+
+  # ─── Reusable Parameters ────────────────────────────────────────────
+  parameters:
+    CorrelationIdHeader:
+      name: X-Correlation-ID
+      in: header
+      required: false
+      description: >-
+        Correlation ID for distributed tracing across ecosystem modules.
+        If not provided, the server will generate one.
+      schema:
+        type: string
+        example: "RSVCZ9NYY9GZNMPXI"
+
+    PaymentMethodIdPath:
+      name: paymentMethodId
+      in: path
+      required: true
+      description: Unique identifier for the payment method (e.g., stripe, paypal, noop).
+      schema:
+        type: string
+        example: stripe
+
+    PaymentIdPath:
+      name: paymentId
+      in: path
+      required: true
+      description: Unique identifier for the payment instance.
+      schema:
+        type: string
+        format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440000"
+
+    TransactionIdPath:
+      name: transactionId
+      in: path
+      required: true
+      description: Unique identifier for the transaction.
+      schema:
+        type: string
+        format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440001"
+
+  # ─── Reusable Responses ─────────────────────────────────────────────
+  responses:
+    UnauthorizedError:
+      description: Invalid or missing JWT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNAUTHORIZED
+            message: "Invalid or missing JWT token."
+            timestamp: "2026-02-10T12:34:56Z"
+            traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
+    ForbiddenError:
+      description: Insufficient scopes
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: FORBIDDEN
+            message: "Insufficient scopes for this operation."
+            timestamp: "2026-02-10T12:34:56Z"
+            traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
+    NotFoundError:
+      description: Requested resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: NOT_FOUND
+            message: "Requested resource was not found."
+            timestamp: "2026-02-10T12:34:56Z"
+            traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
+    ValidationError:
+      description: Request payload failed validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: VALIDATION_ERROR
+            message: "Request payload failed validation."
+            timestamp: "2026-02-10T12:34:56Z"
+            traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: INTERNAL_ERROR
+            message: "An unexpected error occurred."
+            timestamp: "2026-02-10T12:34:56Z"
+            traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
+    PspError:
+      description: Upstream PSP communication failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: PSP_ERROR
+            message: "Upstream PSP communication failure."
+            timestamp: "2026-02-10T12:34:56Z"
+            traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
+  # ─── Schemas ─────────────────────────────────────────────────────────
+  schemas:
+    # ── Error ───────────────────────────────────────────────────────────
+    ErrorCode:
+      type: string
+      description: Unique error code identifying the type of error.
+      enum:
+        - NOT_FOUND             # The requested resource was not found.
+        - VALIDATION_ERROR      # The request payload failed validation rules.
+        - CONFLICT              # Resource conflict (e.g., duplicate, state conflict).
+        - INTERNAL_ERROR        # An unexpected server-side error occurred.
+        - PSP_ERROR             # Upstream PSP communication failure.
+        - MISSING_TENANT_ID     # Missing tenantId in JWT.
+        - UNAUTHORIZED          # Invalid or missing JWT.
+        - FORBIDDEN             # Insufficient scopes.
+        - IDEMPOTENCY_CONFLICT  # Idempotency-Key reused with different request body.
+        - PAYMENT_NOT_PAYABLE   # Payment is in a state that does not allow /pay.
+      example: "NOT_FOUND"
+
+    ErrorResponse:
+      type: object
+      description: Standard error response returned by the Payment Gateway API.
+      required:
+        - code
+        - message
+        - timestamp
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        message:
+          type: string
+          description: Human-readable message describing the error.
+          example: "Payment with ID '550e8400-...' was not found."
+        timestamp:
+          type: string
+          format: date-time
+          description: Time when the error occurred.
+          example: "2026-02-10T12:34:56Z"
+        traceId:
+          type: string
+          description: Optional trace ID for correlating logs or debugging.
+          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
+    # ── Payment Method ──────────────────────────────────────────────────
+    PaymentMethod:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - description
+        - recurring
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the payment method.
+          example: stripe
+        name:
+          type: string
+          description: Display name of the payment method.
+          maxLength: 255
+          example: Stripe
+        description:
+          type: string
+          description: Description of the payment method.
+          maxLength: 500
+          example: Credit/Debit Card via Stripe
+        icon:
+          type: string
+          description: Base64-encoded icon image data for the PSP.
+          nullable: true
+          example: null
+        recurring:
+          type: boolean
+          description: Indicates if the method supports recurring payments.
+          example: true
+
+    # ── PSP Config ──────────────────────────────────────────────────────
+    PspConfigRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - pspConfig
+      properties:
+        pspConfig:
+          type: object
+          description: PSP-specific configuration parameters (key-value pairs).
+          additionalProperties:
+            type: string
+          example:
+            apiKey: "sk_test_abc123"
+            webhookSecret: "whsec_xyz789"
+            merchantId: "acct_12345"
+
+    PspConfigResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - paymentMethodId
+        - tenantId
+        - enabled
+        - config
+        - createdAt
+        - updatedAt
+      properties:
+        paymentMethodId:
+          type: string
+          description: The payment method this configuration applies to.
+          example: stripe
+        tenantId:
+          type: string
+          description: The tenant this configuration belongs to.
+          readOnly: true
+          example: tenant-abs
+        enabled:
+          type: boolean
+          description: Whether this PSP configuration is active.
+          example: true
+        config:
+          type: object
+          description: >-
+            PSP-specific configuration. Sensitive fields are masked.
+          additionalProperties:
+            type: string
+          example:
+            apiKey: "sk_test_...****"
+            webhookSecret: "whsec_...****"
+            merchantId: "acct_..."
+        createdAt:
+          type: string
+          format: date-time
+          description: Configuration creation timestamp.
+          readOnly: true
+          example: "2026-01-15T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Configuration last update timestamp.
+          readOnly: true
+          example: "2026-02-01T14:30:00Z"
+
+    # ── Payment ─────────────────────────────────────────────────────────
+    CreatePaymentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - paymentMethodId
+        - purchaseOrder
+        - billingInfo
+      properties:
+        paymentMethodId:
+          type: string
+          description: ID of the selected payment method.
+          example: stripe
+        purchaseOrder:
+          $ref: '#/components/schemas/PurchaseOrder'
+        billingInfo:
+          allOf:
+            - $ref: '#/components/schemas/BillingInfo'
+        shippingInfo:
+          allOf:
+            - $ref: '#/components/schemas/ShippingInfo'
+        extra:
+          allOf:
+            - $ref: '#/components/schemas/Extra'
+
+    PurchaseOrder:
+      type: object
+      additionalProperties: false
+      required:
+        - referenceId
+        - totalAmount
+        - currency
+      properties:
+        referenceId:
+          type: string
+          description: Reference ID from the checkout module.
+          maxLength: 255
+          example: "order-12345"
+        items:
+          type: array
+          description: Line items in the order.
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        totalAmount:
+          type: integer
+          format: int64
+          description: Total amount in minor units (e.g., cents).
+          minimum: 0
+          example: 3000
+        currency:
+          allOf:
+            - $ref: '#/components/schemas/Currency'
+        recurring:
+          type: boolean
+          description: Whether this is a recurring payment.
+          default: false
+          example: false
+
+    OrderItem:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - unitPrice
+        - quantity
+      properties:
+        name:
+          type: string
+          description: Item name.
+          maxLength: 255
+          example: "Widget Pro"
+        quantity:
+          type: integer
+          description: Number of units of this item.
+          minimum: 1
+          example: 2
+        unitPrice:
+          type: integer
+          format: int64
+          description: Unit price in minor units (e.g., cents).
+          minimum: 0
+          example: 1500
+        currency:
+          allOf:
+            - $ref: '#/components/schemas/Currency'
+
+    BillingInfo:
+      type: object
+      additionalProperties: false
+      properties:
+        firstName:
+          type: string
+          description: First name of the person responsible for billing.
+          maxLength: 255
+          example: "John"
+        lastName:
+          type: string
+          description: Last name of the person responsible for billing.
+          maxLength: 255
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          description: Email address for billing purposes.
+          maxLength: 255
+          example: "john.doe@example.com"
+        phone:
+          type: string
+          description: Phone number for billing purposes.
+          maxLength: 50
+          example: "+1234567890"
+        city:
+          type: string
+          description: City of the billing address.
+          maxLength: 100
+          example: "San Francisco"
+        country:
+          type: string
+          description: Country code of the billing address in ISO 3166-1 alpha-2 format.
+          maxLength: 2
+          example: "US"
+        address1:
+          type: string
+          description: Primary street address.
+          maxLength: 255
+          example: "123 Main St"
+        address2:
+          type: string
+          description: Secondary street address (optional).
+          maxLength: 255
+          example: "Apt 4B"
+        postalCode:
+          type: string
+          description: ZIP or postal code of the billing address.
+          maxLength: 20
+          example: "94102"
+        state:
+          type: string
+          description: State or region of the billing address.
+          maxLength: 50
+          example: "CA"
+        vatId:
+          type: string
+          description: |
+            Value Added Tax (VAT) identification number of the company for billing purposes 
+            (e.g., USt-IdNr. in Germany). Required for B2B transactions in the EU.
+          example: "DE123456789"
+
+    ShippingInfo:
+      type: object
+      additionalProperties: false
+      properties:
+        firstName:
+          type: string
+          description: First name of the shipment recipient.
+          maxLength: 255
+          example: "John"
+        lastName:
+          type: string
+          description: Last name of the shipment recipient.
+          maxLength: 255
+          example: "Doe"
+        phone:
+          type: string
+          description: Recipient phone number.
+          maxLength: 50
+          example: "+1234567890"
+        city:
+          type: string
+          description: City of the shipping address.
+          maxLength: 100
+          example: "San Francisco"
+        country:
+          type: string
+          description: Country code of the shipping address in ISO 3166-1 alpha-2 format.
+          maxLength: 2
+          example: "US"
+        address1:
+          type: string
+          description: Primary street address.
+          maxLength: 255
+          example: "123 Main St"
+        address2:
+          type: string
+          description: Secondary street address (optional).
+          maxLength: 255
+          example: "Apt 4B"
+        postalCode:
+          type: string
+          description: ZIP or postal code of the shipping address.
+          maxLength: 20
+          example: "94102"
+        state:
+          type: string
+          description: State or region of the shipping address.
+          maxLength: 50
+          example: "CA"
+
+    Payment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - tenantId
+        - paymentMethodId
+        - status
+        - type
+        - amount
+        - currency
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique payment identifier.
+          readOnly: true
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        tenantId:
+          type: string
+          description: Tenant this payment belongs to.
+          readOnly: true
+          example: "tenant-abs"
+        paymentMethodId:
+          type: string
+          description: Payment method used.
+          example: stripe
+        status:
+          allOf:
+            - $ref: '#/components/schemas/PaymentStatus'
+          readOnly: true
+        type:
+          allOf:
+            - $ref: '#/components/schemas/PaymentType'
+          readOnly: true
+        amount:
+          type: integer
+          format: int64
+          description: Amount in minor units (e.g., cents).
+          example: 3000
+        currency:
+          allOf:
+            - $ref: '#/components/schemas/Currency'
+        description:
+          type: string
+          description: Payment description.
+          maxLength: 500
+          example: "Order #12345"
+        purchaseOrderRef:
+          type: string
+          description: Reference to the purchase order.
+          example: "order-12345"
+        correlationId:
+          type: string
+          description: Correlation ID for tracing.
+          readOnly: true
+          example: "RSVCZ9NYY9GZNMPXI"
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-02-10T12:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-02-10T12:34:56Z"
+
+    PaymentStatus:
+      type: string
+      description: >-
+        Current status of the payment.
+        ACTIVE: payment is enabled and will be executed on schedule.
+        INCOMPLETE: payment setup is incomplete; requires user action.
+        PAUSED: payment is temporarily paused but can be resumed.
+        CLOSED: payment is closed and won't be executed anymore.
+      enum:
+        - ACTIVE
+        - INCOMPLETE
+        - PAUSED
+        - CLOSED
+
+    PaymentType:
+      type: string
+      description: Type of payment.
+      enum:
+        - ONE_TIME
+        - RECURRING
+
+    NextAction:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: Type of next action required.
+          enum:
+            - none
+            - redirect
+            - 3ds-challenge
+          example: none
+        details:
+          type: object
+          description: Metadata required for the next action (PSP-specific data).
+          additionalProperties: true
+
+    CreatePaymentResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - payment
+      properties:
+        payment:
+          $ref: '#/components/schemas/Payment'
+        nextAction:
+          $ref: '#/components/schemas/NextAction'
+
+    PaymentDetailResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - payment
+      properties:
+        payment:
+          $ref: '#/components/schemas/Payment'
+        nextAction:
+          $ref: '#/components/schemas/NextAction'
+
+    # ── Transaction ─────────────────────────────────────────────────────
+    Transaction:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - paymentId
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique transaction identifier.
+          readOnly: true
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        paymentId:
+          type: string
+          format: uuid
+          description: ID of the payment this transaction belongs to.
+          readOnly: true
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        status:
+          allOf:
+            - $ref: '#/components/schemas/TransactionStatus'
+          readOnly: true
+        failureCode:
+          type: string
+          description: Failure code if transaction failed.
+          nullable: true
+          readOnly: true
+          example: null
+        failureMessage:
+          type: string
+          description: Failure message if transaction failed.
+          nullable: true
+          readOnly: true
+          example: null
+        pspData:
+          type: object
+          description: Raw data returned from the PSP.
+          additionalProperties: true
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-02-10T12:34:56Z"
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-02-10T12:34:56Z"
+
+    TransactionStatus:
+      type: string
+      description: >-
+        Current status of the transaction.
+        PENDING: payment is initiated but not completed yet.
+        SUCCESS: payment completed successfully.
+        FAILED: payment attempt failed; will be retried based on dunning logic.
+      enum:
+        - PENDING
+        - SUCCESS
+        - FAILED
+
+    ExecutePaymentResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - transaction
+      properties:
+        transaction:
+          $ref: '#/components/schemas/Transaction'
+        nextAction:
+          $ref: '#/components/schemas/NextAction'
+
+    TransactionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - transaction
+      properties:
+        transaction:
+          $ref: '#/components/schemas/Transaction'
+
+    # ── Shared Types ────────────────────────────────────────────────────
+    Currency:
+      type: string
+      description: ISO-4217 currency code (3 uppercase letters).
+      pattern: '^[A-Z]{3}$'
+      example: USD
+
+    Extra:
+      type: object
+      description: Custom user-defined fields.
+      additionalProperties: true
+      example:
+        source: "web_portal"
+        promoCode: "SUMMER2025"

@@ -1,4 +1,4 @@
-package io.labs64.PaymentGateway;
+package io.labs64.paymentgateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
