@@ -73,16 +73,18 @@ paths:
           in: query
           required: false
           description: Filter by supported currency code (ISO-4217).
+          example: USD
           schema:
-            type: string
-            example: USD
+            $ref: '#/components/schemas/Currency'
         - name: country
           in: query
           required: false
           description: Filter by supported country code (ISO-3166-1 alpha-2).
+          example: US
           schema:
             type: string
-            example: US
+            maxLength: 2
+            pattern: '^[A-Z]{2}$'
       responses:
         '200':
           description: List of available payment methods
@@ -652,6 +654,7 @@ components:
 
     ErrorResponse:
       type: object
+      additionalProperties: false
       description: Standard error response returned by the Payment Gateway API.
       required:
         - code
