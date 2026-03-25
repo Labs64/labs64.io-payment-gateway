@@ -56,8 +56,9 @@ public class PaymentsController implements PaymentsApi {
             UUID paymentId,
             String idempotencyKey,
             @Nullable String xCorrelationID) {
-        log.info("POST /payments/{}/pay - Executing payment | correlationId={}, idempotencyKey={}",
-                paymentId, xCorrelationID, idempotencyKey);
+        log.info("POST /payments/{}/pay - Executing payment | correlationId={}",
+                paymentId, xCorrelationID);
+        log.debug("POST /payments/{}/pay - idempotencyKey={}", paymentId, idempotencyKey);
 
         // TODO: Implement - check idempotency key, create Transaction (PENDING), execute via PSP adapter,
         //       update Transaction status, update Payment status, publish payment.finalized event
@@ -84,8 +85,9 @@ public class PaymentsController implements PaymentsApi {
             UUID paymentId,
             String idempotencyKey,
             @Nullable String xCorrelationID) {
-        log.info("POST /payments/{}/retry - Retrying payment | correlationId={}, idempotencyKey={}",
-                paymentId, xCorrelationID, idempotencyKey);
+        log.info("POST /payments/{}/retry - Retrying payment | correlationId={}",
+                paymentId, xCorrelationID);
+        log.debug("POST /payments/{}/retry - idempotencyKey={}", paymentId, idempotencyKey);
 
         // TODO: Implement - validate payment is in retryable state, create new Transaction, execute via PSP
         log.debug("POST /payments/{}/retry - Stub: returning 501 Not Implemented", paymentId);
