@@ -1,5 +1,25 @@
 spring:
+  # Local PostgreSQL
+  datasource:
+    url: jdbc:postgresql://localhost:5432/payment_gateway
+    username: payment_gateway
+    password: payment_gateway
+
+  # Local Redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # Local RabbitMQ
   rabbitmq:
     host: localhost
     username: guest
     password: guest
+
+  # JPA - show SQL in dev
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
