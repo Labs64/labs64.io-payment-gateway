@@ -22,7 +22,7 @@ public class TransactionsController implements TransactionsApi {
     public ResponseEntity<TransactionResponse> getTransaction(
             UUID transactionId,
             @Nullable String xCorrelationID) {
-        log.info("GET /transactions/{} - Retrieving transaction details | correlationId={}",
+        log.debug("GET /transactions/{} - Retrieving transaction details | correlationId={}",
                 transactionId, xCorrelationID);
 
         // TODO: Implement - load transaction from DB by transactionId scoped by tenantId from JWT

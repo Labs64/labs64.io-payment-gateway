@@ -250,8 +250,9 @@ paths:
     get:
       summary: Get payment status
       description: >-
-        Retrieve the status and details of an existing payment. Can be used to
-        restore (possibly incomplete) nextAction processing.
+        Retrieve the status and details of an existing payment, including the
+        original purchase order, billing info, and any pending next action.
+        Can be used to restore (possibly incomplete) nextAction processing.
       operationId: getPayment
       tags:
         - Payments
@@ -335,6 +336,7 @@ paths:
                   summary: Idempotency key conflict
                   value:
                     code: IDEMPOTENCY_CONFLICT
+                    status: 409
                     message: "Idempotency-Key reused with different request body."
                     timestamp: "2026-02-10T12:34:56Z"
                     traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
@@ -342,6 +344,7 @@ paths:
                   summary: Payment not in payable state
                   value:
                     code: PAYMENT_NOT_PAYABLE
+                    status: 409
                     message: "Payment is in CLOSED state and cannot be executed."
                     timestamp: "2026-02-10T12:34:56Z"
                     traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
@@ -569,6 +572,7 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             code: UNAUTHORIZED
+            status: 401
             message: "Invalid or missing JWT token."
             timestamp: "2026-02-10T12:34:56Z"
             traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
@@ -581,6 +585,7 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             code: FORBIDDEN
+            status: 403
             message: "Insufficient scopes for this operation."
             timestamp: "2026-02-10T12:34:56Z"
             traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
@@ -593,6 +598,7 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             code: NOT_FOUND
+            status: 404
             message: "Requested resource was not found."
             timestamp: "2026-02-10T12:34:56Z"
             traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
@@ -605,6 +611,7 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             code: VALIDATION_ERROR
+            status: 400
             message: "Request payload failed validation."
             timestamp: "2026-02-10T12:34:56Z"
             traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
@@ -617,6 +624,7 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             code: INTERNAL_ERROR
+            status: 500
             message: "An unexpected error occurred."
             timestamp: "2026-02-10T12:34:56Z"
             traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
@@ -629,6 +637,7 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             code: PSP_ERROR
+            status: 502
             message: "Upstream PSP communication failure."
             timestamp: "2026-02-10T12:34:56Z"
             traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
@@ -658,11 +667,16 @@ components:
       description: Standard error response returned by the Payment Gateway API.
       required:
         - code
+        - status
         - message
         - timestamp
       properties:
         code:
           $ref: '#/components/schemas/ErrorCode'
+        status:
+          type: integer
+          description: HTTP status code mirrored in the body for clients that inspect the payload directly.
+          example: 404
         message:
           type: string
           description: Human-readable message describing the error.
@@ -919,7 +933,7 @@ components:
         vatId:
           type: string
           description: |
-            Value Added Tax (VAT) identification number of the company for billing purposes 
+            Value Added Tax (VAT) identification number of the company for billing purposes
             (e.g., USt-IdNr. in Germany). Required for B2B transactions in the EU.
           example: "DE123456789"
 
@@ -1023,10 +1037,29 @@ components:
           description: Payment description.
           maxLength: 500
           example: "Order #12345"
-        purchaseOrderRef:
-          type: string
-          description: Reference to the purchase order.
-          example: "order-12345"
+        purchaseOrder:
+          allOf:
+            - $ref: '#/components/schemas/PurchaseOrder'
+          description: >-
+            Full purchase order associated with this payment. Returned in
+            GET /payments/{paymentId} so clients can reconstruct checkout
+            state without a separate lookup.
+          readOnly: true
+        billingInfo:
+          allOf:
+            - $ref: '#/components/schemas/BillingInfo'
+          description: Billing information captured at payment creation time.
+          readOnly: true
+        shippingInfo:
+          allOf:
+            - $ref: '#/components/schemas/ShippingInfo'
+          description: Shipping information captured at payment creation time.
+          readOnly: true
+        extra:
+          allOf:
+            - $ref: '#/components/schemas/Extra'
+          description: Custom user-defined fields captured at payment creation time.
+          readOnly: true
         correlationId:
           type: string
           description: Correlation ID for tracing.

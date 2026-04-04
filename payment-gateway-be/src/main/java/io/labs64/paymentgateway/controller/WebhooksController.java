@@ -19,7 +19,7 @@ public class WebhooksController implements WebhooksApi {
     public ResponseEntity<Void> handleWebhook(
             String provider,
             Map<String, Object> requestBody) {
-        log.info("POST /webhooks/{} - Received webhook notification | payloadKeys={}",
+        log.debug("POST /webhooks/{} - Received webhook notification | payloadKeys={}",
                 provider, requestBody != null ? requestBody.keySet() : "null");
 
         // TODO: Implement - route to appropriate PSP adapter, verify webhook signature,

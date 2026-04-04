@@ -25,7 +25,7 @@ public class PaymentsController implements PaymentsApi {
     public ResponseEntity<CreatePaymentResponse> createPayment(
             CreatePaymentRequest createPaymentRequest,
             @Nullable String xCorrelationID) {
-        log.info("POST /payments - Creating payment instance | correlationId={}, paymentMethodId={}, amount={}, currency={}, recurring={}",
+        log.debug("POST /payments - Creating payment instance | correlationId={}, paymentMethodId={}, amount={}, currency={}, recurring={}",
                 xCorrelationID,
                 createPaymentRequest.getPaymentMethodId(),
                 createPaymentRequest.getPurchaseOrder() != null ? createPaymentRequest.getPurchaseOrder().getTotalAmount() : "null",
@@ -42,7 +42,7 @@ public class PaymentsController implements PaymentsApi {
     public ResponseEntity<PaymentDetailResponse> getPayment(
             UUID paymentId,
             @Nullable String xCorrelationID) {
-        log.info("GET /payments/{} - Retrieving payment details | correlationId={}",
+        log.debug("GET /payments/{} - Retrieving payment details | correlationId={}",
                 paymentId, xCorrelationID);
 
         // TODO: Implement - load payment from DB by paymentId scoped by tenantId from JWT
@@ -56,7 +56,7 @@ public class PaymentsController implements PaymentsApi {
             UUID paymentId,
             String idempotencyKey,
             @Nullable String xCorrelationID) {
-        log.info("POST /payments/{}/pay - Executing payment | correlationId={}",
+        log.debug("POST /payments/{}/pay - Executing payment | correlationId={}",
                 paymentId, xCorrelationID);
         log.debug("POST /payments/{}/pay - idempotencyKey={}", paymentId, idempotencyKey);
 
@@ -71,7 +71,7 @@ public class PaymentsController implements PaymentsApi {
     public ResponseEntity<PaymentDetailResponse> closePayment(
             UUID paymentId,
             @Nullable String xCorrelationID) {
-        log.info("POST /payments/{}/close - Closing payment | correlationId={}",
+        log.debug("POST /payments/{}/close - Closing payment | correlationId={}",
                 paymentId, xCorrelationID);
 
         // TODO: Implement - validate payment state, update to CLOSED, publish payment.closed event
@@ -85,7 +85,7 @@ public class PaymentsController implements PaymentsApi {
             UUID paymentId,
             String idempotencyKey,
             @Nullable String xCorrelationID) {
-        log.info("POST /payments/{}/retry - Retrying payment | correlationId={}",
+        log.debug("POST /payments/{}/retry - Retrying payment | correlationId={}",
                 paymentId, xCorrelationID);
         log.debug("POST /payments/{}/retry - idempotencyKey={}", paymentId, idempotencyKey);
 

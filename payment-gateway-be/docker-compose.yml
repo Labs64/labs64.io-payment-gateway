@@ -1,0 +1,51 @@
+services:
+
+  postgres:
+    image: postgres:18-alpine
+    env_file: ./.env
+    hostname: postgres
+    environment:
+      POSTGRES_USER: ${db_username}
+      POSTGRES_PASSWORD: ${db_password}
+      POSTGRES_DB: ${db_database}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -h 127.0.0.1 -p ${db_port} -U ${db_username} -d ${db_database} || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 2
+    ports:
+      - 5432:${db_port}
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-paymentgateway}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-paymentgateway}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-paymentgateway}
+    ports:
+      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_MGMT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:

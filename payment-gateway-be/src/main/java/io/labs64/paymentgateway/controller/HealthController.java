@@ -16,12 +16,12 @@ public class HealthController implements HealthApi {
 
     @Override
     public ResponseEntity<Ping200Response> ping() {
-        log.info("GET /ping - Health check requested");
+        log.debug("GET /ping - Health check requested");
 
         Ping200Response response = new Ping200Response();
         response.setMessage("pong");
 
-        log.info("GET /ping - Returning pong response");
+        log.debug("GET /ping - Returning pong response");
         return ResponseEntity.ok(response);
     }
 }

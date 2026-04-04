@@ -3,3 +3,28 @@ spring:
     host: localhost
     username: guest
     password: guest
+
+
+payment:
+  methods:
+    - id: card
+      name: Card
+      description: Card payments
+      provider: stripe
+      recurring: true
+      currencies: [USD, EUR]
+      countries: [US, DE]
+    - id: paypal
+      name: PayPal
+      description: PayPal checkout
+      provider: paypal
+      recurring: true
+      currencies: [USD, EUR]
+      countries: [US, DE]
+    - id: noop
+      name: No-Op
+      description: Testing provider
+      provider: noop
+      recurring: true
+      currencies: [USD]
+      countries: [US]

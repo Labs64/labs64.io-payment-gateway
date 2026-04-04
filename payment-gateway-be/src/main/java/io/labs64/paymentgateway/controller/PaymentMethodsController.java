@@ -26,7 +26,7 @@ public class PaymentMethodsController implements PaymentMethodsApi {
             @Nullable String xCorrelationID,
             @Nullable String currency,
             @Nullable String country) {
-        log.info("GET /payment-methods - Retrieving payment methods | correlationId={}, currency={}, country={}",
+        log.debug("GET /payment-methods - Retrieving payment methods | correlationId={}, currency={}, country={}",
                 xCorrelationID, currency, country);
 
         // TODO: Implement - load payment methods from YAML config + tenant PSP config from DB
@@ -40,7 +40,7 @@ public class PaymentMethodsController implements PaymentMethodsApi {
             String paymentMethodId,
             PspConfigRequest pspConfigRequest,
             @Nullable String xCorrelationID) {
-        log.info("PUT /payment-methods/{}/config - Configuring PSP | correlationId={}, configKeys={}",
+        log.debug("PUT /payment-methods/{}/config - Configuring PSP | correlationId={}, configKeys={}",
                 paymentMethodId, xCorrelationID,
                 pspConfigRequest.getPspConfig() != null ? pspConfigRequest.getPspConfig().keySet() : "null");
 
@@ -54,7 +54,7 @@ public class PaymentMethodsController implements PaymentMethodsApi {
     public ResponseEntity<PspConfigResponse> getPspConfig(
             String paymentMethodId,
             @Nullable String xCorrelationID) {
-        log.info("GET /payment-methods/{}/config - Retrieving PSP config | correlationId={}",
+        log.debug("GET /payment-methods/{}/config - Retrieving PSP config | correlationId={}",
                 paymentMethodId, xCorrelationID);
 
         // TODO: Implement - load tenant-specific PSP config from DB, mask sensitive fields
