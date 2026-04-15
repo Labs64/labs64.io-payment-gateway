@@ -105,10 +105,47 @@ paths:
                   description: PayPal Checkout
                   icon: null
                   recurring: false
+        '400':
+          $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
           $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /payment-methods/{paymentMethodId}:
+    get:
+      summary: Get a single payment method
+      description: >-
+        Retrieve details of a specific payment method by its identifier.
+      operationId: getPaymentMethod
+      tags:
+        - PaymentMethods
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/PaymentMethodIdPath'
+      responses:
+        '200':
+          description: Payment method details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethod'
+              example:
+                id: stripe
+                name: Stripe
+                description: Credit/Debit Card via Stripe
+                icon: null
+                recurring: true
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -304,7 +341,10 @@ paths:
             example: "idem_abc123_pay_456"
       responses:
         '200':
-          description: Payment executed synchronously (SUCCESS or FAILED)
+          description: >-
+            Payment executed synchronously. Transaction status is SUCCESS or FAILED.
+            Both terminal states are returned as 200; inspect transaction.status to
+            determine the outcome.
           content:
             application/json:
               schema:
@@ -386,6 +426,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                alreadyClosed:
+                  summary: Payment already closed
+                  value:
+                    code: PAYMENT_NOT_PAYABLE
+                    status: 409
+                    message: "Payment is already closed."
+                    timestamp: "2026-02-10T12:34:56Z"
+                    traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -422,6 +471,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExecutePaymentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
@@ -434,6 +485,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                paymentClosed:
+                  summary: Payment is closed
+                  value:
+                    code: PAYMENT_NOT_PAYABLE
+                    status: 409
+                    message: "Payment is closed and cannot be retried."
+                    timestamp: "2026-02-10T12:34:56Z"
+                    traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                idempotencyConflict:
+                  summary: Idempotency key conflict
+                  value:
+                    code: IDEMPOTENCY_CONFLICT
+                    status: 409
+                    message: "Idempotency-Key reused with different request body."
+                    timestamp: "2026-02-10T12:34:56Z"
+                    traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
         '500':
           $ref: '#/components/responses/InternalError'
         '502':
@@ -476,9 +544,12 @@ paths:
         Receive and process webhook notifications from a PSP. The provider
         path parameter determines which adapter handles verification and
         processing. Webhook signatures are verified using PSP-specific mechanisms.
+        This endpoint is intentionally unauthenticated — PSPs call it directly
+        using their own signature verification mechanism.
       operationId: handleWebhook
       tags:
         - Webhooks
+      security: []
       parameters:
         - name: provider
           in: path
@@ -717,6 +788,7 @@ components:
           example: Credit/Debit Card via Stripe
         icon:
           type: string
+          format: byte
           description: Base64-encoded icon image data for the PSP.
           nullable: true
           example: null
@@ -836,7 +908,7 @@ components:
           type: integer
           format: int64
           description: Total amount in minor units (e.g., cents).
-          minimum: 0
+          minimum: 1
           example: 3000
         currency:
           allOf:
@@ -869,7 +941,7 @@ components:
           type: integer
           format: int64
           description: Unit price in minor units (e.g., cents).
-          minimum: 0
+          minimum: 1
           example: 1500
         currency:
           allOf:
@@ -878,6 +950,8 @@ components:
     BillingInfo:
       type: object
       additionalProperties: false
+      required:
+        - email
       properties:
         firstName:
           type: string
@@ -951,6 +1025,12 @@ components:
           description: Last name of the shipment recipient.
           maxLength: 255
           example: "Doe"
+        email:
+          type: string
+          format: email
+          description: Email address for shipping notifications.
+          maxLength: 255
+          example: "john.doe@example.com"
         phone:
           type: string
           description: Recipient phone number.
@@ -1082,7 +1162,9 @@ components:
         Current status of the payment.
         ACTIVE: payment is enabled and will be executed on schedule.
         INCOMPLETE: payment setup is incomplete; requires user action.
-        PAUSED: payment is temporarily paused but can be resumed.
+        PAUSED: payment is temporarily paused but can be resumed. Note: no
+          dedicated pause/resume API operation exists yet; this status is set
+          internally.
         CLOSED: payment is closed and won't be executed anymore.
       enum:
         - ACTIVE
@@ -1107,10 +1189,10 @@ components:
           type: string
           description: Type of next action required.
           enum:
-            - none
-            - redirect
-            - 3ds-challenge
-          example: none
+            - NONE
+            - REDIRECT
+            - THREE_DS_CHALLENGE
+          example: NONE
         details:
           type: object
           description: Metadata required for the next action (PSP-specific data).
@@ -1179,7 +1261,10 @@ components:
           example: null
         pspData:
           type: object
-          description: Raw data returned from the PSP.
+          description: >-
+            Raw data returned from the PSP. Exposed for debugging and
+            reconciliation purposes. Sensitive values should be filtered
+            by the PSP adapter before storing.
           additionalProperties: true
           readOnly: true
         createdAt:

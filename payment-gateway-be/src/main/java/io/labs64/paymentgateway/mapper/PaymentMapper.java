@@ -58,7 +58,7 @@ public interface PaymentMapper {
             final NextAction nextAction = new NextAction();
             final Object type = entity.getNextAction().get("type");
             if (type != null) {
-                nextAction.setType(NextAction.TypeEnum.fromValue(type.toString()));
+                nextAction.setType(NextAction.TypeEnum.fromValue(type.toString().toUpperCase()));
             }
             @SuppressWarnings("unchecked")
             final Map<String, Object> details = (Map<String, Object>) entity.getNextAction().get("details");

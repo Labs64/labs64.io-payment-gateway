@@ -8,9 +8,9 @@ spring:
 
   # PostgreSQL Configuration
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:payment_gateway}
-    username: ${DB_USERNAME:payment_gateway}
-    password: ${DB_PASSWORD:payment_gateway}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:paymentgateway}
+    username: ${DB_USERNAME:paymentgateway}
+    password: ${DB_PASSWORD:paymentgateway}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -30,7 +30,11 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    default-schema: public
     baseline-on-migrate: true
+    baseline-version: 0
+    validate-on-migrate: true
+    out-of-order: false
 
   # Redis Configuration
   data:
@@ -40,11 +44,24 @@ spring:
 
   # RabbitMQ Configuration
   rabbitmq:
-    host: rabbitmq.default.svc.cluster.local
-    port: 5672
-    username: ${RABBITMQ_USERNAME:}
-    password: ${RABBITMQ_PASSWORD:}
-    connection-timeout: 10s
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    connection-timeout: 10000
+
+  # Spring Cloud Stream
+  cloud:
+    stream:
+      bindings:
+        paymentFinalized-out-0:
+          destination: payment.finalized
+          content-type: application/json
+      rabbit:
+        bindings:
+          paymentFinalized-out-0:
+            producer:
+              routing-key-expression: '''payment.finalized'''
 
 # Actuator Configuration
 management:

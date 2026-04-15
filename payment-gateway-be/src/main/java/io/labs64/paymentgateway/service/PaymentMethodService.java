@@ -12,6 +12,15 @@ import io.labs64.paymentgateway.v1.model.PspConfigResponse;
 public interface PaymentMethodService {
 
     /**
+     * Retrieve a single payment method by ID.
+     *
+     * @param tenantId        tenant identifier
+     * @param paymentMethodId payment method identifier
+     * @return the payment method
+     */
+    PaymentMethod getPaymentMethod(String tenantId, String paymentMethodId);
+
+    /**
      * Retrieve available payment methods for a tenant, optionally filtered by currency and country.
      *
      * @param tenantId tenant identifier

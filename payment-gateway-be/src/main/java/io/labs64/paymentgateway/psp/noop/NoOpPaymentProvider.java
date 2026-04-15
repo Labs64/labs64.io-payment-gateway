@@ -40,7 +40,7 @@ public class NoOpPaymentProvider implements PaymentProvider {
                         "referenceId", "noop_" + UUID.randomUUID(),
                         "message", "NoOp payment always succeeds"))
                 .nextAction(PspNextAction.builder()
-                        .type("none")
+                        .type("NONE")
                         .build())
                 .asyncCompletion(false)
                 .build();

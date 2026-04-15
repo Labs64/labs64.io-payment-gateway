@@ -35,7 +35,7 @@ class NoOpPaymentProviderTest {
 
         assertNotNull(response);
         assertEquals(TransactionStatus.SUCCESS, response.getStatus());
-        assertEquals("none", response.getNextAction().getType());
+        assertEquals("NONE", response.getNextAction().getType());
         assertTrue(response.getPspData().containsKey("referenceId"));
     }
 

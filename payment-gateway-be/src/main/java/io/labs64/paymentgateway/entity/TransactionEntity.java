@@ -32,7 +32,7 @@ import lombok.ToString;
  * JPA entity representing a payment transaction.
  */
 @Entity
-@Table(name = "transaction")
+@Table(name = "payment_transaction")
 @Getter
 @Setter
 @Builder

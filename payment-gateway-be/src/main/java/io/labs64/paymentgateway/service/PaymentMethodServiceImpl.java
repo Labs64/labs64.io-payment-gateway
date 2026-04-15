@@ -38,6 +38,27 @@ public class PaymentMethodServiceImpl implements PaymentMethodService {
 
     @Override
     @Transactional(readOnly = true)
+    public PaymentMethod getPaymentMethod(final String tenantId, final String paymentMethodId) {
+        log.debug("Loading payment method for tenantId={}, paymentMethodId={}", tenantId, paymentMethodId);
+
+        return properties.getPaymentMethods().stream()
+                .filter(PaymentMethodConfig::isEnabled)
+                .filter(config -> config.getId().equals(paymentMethodId))
+                .findFirst()
+                .map(config -> {
+                    final PaymentMethod pm = new PaymentMethod();
+                    pm.setId(config.getId());
+                    pm.setName(config.getName());
+                    pm.setDescription(config.getDescription());
+                    pm.setRecurring(config.isRecurring());
+                    return pm;
+                })
+                .orElseThrow(() -> new NotFoundException(
+                        "Payment method '" + paymentMethodId + "' was not found."));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<PaymentMethod> getPaymentMethods(final String tenantId, final String currency, final String country) {
         log.debug("Loading payment methods for tenantId={}, currency={}, country={}", tenantId, currency, country);
 

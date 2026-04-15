@@ -1,40 +1,82 @@
 APP_NAME := "payment-gateway"
+REGISTRY  := env_var_or_default("REGISTRY", "localhost:5005")
+TAG       := env_var_or_default("TAG", "latest")
 
-# build application
+# show available recipes
+default:
+    @just --list
+
+# ── Build ────────────────────────────────────────────────────────────
+
+# compile and package (skip tests)
 build:
-    mvn clean package -DskipTests
+    mvn clean package -DskipTests -f pom.xml
 
-# build and run tests
+# compile, run tests, and package
 test:
-    mvn clean verify
+    mvn clean verify -f pom.xml
+
+# run only unit tests (no integration tests)
+unit-test:
+    mvn test -f pom.xml
+
+# ── Docker ───────────────────────────────────────────────────────────
 
 # build docker image
-docker: build
-    docker build -t {{APP_NAME}}:latest .
-    docker tag {{APP_NAME}}:latest localhost:5005/{{APP_NAME}}:latest
-    docker push localhost:5005/{{APP_NAME}}:latest
+docker-build: build
+    docker build -t {{APP_NAME}}:{{TAG}} .
     docker images | grep "{{APP_NAME}}"
+
+# build and push docker image to registry
+docker-push: docker-build
+    docker tag {{APP_NAME}}:{{TAG}} {{REGISTRY}}/{{APP_NAME}}:{{TAG}}
+    docker push {{REGISTRY}}/{{APP_NAME}}:{{TAG}}
+
+# ── Infrastructure ───────────────────────────────────────────────────
 
 # start local dev infrastructure (PostgreSQL + Redis + RabbitMQ)
 infra-up:
     docker compose up -d
-    docker ps -a
+    docker compose ps
 
 # stop local dev infrastructure
 infra-down:
     docker compose down
 
-# run application with local profile
+# stop and remove all volumes (full reset)
+infra-reset:
+    docker compose down -v
+
+# tail logs from all infra services
+infra-logs:
+    docker compose logs -f
+
+# ── Run ──────────────────────────────────────────────────────────────
+
+# build and run application with local profile
 run: build
-    mvn spring-boot:run -Dspring-boot.run.profiles=local
+    mvn spring-boot:run -Dspring-boot.run.profiles=local -f pom.xml
 
-# open documentation
+# ── Dev Tools ────────────────────────────────────────────────────────
+
+# open Swagger UI in browser
 docu:
-    open "http://localhost:8080/swagger-ui.html"
+    open "http://localhost:8080/swagger-ui/index.html"
 
-# check maven dependencies/plugins/properties updates
+# open RabbitMQ management UI in browser
+rabbitmq-ui:
+    open "http://localhost:15672"
+
+# clean build artifacts
+clean:
+    mvn clean -f pom.xml
+
+# check for dependency, plugin, and property version updates
 check-updates:
-    mvn versions:display-plugin-updates -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*'
-    mvn versions:display-property-updates -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*'
-    mvn versions:display-dependency-updates -DprocessDependencyManagement=false -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*'
-    docker scout cves {{APP_NAME}}:latest
+    mvn versions:display-plugin-updates -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*' -f pom.xml
+    mvn versions:display-property-updates -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*' -f pom.xml
+    mvn versions:display-dependency-updates -DprocessDependencyManagement=false -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*' -f pom.xml
+
+# scan docker image for CVEs (requires docker scout)
+scan: docker-build
+    docker scout cves {{APP_NAME}}:{{TAG}}

@@ -5,34 +5,45 @@ services:
     env_file: ./.env
     hostname: postgres
     environment:
-      POSTGRES_USER: ${db_username}
-      POSTGRES_PASSWORD: ${db_password}
-      POSTGRES_DB: ${db_database}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: pg_isready -h 127.0.0.1 -p ${db_port} -U ${db_username} -d ${db_database} || exit 1
+      test: pg_isready -h 127.0.0.1 -p ${DB_PORT:-5432} -U ${DB_USERNAME} -d ${DB_NAME} || exit 1
       interval: 10s
       timeout: 5s
-      retries: 2
+      retries: 5
+      start_period: 10s
     ports:
-      - 5432:${db_port}
+      - "${DB_PORT:-5432}:5432"
 
   redis:
     image: redis:8-alpine
+    hostname: redis
     ports:
-      - 6379:6379
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
+    hostname: rabbitmq
     restart: unless-stopped
+    env_file: ./.env
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-paymentgateway}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-paymentgateway}
-      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-paymentgateway}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST}
     ports:
       - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
       - "127.0.0.1:${RABBITMQ_MGMT_PORT:-15672}:15672"
@@ -40,10 +51,47 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 15s
+      start_period: 20s
+
+  app:
+    image: payment-gateway:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: ./.env
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/liveness || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    profiles:
+      - full
 
 volumes:
   postgres_data:

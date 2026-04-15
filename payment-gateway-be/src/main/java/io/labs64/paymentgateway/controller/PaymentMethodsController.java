@@ -28,6 +28,17 @@ public class PaymentMethodsController implements PaymentMethodsApi {
     private final PaymentMethodService paymentMethodService;
 
     @Override
+    public ResponseEntity<PaymentMethod> getPaymentMethod(
+            String paymentMethodId,
+            @Nullable String xCorrelationID) {
+        final String tenantId = requireTenantId();
+        log.info("GET /payment-methods/{} | correlationId={}, tenantId={}", paymentMethodId, xCorrelationID, tenantId);
+
+        final PaymentMethod method = paymentMethodService.getPaymentMethod(tenantId, paymentMethodId);
+        return ResponseEntity.ok(method);
+    }
+
+    @Override
     public ResponseEntity<List<PaymentMethod>> getPaymentMethods(
             @Nullable String xCorrelationID,
             @Nullable String currency,
