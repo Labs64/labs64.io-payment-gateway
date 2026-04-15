@@ -6,6 +6,38 @@ spring:
   application:
     name: labs64.io-payment-gateway
 
+  # PostgreSQL Configuration
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:payment_gateway}
+    username: ${DB_USERNAME:payment_gateway}
+    password: ${DB_PASSWORD:payment_gateway}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  # JPA Configuration
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: public
+        format_sql: false
+
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
   # RabbitMQ Configuration
   rabbitmq:
     host: rabbitmq.default.svc.cluster.local
@@ -44,6 +76,38 @@ management:
       prometheus:
         enabled: true
 
+# Payment Gateway Configuration
+payment-gateway:
+  payment-methods:
+    - id: "stripe"
+      enabled: true
+      name: "Stripe"
+      description: "Credit/Debit Card via Stripe"
+      recurring: true
+      supported-currencies: ["USD", "EUR", "GBP"]
+      supported-countries: ["US", "GB", "DE"]
+    - id: "paypal"
+      enabled: true
+      name: "PayPal"
+      description: "PayPal Checkout"
+      recurring: false
+      supported-currencies: ["USD", "EUR"]
+      supported-countries: ["US", "DE"]
+    - id: "noop"
+      enabled: true
+      name: "No-Op (Test)"
+      description: "Test payment provider - always succeeds"
+      recurring: false
+      supported-currencies: ["USD", "EUR"]
+      supported-countries: ["US", "DE"]
+  retry:
+    max-retries: 3
+    retry-interval-seconds: 60
+    backoff-multiplier: 2.0
+  redis:
+    idempotency-key-ttl-seconds: 86400
+    distributed-lock-ttl-seconds: 30
+
 # Logging Configuration
 logging:
   level:
@@ -52,4 +116,4 @@ logging:
     org.springframework.cloud.stream: INFO
     org.springframework.amqp: WARN
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%X{correlationId:-}] [%X{tenantId:-}] - %msg%n"

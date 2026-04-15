@@ -1,54 +1,59 @@
 package io.labs64.paymentgateway.controller;
 
-import io.labs64.paymentgateway.v1.api.PaymentsApi;
-import io.labs64.paymentgateway.v1.model.CreatePaymentRequest;
-import io.labs64.paymentgateway.v1.model.CreatePaymentResponse;
-import io.labs64.paymentgateway.v1.model.ExecutePaymentResponse;
-import io.labs64.paymentgateway.v1.model.PaymentDetailResponse;
+import java.util.UUID;
+
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
+import io.labs64.paymentgateway.exception.TenantRequiredException;
+import io.labs64.paymentgateway.service.PaymentService;
+import io.labs64.paymentgateway.v1.api.PaymentsApi;
+import io.labs64.paymentgateway.v1.model.CreatePaymentRequest;
+import io.labs64.paymentgateway.v1.model.CreatePaymentResponse;
+import io.labs64.paymentgateway.v1.model.ExecutePaymentResponse;
+import io.labs64.paymentgateway.v1.model.PaymentDetailResponse;
+import io.labs64.paymentgateway.web.CorrelationIdFilter;
+import io.labs64.paymentgateway.web.TenantContext;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1")
+@RequiredArgsConstructor
 public class PaymentsController implements PaymentsApi {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentsController.class);
+
+    private final PaymentService paymentService;
 
     @Override
     public ResponseEntity<CreatePaymentResponse> createPayment(
             CreatePaymentRequest createPaymentRequest,
             @Nullable String xCorrelationID) {
-        log.debug("POST /payments - Creating payment instance | correlationId={}, paymentMethodId={}, amount={}, currency={}, recurring={}",
-                xCorrelationID,
-                createPaymentRequest.getPaymentMethodId(),
-                createPaymentRequest.getPurchaseOrder() != null ? createPaymentRequest.getPurchaseOrder().getTotalAmount() : "null",
-                createPaymentRequest.getPurchaseOrder() != null ? createPaymentRequest.getPurchaseOrder().getCurrency() : "null",
-                createPaymentRequest.getPurchaseOrder() != null ? createPaymentRequest.getPurchaseOrder().getRecurring() : "null");
+        final String tenantId = requireTenantId();
+        final String correlationId = MDC.get(CorrelationIdFilter.MDC_CORRELATION_ID);
+        log.info("POST /payments | correlationId={}, tenantId={}, paymentMethodId={}",
+                correlationId, tenantId, createPaymentRequest.getPaymentMethodId());
 
-        // TODO: Implement - validate request, load PSP config, create Payment entity (INCOMPLETE), publish payment.created event
-        log.debug("POST /payments - Stub: returning 501 Not Implemented");
-
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        final CreatePaymentResponse response = paymentService.createPayment(
+                tenantId, correlationId, createPaymentRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @Override
     public ResponseEntity<PaymentDetailResponse> getPayment(
             UUID paymentId,
             @Nullable String xCorrelationID) {
-        log.debug("GET /payments/{} - Retrieving payment details | correlationId={}",
-                paymentId, xCorrelationID);
+        final String tenantId = requireTenantId();
+        log.info("GET /payments/{} | correlationId={}, tenantId={}", paymentId, xCorrelationID, tenantId);
 
-        // TODO: Implement - load payment from DB by paymentId scoped by tenantId from JWT
-        log.debug("GET /payments/{} - Stub: returning 404 (not found)", paymentId);
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        final PaymentDetailResponse response = paymentService.getPayment(tenantId, paymentId);
+        return ResponseEntity.ok(response);
     }
 
     @Override
@@ -56,28 +61,24 @@ public class PaymentsController implements PaymentsApi {
             UUID paymentId,
             String idempotencyKey,
             @Nullable String xCorrelationID) {
-        log.debug("POST /payments/{}/pay - Executing payment | correlationId={}",
-                paymentId, xCorrelationID);
-        log.debug("POST /payments/{}/pay - idempotencyKey={}", paymentId, idempotencyKey);
+        final String tenantId = requireTenantId();
+        final String correlationId = MDC.get(CorrelationIdFilter.MDC_CORRELATION_ID);
+        log.info("POST /payments/{}/pay | correlationId={}, tenantId={}", paymentId, correlationId, tenantId);
 
-        // TODO: Implement - check idempotency key, create Transaction (PENDING), execute via PSP adapter,
-        //       update Transaction status, update Payment status, publish payment.finalized event
-        log.debug("POST /payments/{}/pay - Stub: returning 501 Not Implemented", paymentId);
-
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        final ExecutePaymentResponse response = paymentService.executePayment(
+                tenantId, correlationId, paymentId, idempotencyKey);
+        return ResponseEntity.ok(response);
     }
 
     @Override
     public ResponseEntity<PaymentDetailResponse> closePayment(
             UUID paymentId,
             @Nullable String xCorrelationID) {
-        log.debug("POST /payments/{}/close - Closing payment | correlationId={}",
-                paymentId, xCorrelationID);
+        final String tenantId = requireTenantId();
+        log.info("POST /payments/{}/close | correlationId={}, tenantId={}", paymentId, xCorrelationID, tenantId);
 
-        // TODO: Implement - validate payment state, update to CLOSED, publish payment.closed event
-        log.debug("POST /payments/{}/close - Stub: returning 404 (not found)", paymentId);
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        final PaymentDetailResponse response = paymentService.closePayment(tenantId, paymentId);
+        return ResponseEntity.ok(response);
     }
 
     @Override
@@ -85,13 +86,20 @@ public class PaymentsController implements PaymentsApi {
             UUID paymentId,
             String idempotencyKey,
             @Nullable String xCorrelationID) {
-        log.debug("POST /payments/{}/retry - Retrying payment | correlationId={}",
-                paymentId, xCorrelationID);
-        log.debug("POST /payments/{}/retry - idempotencyKey={}", paymentId, idempotencyKey);
+        final String tenantId = requireTenantId();
+        final String correlationId = MDC.get(CorrelationIdFilter.MDC_CORRELATION_ID);
+        log.info("POST /payments/{}/retry | correlationId={}, tenantId={}", paymentId, correlationId, tenantId);
 
-        // TODO: Implement - validate payment is in retryable state, create new Transaction, execute via PSP
-        log.debug("POST /payments/{}/retry - Stub: returning 501 Not Implemented", paymentId);
+        final ExecutePaymentResponse response = paymentService.retryPayment(
+                tenantId, correlationId, paymentId, idempotencyKey);
+        return ResponseEntity.ok(response);
+    }
 
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    private String requireTenantId() {
+        final String tenantId = TenantContext.getTenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new TenantRequiredException();
+        }
+        return tenantId;
     }
 }

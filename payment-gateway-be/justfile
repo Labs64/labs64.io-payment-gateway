@@ -17,12 +17,12 @@ docker: build
 
 # start local dev infrastructure (PostgreSQL + Redis + RabbitMQ)
 infra-up:
-    docker compose -f docker-compose.yml up -d
+    docker compose up -d
     docker ps -a
 
 # stop local dev infrastructure
 infra-down:
-    docker compose -f docker-compose.yml down
+    docker compose down
 
 # run application with local profile
 run: build
