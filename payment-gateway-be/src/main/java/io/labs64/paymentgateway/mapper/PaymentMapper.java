@@ -1,82 +1,53 @@
 package io.labs64.paymentgateway.mapper;
 
-import java.util.Map;
-
+import io.labs64.paymentgateway.entity.PaymentEntity;
+import io.labs64.paymentgateway.model.CreatePaymentRequest;
+import io.labs64.paymentgateway.model.Payment;
+import io.labs64.paymentgateway.model.PaymentListResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-
-import io.labs64.paymentgateway.entity.PaymentEntity;
-import io.labs64.paymentgateway.psp.PspNextAction;
-import io.labs64.paymentgateway.v1.model.CreatePaymentResponse;
-import io.labs64.paymentgateway.v1.model.NextAction;
-import io.labs64.paymentgateway.v1.model.Payment;
-import io.labs64.paymentgateway.v1.model.PaymentDetailResponse;
-import io.labs64.paymentgateway.v1.model.PaymentStatus;
-import io.labs64.paymentgateway.v1.model.PaymentType;
+import org.springframework.data.domain.Page;
 
 /**
- * MapStruct mapper for converting between {@link PaymentEntity} and API DTOs.
+ * Maps payment entities and generated API DTOs.
  */
-@Mapper(componentModel = "spring")
+@Mapper(config = MapperConfigBase.class, uses = PaymentJsonMapper.class)
 public interface PaymentMapper {
 
-    @Mapping(source = "purchaseOrderRef", target = "purchaseOrder.referenceId")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "tenantId", ignore = true)
+    @Mapping(target = "paymentProviderId", ignore = true)
+    @Mapping(target = "paymentProvider", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "description", ignore = true)
+    @Mapping(target = "purchaseOrder", source = "purchaseOrder", qualifiedByName = "purchaseOrderToMap")
+    @Mapping(target = "billingInfo", source = "billingInfo", qualifiedByName = "billingInfoToMap")
+    @Mapping(target = "shippingInfo", source = "shippingInfo", qualifiedByName = "shippingInfoToMap")
+    @Mapping(target = "recurrence", source = "recurrence", qualifiedByName = "recurrenceToMap")
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    PaymentEntity toEntity(CreatePaymentRequest source);
+
+    @Mapping(target = "provider", source = "paymentProvider.provider")
+    @Mapping(target = "purchaseOrder", source = "purchaseOrder", qualifiedByName = "mapToPurchaseOrder")
+    @Mapping(target = "billingInfo", source = "billingInfo", qualifiedByName = "mapToBillingInfo")
+    @Mapping(target = "shippingInfo", source = "shippingInfo", qualifiedByName = "mapToShippingInfo")
+    @Mapping(target = "recurrence", source = "recurrence", qualifiedByName = "mapToRecurrence")
+    @Mapping(target = "lastPaymentAt", ignore = true)
+    @Mapping(target = "nextPaymentAt", ignore = true)
     Payment toDto(PaymentEntity entity);
 
-    // Allows mapping JSONB-backed Map<String, Object> fields into String DTO fields.
-    default String map(Object value) {
-        return value == null ? null : value.toString();
-    }
-
-    default PaymentStatus map(PaymentEntity.PaymentStatus status) {
-        if (status == null) {
-            return null;
-        }
-        return PaymentStatus.fromValue(status.name());
-    }
-
-    default PaymentType map(PaymentEntity.PaymentType type) {
-        if (type == null) {
-            return null;
-        }
-        return PaymentType.fromValue(type.name());
-    }
-
-    default CreatePaymentResponse toCreateResponse(PaymentEntity entity, PspNextAction pspNextAction) {
-        final CreatePaymentResponse response = new CreatePaymentResponse();
-        response.setPayment(toDto(entity));
-        if (pspNextAction != null) {
-            response.setNextAction(mapNextAction(pspNextAction));
-        }
+    default PaymentListResponse toPage(final Page<PaymentEntity> source) {
+        final PaymentListResponse response = new PaymentListResponse();
+        response.setItems(source.getContent().stream()
+                .map(this::toDto)
+                .toList());
+        response.setPage(source.getNumber());
+        response.setPageSize(source.getSize());
+        response.setTotalItems(source.getTotalElements());
+        response.setTotalPages(source.getTotalPages());
+        response.setHasPrev(source.hasPrevious());
+        response.setHasNext(source.hasNext());
         return response;
-    }
-
-    default PaymentDetailResponse toDetailResponse(PaymentEntity entity) {
-        final PaymentDetailResponse response = new PaymentDetailResponse();
-        response.setPayment(toDto(entity));
-        if (entity.getNextAction() != null && !entity.getNextAction().isEmpty()) {
-            final NextAction nextAction = new NextAction();
-            final Object type = entity.getNextAction().get("type");
-            if (type != null) {
-                nextAction.setType(NextAction.TypeEnum.fromValue(type.toString().toUpperCase()));
-            }
-            @SuppressWarnings("unchecked")
-            final Map<String, Object> details = (Map<String, Object>) entity.getNextAction().get("details");
-            nextAction.setDetails(details);
-            response.setNextAction(nextAction);
-        }
-        return response;
-    }
-
-    default NextAction mapNextAction(PspNextAction pspNextAction) {
-        if (pspNextAction == null) {
-            return null;
-        }
-        final NextAction nextAction = new NextAction();
-        if (pspNextAction.getType() != null) {
-            nextAction.setType(NextAction.TypeEnum.fromValue(pspNextAction.getType()));
-        }
-        nextAction.setDetails(pspNextAction.getDetails());
-        return nextAction;
     }
 }

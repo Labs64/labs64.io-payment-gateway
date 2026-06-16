@@ -1,66 +1,31 @@
 package io.labs64.paymentgateway.service;
 
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
-import io.labs64.paymentgateway.v1.model.CreatePaymentRequest;
-import io.labs64.paymentgateway.v1.model.CreatePaymentResponse;
-import io.labs64.paymentgateway.v1.model.ExecutePaymentResponse;
-import io.labs64.paymentgateway.v1.model.PaymentDetailResponse;
+import io.labs64.paymentgateway.entity.PaymentEntity;
+import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
+import io.labs64.paymentgateway.service.filter.PaymentFilter;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Service for managing payment instances and executing payments.
  */
 public interface PaymentService {
+    Optional<PaymentEntity> find(String tenantId, UUID id);
 
-    /**
-     * Create a new payment instance. No actual charge is performed.
-     *
-     * @param tenantId      tenant identifier
-     * @param correlationId correlation ID for tracing
-     * @param request       payment creation request
-     * @return created payment with optional next action
-     */
-    CreatePaymentResponse createPayment(String tenantId, String correlationId, CreatePaymentRequest request);
+    PaymentEntity get(String tenantId, UUID id);
 
-    /**
-     * Retrieve payment details by ID, scoped by tenant.
-     *
-     * @param tenantId  tenant identifier
-     * @param paymentId payment identifier
-     * @return payment details with optional next action
-     */
-    PaymentDetailResponse getPayment(String tenantId, UUID paymentId);
+    Page<PaymentEntity> list(
+            final String tenantId,
+            final PaymentFilter filter,
+            final Pageable pageable);
 
-    /**
-     * Execute a payment via the PSP adapter.
-     *
-     * @param tenantId       tenant identifier
-     * @param correlationId  correlation ID for tracing
-     * @param paymentId      payment identifier
-     * @param idempotencyKey unique key per tenant + payment to prevent duplicates
-     * @return execution result with transaction details
-     */
-    ExecutePaymentResponse executePayment(String tenantId, String correlationId, UUID paymentId,
-            String idempotencyKey);
+    PaymentEntity create(String tenantId, String provider, PaymentEntity entity);
 
-    /**
-     * Close a payment. No further pay operations can be executed.
-     *
-     * @param tenantId  tenant identifier
-     * @param paymentId payment identifier
-     * @return updated payment details
-     */
-    PaymentDetailResponse closePayment(String tenantId, UUID paymentId);
+    PaymentEntity update(String tenantId, UUID id, Consumer<PaymentEntity> updater);
 
-    /**
-     * Retry a failed payment.
-     *
-     * @param tenantId       tenant identifier
-     * @param correlationId  correlation ID for tracing
-     * @param paymentId      payment identifier
-     * @param idempotencyKey unique key per tenant + payment to prevent duplicate retries
-     * @return execution result with transaction details
-     */
-    ExecutePaymentResponse retryPayment(String tenantId, String correlationId, UUID paymentId,
-            String idempotencyKey);
+    PayPaymentResponse pay(String tenantId, UUID id);
 }
