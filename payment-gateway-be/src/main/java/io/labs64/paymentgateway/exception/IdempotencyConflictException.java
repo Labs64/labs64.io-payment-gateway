@@ -2,7 +2,7 @@ package io.labs64.paymentgateway.exception;
 
 import org.springframework.http.HttpStatus;
 
-import io.labs64.paymentgateway.v1.model.ErrorCode;
+import io.labs64.paymentgateway.model.ErrorCode;
 
 /**
  * Exception thrown when an Idempotency-Key is reused with a different request body.
