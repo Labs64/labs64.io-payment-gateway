@@ -4,6 +4,8 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
 
+import io.labs64.paymentgateway.model.PaymentTransactionStatus;
+import io.labs64.paymentgateway.model.StatusDetails;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -18,6 +20,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -39,33 +42,35 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(of = "id")
-@ToString(exclude = "payment")
-public class TransactionEntity {
+@ToString
+public class PaymentTransactionEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
+    @Column(name = "payment_id", nullable = false)
+    private UUID paymentId;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payment_id", nullable = false)
+    @JoinColumns({
+            @JoinColumn(name = "tenant_id", referencedColumnName = "tenant_id", nullable = false, insertable = false, updatable = false),
+            @JoinColumn(name = "payment_id", referencedColumnName = "id", nullable = false, insertable = false, updatable = false)
+    })
+    @ToString.Exclude
     private PaymentEntity payment;
 
     @Column(name = "tenant_id", nullable = false)
     private String tenantId;
 
-    @Column(name = "idempotency_key")
-    private String idempotencyKey;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private TransactionStatus status;
+    private PaymentTransactionStatus status;
 
-    @Column(name = "failure_code")
-    private String failureCode;
-
-    @Column(name = "failure_message")
-    private String failureMessage;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "status_details", columnDefinition = "jsonb")
+    private StatusDetails statusDetails;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "psp_data", columnDefinition = "jsonb")
@@ -79,10 +84,8 @@ public class TransactionEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    /**
-     * Transaction status enum matching the OpenAPI specification.
-     */
-    public enum TransactionStatus {
-        PENDING, SUCCESS, FAILED
+    public void setPayment(final PaymentEntity payment) {
+        this.payment = payment;
+        this.paymentId = payment != null ? payment.getId() : null;
     }
 }

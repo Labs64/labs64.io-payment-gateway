@@ -4,6 +4,8 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
 
+import io.labs64.paymentgateway.model.PaymentStatus;
+import io.labs64.paymentgateway.model.PaymentType;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -16,8 +18,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,6 +30,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.springframework.util.CollectionUtils;
 
 /**
  * JPA entity representing a payment instance.
@@ -49,31 +54,27 @@ public class PaymentEntity {
     @Column(name = "tenant_id", nullable = false)
     private String tenantId;
 
-    @Column(name = "payment_method_id", nullable = false)
-    private String paymentMethodId;
+    @Column(name = "payment_provider_id", nullable = false)
+    private UUID paymentProviderId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumns({
+            @JoinColumn(name = "tenant_id", referencedColumnName = "tenant_id", nullable = false, insertable = false, updatable = false),
+            @JoinColumn(name = "payment_provider_id", referencedColumnName = "id", nullable = false, insertable = false, updatable = false)
+    })
+    @ToString.Exclude
+    private PaymentProviderEntity paymentProvider;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private PaymentStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
-    private PaymentType type;
-
-    @Column(name = "amount", nullable = false)
-    private Long amount;
-
-    @Column(name = "currency", nullable = false, length = 3)
-    private String currency;
-
-    @Column(name = "description", length = 500)
+    @Column(name = "description")
     private String description;
 
-    @Column(name = "purchase_order_ref")
-    private String purchaseOrderRef;
-
-    @Column(name = "correlation_id")
-    private String correlationId;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "purchase_order", nullable = false, columnDefinition = "jsonb")
+    private Map<String, Object> purchaseOrder;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "billing_info", columnDefinition = "jsonb")
@@ -84,12 +85,12 @@ public class PaymentEntity {
     private Map<String, Object> shippingInfo;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "extra", columnDefinition = "jsonb")
-    private Map<String, Object> extra;
+    @Column(name = "recurrence", columnDefinition = "jsonb")
+    private Map<String, Object> recurrence;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "next_action", columnDefinition = "jsonb")
-    private Map<String, Object> nextAction;
+    @Column(name = "extra", columnDefinition = "jsonb")
+    private Map<String, Object> extra;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -99,25 +100,13 @@ public class PaymentEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    @PrePersist
-    @PreUpdate
-    public void normalize() {
-        if (currency != null) {
-            currency = currency.trim().toUpperCase();
-        }
+    public PaymentType getType() {
+        Map<String, Object> recurrence = getRecurrence();
+        return CollectionUtils.isEmpty(recurrence) ? PaymentType.ONE_TIME : PaymentType.RECURRING;
     }
 
-    /**
-     * Payment status enum matching the OpenAPI specification.
-     */
-    public enum PaymentStatus {
-        ACTIVE, INCOMPLETE, PAUSED, CLOSED
-    }
-
-    /**
-     * Payment type enum matching the OpenAPI specification.
-     */
-    public enum PaymentType {
-        ONE_TIME, RECURRING
+    public void setPaymentProvider(final PaymentProviderEntity paymentProvider) {
+        this.paymentProvider = paymentProvider;
+        this.paymentProviderId = paymentProvider != null ? paymentProvider.getId() : null;
     }
 }
