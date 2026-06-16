@@ -1,0 +1,79 @@
+name: Payment Gateway deps
+description: Start/stop shared infra deps for Payment Gateway CI via docker compose
+
+inputs:
+  action:
+    description: up or down
+    required: true
+    default: up
+  compose_file:
+    description: Path to compose file
+    required: true
+    default: .github/compose/payment-gateway-deps.yml
+  project_name:
+    description: Docker compose project name
+    required: true
+    default: payment-gateway
+
+runs:
+  using: composite
+  steps:
+    - name: Compose up/down
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        ACTION="${{ inputs.action }}"
+        FILE="${{ inputs.compose_file }}"
+        PROJECT="${{ inputs.project_name }}"
+
+        if [[ "$ACTION" == "up" ]]; then
+          docker compose -p "$PROJECT" -f "$FILE" up -d
+
+          services="$(docker compose -p "$PROJECT" -f "$FILE" config --services)"
+
+          for i in {1..60}; do
+            all_ok=true
+
+            for svc in $services; do
+              cid="$(docker compose -p "$PROJECT" -f "$FILE" ps -q "$svc" || true)"
+              if [[ -z "$cid" ]]; then
+                all_ok=false
+                continue
+              fi
+
+              health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null || echo unknown)"
+              status="$(docker inspect --format '{{.State.Status}}' "$cid" 2>/dev/null || echo unknown)"
+
+              if [[ "$health" == "healthy" ]]; then
+                continue
+              fi
+
+              if [[ "$health" == "none" && "$status" == "running" ]]; then
+                continue
+              fi
+
+              all_ok=false
+            done
+
+            if [[ "$all_ok" == "true" ]]; then
+              echo "Deps are ready"
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          echo "Deps did not become ready"
+          docker compose -p "$PROJECT" -f "$FILE" ps || true
+          docker compose -p "$PROJECT" -f "$FILE" logs --no-color || true
+          exit 1
+        fi
+
+        if [[ "$ACTION" == "down" ]]; then
+          docker compose -p "$PROJECT" -f "$FILE" down -v --remove-orphans
+          exit 0
+        fi
+
+        echo "Unknown action: $ACTION (expected up|down)"
+        exit 2

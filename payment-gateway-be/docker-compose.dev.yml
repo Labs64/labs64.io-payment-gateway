@@ -1,5 +1,4 @@
 services:
-
   postgres:
     image: postgres:18-alpine
     env_file: ./.env
@@ -8,17 +7,17 @@ services:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - payment_gateway_pg:/var/lib/postgresql
       - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: pg_isready -h 127.0.0.1 -p ${DB_PORT:-5432} -U ${DB_USERNAME} -d ${DB_NAME} || exit 1
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 30
       start_period: 10s
-    ports:
-      - "${DB_PORT:-5432}:5432"
 
   redis:
     image: redis:8-alpine
@@ -26,20 +25,19 @@ services:
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
-      - redis_data:/data
+      - payment_gateway_redis:/data
     command: ["redis-server", "--appendonly", "yes"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 30
       start_period: 5s
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    hostname: rabbitmq
-    restart: unless-stopped
     env_file: ./.env
+    hostname: rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
@@ -48,21 +46,23 @@ services:
       - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
       - "127.0.0.1:${RABBITMQ_MGMT_PORT:-15672}:15672"
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - payment_gateway_rabbitmq:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 30
       start_period: 20s
 
-  app:
-    image: payment-gateway:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
+  payment-gateway-be:
+    image: eclipse-temurin:25-jdk-alpine
+    working_dir: /app
     env_file: ./.env
     environment:
+      JAR_FILE: payment-gateway-0.0.1-SNAPSHOT.jar
+      JAVA_TOOL_OPTIONS: >-
+        -Duser.timezone=UTC
+        -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
       SPRING_PROFILES_ACTIVE: local
       DB_HOST: postgres
       DB_PORT: ${DB_PORT:-5432}
@@ -77,6 +77,7 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     ports:
       - "8080:8080"
+      - "5005:5005"
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,16 +85,16 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/liveness || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    profiles:
-      - full
+    volumes:
+      - ./target:/app/target:ro
+    command: ["sh", "-c", "java -jar /app/target/$$JAR_FILE"]
+    develop:
+      watch:
+        - action: restart
+          path: ./target/payment-gateway-0.0.1-SNAPSHOT.jar
+          target: /app/target/payment-gateway-0.0.1-SNAPSHOT.jar
 
 volumes:
-  postgres_data:
-  redis_data:
-  rabbitmq_data:
+  payment_gateway_pg:
+  payment_gateway_redis:
+  payment_gateway_rabbitmq:

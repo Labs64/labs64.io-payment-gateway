@@ -1,4 +1,4 @@
-name: Labs64.IO - Payment Gateway - Publish Docker
+name: Labs64.IO - Payment Gateway Backend - Publish Docker
 
 permissions:
   contents: read
@@ -9,22 +9,25 @@ on:
     types: [created]
 
 jobs:
-  build_and_push:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 25
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          java-version: '25'
-          distribution: 'temurin'
+          distribution: temurin
+          java-version: "25"
           cache: maven
 
       - name: Build with Maven
         run: mvn -B package --file ./payment-gateway-be/pom.xml
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
