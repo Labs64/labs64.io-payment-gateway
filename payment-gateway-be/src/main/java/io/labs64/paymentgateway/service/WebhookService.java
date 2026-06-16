@@ -2,7 +2,7 @@ package io.labs64.paymentgateway.service;
 
 import java.util.Map;
 
-import io.labs64.paymentgateway.psp.PspWebhookResult;
+import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
 
 /**
  * Service for handling PSP webhook notifications.
@@ -16,5 +16,5 @@ public interface WebhookService {
      * @param payload   the raw webhook payload
      * @return webhook processing result
      */
-    PspWebhookResult processWebhook(String provider, Map<String, Object> payload);
+    PaymentWebhookResult processWebhook(String provider, Map<String, Object> payload);
 }

@@ -1,99 +1,108 @@
 package io.labs64.paymentgateway.service;
 
 import java.util.Map;
+import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.labs64.paymentgateway.correlation.CorrelationConstants;
+import io.labs64.paymentgateway.correlation.CorrelationEntityType;
+import io.labs64.paymentgateway.entity.PaymentEntity;
+import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
+import io.labs64.paymentgateway.exception.NotFoundException;
+import io.labs64.paymentgateway.exception.ValidationException;
+import io.labs64.paymentgateway.mapper.PaymentContextMapper;
+import io.labs64.paymentgateway.model.PaymentStatus;
+import io.labs64.paymentgateway.model.PaymentTransactionStatus;
+import io.labs64.paymentgateway.model.PaymentType;
+import io.labs64.paymentgateway.model.StatusDetails;
+import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
+import io.labs64.paymentgateway.psp.spi.PaymentProvider;
+import io.labs64.paymentgateway.psp.spi.PaymentWebhookContext;
+import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
+import io.labs64.paymentgateway.psp.spi.WebhookPayload;
+import io.labs64.paymentgateway.repository.CorrelationTraceRepository;
+import io.labs64.paymentgateway.repository.PaymentRepository;
+import io.labs64.paymentgateway.repository.PaymentTransactionRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.labs64.paymentgateway.entity.PaymentEntity;
-import io.labs64.paymentgateway.entity.TransactionEntity;
-import io.labs64.paymentgateway.entity.TransactionEntity.TransactionStatus;
-import io.labs64.paymentgateway.exception.NotFoundException;
-import io.labs64.paymentgateway.exception.ValidationException;
-import io.labs64.paymentgateway.psp.PaymentProvider;
-import io.labs64.paymentgateway.psp.PaymentProviderRegistry;
-import io.labs64.paymentgateway.psp.PspWebhookResult;
-import io.labs64.paymentgateway.repository.PaymentRepository;
-import io.labs64.paymentgateway.repository.TransactionRepository;
-import io.labs64.paymentgateway.web.CorrelationIdFilter;
-import lombok.RequiredArgsConstructor;
-
 /**
  * Implementation of {@link WebhookService}.
- * Routes webhook to the appropriate PSP adapter, verifies signature,
- * and updates transaction status.
+ * Routes webhook payloads to the matching PSP provider and lets the gateway
+ * keep ownership of payment and transaction state changes.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WebhookServiceImpl implements WebhookService {
 
-    private static final Logger log = LoggerFactory.getLogger(WebhookServiceImpl.class);
-
     private final PaymentProviderRegistry providerRegistry;
     private final PaymentRepository paymentRepository;
-    private final TransactionRepository transactionRepository;
+    private final PaymentTransactionRepository paymentTransactionRepository;
+    private final CorrelationTraceRepository correlationTraceRepository;
+    private final PaymentContextMapper paymentContextMapper;
     private final StreamBridge streamBridge;
 
     @Override
     @Transactional
-    public PspWebhookResult processWebhook(final String provider, final Map<String, Object> payload) {
+    public PaymentWebhookResult processWebhook(final String provider, final Map<String, Object> payload) {
         log.info("Processing webhook from provider={}", provider);
 
         final PaymentProvider paymentProvider = providerRegistry.getProvider(provider);
+        final UUID transactionId = paymentProvider.resolvePaymentTransactionId(toWebhookPayload(payload));
+        final PaymentTransactionEntity transaction = paymentTransactionRepository.findById(transactionId)
+                .orElseThrow(() -> new NotFoundException("Payment transaction not found for ID: " + transactionId));
+        final PaymentEntity payment = transaction.getPayment();
 
-        // For Milestone 2, we use empty config - tenant resolution will happen via webhook payload
-        final PspWebhookResult result = paymentProvider.verifyWebhook(payload, Map.of());
+        restoreCorrelationId(transaction, payment);
 
-        if (!result.isValid()) {
-            throw new ValidationException("Webhook signature verification failed for provider: " + provider);
+        final PaymentWebhookContext context = new PaymentWebhookContext(
+                paymentContextMapper.toPayment(payment),
+                paymentContextMapper.toPaymentTransaction(transaction),
+                paymentContextMapper.toProviderConfig(payment.getPaymentProvider()),
+                payload,
+                Map.of());
+        final PaymentWebhookResult result = paymentProvider.handleWebhook(context);
+
+        final StatusDetails statusDetails = new StatusDetails(result.statusDetails().code(), result.statusDetails().message());
+
+        transaction.setStatus(result.status());
+        transaction.setStatusDetails(statusDetails);
+        transaction.setPspData(result.pspData());
+
+        if (PaymentTransactionStatus.SUCCESS.equals(result.status())) {
+            if (PaymentType.ONE_TIME.equals(payment.getType())) {
+                payment.setStatus(PaymentStatus.CLOSED);
+            } else {
+                payment.setStatus(PaymentStatus.READY);
+            }
+            paymentRepository.save(payment);
+            streamBridge.send("paymentFinalized-out-0", payment);
         }
 
-        if (result.getPaymentId() != null) {
-            final PaymentEntity payment = paymentRepository.findById(result.getPaymentId())
-                    .orElseThrow(() -> new NotFoundException("Payment not found for ID: " + result.getPaymentId()));
-
-            // Restore correlationId from original payment record
-            MDC.put(CorrelationIdFilter.MDC_CORRELATION_ID, payment.getCorrelationId());
-            // MDC.put("tenantId", payment.getTenantId()); // Custom MDC logging
-
-            // Update transaction status based on webhook result
-            final TransactionEntity transaction = transactionRepository.findFirstByPaymentIdOrderByCreatedAtDesc(payment.getId())
-                    .orElseThrow(() -> new NotFoundException("No pending transaction found for payment ID: " + payment.getId()));
-
-            transaction.setStatus(result.getTransactionStatus());
-            if (result.getFailureCode() != null) {
-                transaction.setFailureCode(result.getFailureCode());
-            }
-            if (result.getFailureMessage() != null) {
-                transaction.setFailureMessage(result.getFailureMessage());
-            }
-            transactionRepository.save(transaction);
-
-            // Update Payment Status
-            if (result.getTransactionStatus() == TransactionStatus.SUCCESS) {
-                if (payment.getType() == PaymentEntity.PaymentType.ONE_TIME) {
-                    payment.setStatus(PaymentEntity.PaymentStatus.CLOSED);
-                } else {
-                    payment.setStatus(PaymentEntity.PaymentStatus.ACTIVE);
-                }
-                paymentRepository.save(payment);
-
-                // Publish payment.finalized event
-                log.info("Publishing payment.finalized event for paymentId={}", payment.getId());
-                streamBridge.send("paymentFinalized-out-0", payment);
-            } else if (result.getTransactionStatus() == TransactionStatus.FAILED) {
-                payment.setStatus(PaymentEntity.PaymentStatus.INCOMPLETE);
-                paymentRepository.save(payment);
-            }
-        }
-
-        log.info("Webhook processed: provider={}, valid={}, status={}",
-                provider, result.isValid(), result.getTransactionStatus());
+        log.info("Webhook processed: provider={}, paymentTransactionId={}, status={}",
+                provider, transaction.getId(), result.status());
 
         return result;
+    }
+
+    private WebhookPayload toWebhookPayload(final Map<String, Object> payload) {
+        final Object rawTransactionId = payload.get("transactionId");
+        if (rawTransactionId == null) {
+            throw new ValidationException("Webhook payload must contain transactionId.");
+        }
+        return new WebhookPayload(UUID.fromString(rawTransactionId.toString()));
+    }
+
+    private void restoreCorrelationId(final PaymentTransactionEntity transaction, final PaymentEntity payment) {
+        correlationTraceRepository
+                .findFirstByEntityTypeAndEntityIdOrderByCreatedAtDesc(
+                        CorrelationEntityType.PAYMENT_TRANSACTION.name(), transaction.getId())
+                .or(() -> correlationTraceRepository.findFirstByEntityTypeAndEntityIdOrderByCreatedAtDesc(
+                        CorrelationEntityType.PAYMENT.name(), payment.getId()))
+                .ifPresent(trace -> MDC.put(CorrelationConstants.MDC_CORRELATION_ID, trace.getCorrelationId()));
     }
 }
