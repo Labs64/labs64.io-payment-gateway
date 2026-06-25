@@ -112,7 +112,7 @@ public class PaymentController implements PaymentsApi {
 
         log.info("Payment close requested | tenantId={}, paymentId={}", tenantId, paymentId);
 
-        final PaymentEntity payment = service.update(tenantId, paymentId, (p) -> p.setStatus(PaymentStatus.CLOSED));
+        final PaymentEntity payment = service.close(tenantId, paymentId);
         final Payment response = paymentMapper.toDto(payment);
 
         return ResponseEntity.ok(response);

@@ -13,7 +13,7 @@ import io.labs64.paymentgateway.psp.spi.PaymentWebhookContext;
 import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
 import io.labs64.paymentgateway.psp.spi.ProviderConfig;
 import io.labs64.paymentgateway.psp.spi.StatusDetails;
-import io.labs64.paymentgateway.psp.spi.WebhookPayload;
+import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,10 +41,10 @@ class NoopPaymentProviderTest {
     }
 
     @Test
-    void resolvePaymentTransactionIdReturnsTransactionIdFromWebhookPayload() {
+    void resolvePaymentTransactionIdReturnsTransactionIdFromWebhookRequest() {
         final UUID transactionId = UUID.randomUUID();
 
-        assertThat(provider.resolvePaymentTransactionId(new WebhookPayload(transactionId))).isEqualTo(transactionId);
+        assertThat(provider.resolvePaymentTransactionId(webhookRequest(transactionId))).isEqualTo(transactionId);
     }
 
     @Test
@@ -53,8 +53,7 @@ class NoopPaymentProviderTest {
                 payment(),
                 transaction(),
                 providerConfig(),
-                Map.of("transactionId", UUID.randomUUID().toString()),
-                Map.of("x-provider-signature", "noop"));
+                webhookRequest(UUID.randomUUID()));
 
         final PaymentWebhookResult result = provider.handleWebhook(context);
 
@@ -91,5 +90,14 @@ class NoopPaymentProviderTest {
 
     private static ProviderConfig providerConfig() {
         return new ProviderConfig("noop", Map.of(), "Noop", "No operation provider");
+    }
+
+    private static WebhookRequest webhookRequest(final UUID transactionId) {
+        return new WebhookRequest(
+                "noop",
+                new byte[0],
+                Map.of("transactionId", transactionId.toString()),
+                Map.of("x-provider-signature", java.util.List.of("noop")),
+                Map.of());
     }
 }

@@ -136,22 +136,19 @@ class PaymentControllerTest {
     }
 
     @Test
-    void closePaymentDelegatesToUpdateAndSetsClosedStatus() {
+    void closePaymentDelegatesToServiceClose() {
         final UUID paymentId = UUID.randomUUID();
         final PaymentEntity payment = payment();
         final Payment dto = new Payment();
-        when(service.update(eq(TENANT_ID), eq(paymentId), any())).thenAnswer(invocation -> {
-            final java.util.function.Consumer<PaymentEntity> updater = invocation.getArgument(2);
-            updater.accept(payment);
-            return payment;
-        });
+        payment.setStatus(PaymentStatus.CLOSED);
+        when(service.close(TENANT_ID, paymentId)).thenReturn(payment);
         when(paymentMapper.toDto(payment)).thenReturn(dto);
 
         final ResponseEntity<Payment> result = controller.closePayment(paymentId);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).isSameAs(dto);
-        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CLOSED);
+        verify(service).close(TENANT_ID, paymentId);
     }
 
     private static void authenticate() {

@@ -12,7 +12,7 @@ import io.labs64.paymentgateway.psp.spi.PaymentTransaction;
 import io.labs64.paymentgateway.psp.spi.PaymentWebhookContext;
 import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
 import io.labs64.paymentgateway.psp.spi.StatusDetails;
-import io.labs64.paymentgateway.psp.spi.WebhookPayload;
+import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -44,8 +44,8 @@ public class NoopPaymentProvider implements PaymentProvider {
     }
 
     @Override
-    public UUID resolvePaymentTransactionId(WebhookPayload payload) {
-        return payload.transactionId();
+    public UUID resolvePaymentTransactionId(final WebhookRequest request) {
+        return UUID.fromString(request.payload().get("transactionId").toString());
     }
 
     @Override

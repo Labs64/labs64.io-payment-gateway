@@ -9,7 +9,7 @@ public interface PaymentProvider {
 
     PaymentResult execute(PaymentContext context);
 
-    UUID resolvePaymentTransactionId(WebhookPayload payload);
+    UUID resolvePaymentTransactionId(WebhookRequest request);
 
     PaymentWebhookResult handleWebhook(PaymentWebhookContext context);
 
