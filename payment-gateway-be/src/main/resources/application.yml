@@ -48,20 +48,33 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:guest}
     password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
     connection-timeout: 10000
 
   # Spring Cloud Stream
   cloud:
     stream:
       bindings:
+        paymentCreated-out-0:
+          destination: payment.created
+          content-type: application/json
         paymentFinalized-out-0:
           destination: payment.finalized
           content-type: application/json
+        paymentClosed-out-0:
+          destination: payment.closed
+          content-type: application/json
       rabbit:
         bindings:
+          paymentCreated-out-0:
+            producer:
+              routing-key-expression: '''payment.created'''
           paymentFinalized-out-0:
             producer:
               routing-key-expression: '''payment.finalized'''
+          paymentClosed-out-0:
+            producer:
+              routing-key-expression: '''payment.closed'''
 
 # Actuator Configuration
 management:

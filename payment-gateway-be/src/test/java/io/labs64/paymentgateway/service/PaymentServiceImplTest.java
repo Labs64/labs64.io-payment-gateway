@@ -70,6 +70,9 @@ class PaymentServiceImplTest {
     private PaymentProviderRegistry providerRegistry;
 
     @Mock
+    private PaymentEventPublisher paymentEventPublisher;
+
+    @Mock
     private PaymentMessages msg;
 
     @Mock
@@ -100,7 +103,10 @@ class PaymentServiceImplTest {
 
     @Test
     void createAssignsTenantPaymentProviderAndReadyStatus() {
-        final PaymentEntity input = PaymentEntity.builder().purchaseOrder(Map.of("grossAmount", 3000L)).build();
+        final PaymentEntity input = PaymentEntity.builder()
+                .id(UUID.randomUUID())
+                .purchaseOrder(Map.of("grossAmount", 3000L))
+                .build();
         final PaymentProviderEntity paymentProvider = paymentProvider(true);
         when(paymentProviderService.get(TENANT_ID, PROVIDER)).thenReturn(paymentProvider);
         when(paymentRepository.save(input)).thenReturn(input);
@@ -111,6 +117,8 @@ class PaymentServiceImplTest {
         assertThat(result.getPaymentProvider()).isSameAs(paymentProvider);
         assertThat(result.getStatus()).isEqualTo(PaymentStatus.READY);
         verify(paymentRepository).save(input);
+        verify(correlationTraceService).attach(CorrelationEntityType.PAYMENT, input.getId());
+        verify(paymentEventPublisher).publishCreated(input);
     }
 
     @Test
@@ -155,6 +163,8 @@ class PaymentServiceImplTest {
         assertThat(response.transaction().getStatusDetails()).isEqualTo(new StatusDetails("SUCCESS", "Success"));
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CLOSED);
         verify(correlationTraceService).attach(CorrelationEntityType.PAYMENT_TRANSACTION, transaction.getId());
+        verify(paymentEventPublisher).publishFinalized(payment, transaction);
+        verify(paymentEventPublisher).publishClosed(payment, transaction);
     }
 
     @Test
@@ -201,6 +211,7 @@ class PaymentServiceImplTest {
         assertThat(response.transaction().getStatus()).isEqualTo(PaymentTransactionStatus.FAILED);
         assertThat(response.transaction().getStatusDetails().getCode()).isEqualTo("PAYMENT_PROVIDER_DISABLED");
         verify(providerRegistry, never()).getProvider(any());
+        verify(paymentEventPublisher).publishFinalized(payment, transaction);
     }
 
     @Test
@@ -225,6 +236,17 @@ class PaymentServiceImplTest {
 
         assertThatThrownBy(() -> service.update(TENANT_ID, payment.getId(), p -> p.setStatus(PaymentStatus.READY)))
                 .isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    void closeSetsClosedStatusAndPublishesClosedEvent() {
+        final PaymentEntity payment = payment();
+        when(paymentRepository.findByIdAndTenantId(payment.getId(), TENANT_ID)).thenReturn(Optional.of(payment));
+
+        final PaymentEntity result = service.close(TENANT_ID, payment.getId());
+
+        assertThat(result.getStatus()).isEqualTo(PaymentStatus.CLOSED);
+        verify(paymentEventPublisher).publishClosed(payment, null);
     }
 
     @Test

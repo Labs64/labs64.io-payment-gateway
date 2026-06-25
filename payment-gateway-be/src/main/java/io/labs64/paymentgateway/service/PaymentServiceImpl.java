@@ -52,6 +52,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentContextMapper paymentContextMapper;
     private final PaymentDefinitionService paymentDefinitionService;
     private final PaymentProviderRegistry providerRegistry;
+    private final PaymentEventPublisher paymentEventPublisher;
     private final PaymentMessages msg;
 
     @Override
@@ -86,6 +87,10 @@ public class PaymentServiceImpl implements PaymentService {
         entity.setStatus(PaymentStatus.READY);
 
         final PaymentEntity saved = paymentRepository.save(entity);
+        if (saved.getId() != null) {
+            correlationTraceService.attach(CorrelationEntityType.PAYMENT, saved.getId());
+        }
+        paymentEventPublisher.publishCreated(saved);
         log.info("Creating payment for tenantId={}, paymentId={}", tenantId, saved.getId());
 
         return saved;
@@ -104,6 +109,24 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         updater.accept(entity);
+
+        return entity;
+    }
+
+    @Override
+    @Transactional
+    public PaymentEntity close(final String tenantId, final UUID id) {
+        log.info("Closing payment for tenantId={}, paymentId={}", tenantId, id);
+
+        final PaymentEntity entity = paymentRepository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new NotFoundException(msg.notFound(id)));
+
+        if (PaymentStatus.CLOSED.equals(entity.getStatus())) {
+            throw new ConflictException(msg.cannotUpdateClosed(id));
+        }
+
+        entity.setStatus(PaymentStatus.CLOSED);
+        paymentEventPublisher.publishClosed(entity, null);
 
         return entity;
     }
@@ -190,7 +213,9 @@ public class PaymentServiceImpl implements PaymentService {
             final PaymentEntity payment,
             final PaymentTransactionEntity transaction,
             final PaymentAttemptRejected failure) {
-        return new PayPaymentResponse(payment, failTransaction(transaction, failure.code(), failure.message()), null);
+        final PaymentTransactionEntity failedTransaction = failTransaction(transaction, failure.code(), failure.message());
+        paymentEventPublisher.publishFinalized(payment, failedTransaction);
+        return new PayPaymentResponse(payment, failedTransaction, null);
     }
 
     private PaymentTransactionEntity failTransaction(
@@ -208,14 +233,27 @@ public class PaymentServiceImpl implements PaymentService {
             final PaymentEntity payment,
             final PaymentTransactionEntity transaction,
             final PaymentResult result) {
-        transactionService.update(transaction.getTenantId(), transaction.getId(), (pt) -> {
-            pt.setStatus(result.status());
-            pt.setStatusDetails(toStatusDetails(result.statusDetails()));
-            pt.setPspData(result.pspData());
-        });
+        final PaymentTransactionEntity updatedTransaction = transactionService.update(
+                transaction.getTenantId(),
+                transaction.getId(),
+                (pt) -> {
+                    pt.setStatus(result.status());
+                    pt.setStatusDetails(toStatusDetails(result.statusDetails()));
+                    pt.setPspData(result.pspData());
+                });
+        final boolean closesPayment = PaymentTransactionStatus.SUCCESS.equals(result.status())
+                && PaymentType.ONE_TIME.equals(payment.getType());
 
-        if (PaymentTransactionStatus.SUCCESS.equals(result.status()) && PaymentType.ONE_TIME.equals(payment.getType())) {
+        if (closesPayment) {
             payment.setStatus(PaymentStatus.CLOSED);
+        }
+
+        if (isTerminal(result.status())) {
+            paymentEventPublisher.publishFinalized(payment, updatedTransaction);
+        }
+
+        if (closesPayment) {
+            paymentEventPublisher.publishClosed(payment, updatedTransaction);
         }
 
         if (result.nextAction() != null) {
@@ -228,6 +266,10 @@ public class PaymentServiceImpl implements PaymentService {
             return null;
         }
         return new StatusDetails(source.code(), source.message());
+    }
+
+    private boolean isTerminal(final PaymentTransactionStatus status) {
+        return PaymentTransactionStatus.SUCCESS.equals(status) || PaymentTransactionStatus.FAILED.equals(status);
     }
 
     private PaymentProviderEntity getActivePaymentProvider(final String tenantId, final String provider) {

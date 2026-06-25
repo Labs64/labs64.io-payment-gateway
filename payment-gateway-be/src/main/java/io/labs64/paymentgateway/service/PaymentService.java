@@ -27,5 +27,7 @@ public interface PaymentService {
 
     PaymentEntity update(String tenantId, UUID id, Consumer<PaymentEntity> updater);
 
+    PaymentEntity close(String tenantId, UUID id);
+
     PayPaymentResponse pay(String tenantId, UUID id);
 }
