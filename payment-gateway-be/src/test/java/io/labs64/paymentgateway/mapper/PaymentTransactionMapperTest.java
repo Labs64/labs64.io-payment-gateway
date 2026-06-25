@@ -64,10 +64,10 @@ class PaymentTransactionMapperTest {
     }
 
     @Test
-    void toPaymentTransactionsResponseMapsIterable() {
+    void toPaymentTransactionsResponseFromIterableMapsItems() {
         final PaymentTransactionEntity entity = transaction();
 
-        final PaymentTransactionsResponse response = mapper.toPaymentTransactionsResponse(List.of(entity));
+        final PaymentTransactionsResponse response = mapper.toPaymentTransactionsResponseFromIterable(List.of(entity));
 
         assertThat(response.getItems()).hasSize(1);
         assertThat(response.getItems().get(0).getPaymentId()).isEqualTo(entity.getPayment().getId());

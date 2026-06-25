@@ -28,7 +28,7 @@ public interface PaymentTransactionMapper {
     }
 
     default PaymentTransactionsResponse toPaymentTransactionsResponse(final Page<PaymentTransactionEntity> entities) {
-        final PaymentTransactionsResponse response = toPaymentTransactionsResponse(entities.getContent());
+        final PaymentTransactionsResponse response = toPaymentTransactionsResponseFromIterable(entities.getContent());
         response.setPage(entities.getNumber());
         response.setPageSize(entities.getSize());
         response.setTotalItems(entities.getTotalElements());
@@ -38,7 +38,7 @@ public interface PaymentTransactionMapper {
         return response;
     }
 
-    default PaymentTransactionsResponse toPaymentTransactionsResponse(final Iterable<PaymentTransactionEntity> entities) {
+    default PaymentTransactionsResponse toPaymentTransactionsResponseFromIterable(final Iterable<PaymentTransactionEntity> entities) {
         final PaymentTransactionsResponse response = new PaymentTransactionsResponse();
         response.setItems(java.util.stream.StreamSupport.stream(entities.spliterator(), false)
                 .map(this::toDto)
