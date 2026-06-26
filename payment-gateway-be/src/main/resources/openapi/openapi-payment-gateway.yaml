@@ -32,30 +32,8 @@ tags:
     description: Operations to retrieve payment transaction details and status.
   - name: Webhooks
     description: Endpoints for receiving PSP webhook notifications.
-  - name: Health
-    description: Service health check endpoints.
 
 paths:
-  # ─── Health ──────────────────────────────────────────────────────────
-  /ping:
-    get:
-      summary: Health check endpoint
-      description: Returns a simple pong response to indicate the service is running.
-      operationId: ping
-      tags:
-        - Health
-      responses:
-        '200':
-          description: Pong response
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                properties:
-                  message:
-                    type: string
-                    example: pong
   # Payment Definitions
   /payment-definitions:
     get:
@@ -1624,7 +1602,6 @@ components:
         paymentTransaction:
           $ref: '#/components/schemas/PaymentTransaction'
         nextAction:
-          nullable: true
           $ref: '#/components/schemas/NextAction'
 
     PaymentTransactionsResponse:

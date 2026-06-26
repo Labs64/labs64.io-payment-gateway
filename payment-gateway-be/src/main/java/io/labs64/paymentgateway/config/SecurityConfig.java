@@ -17,14 +17,13 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(final HttpSecurity http,
-            final ObjectProvider<DevAuthFilter> devAuthFilter)
-            throws Exception {
+            final ObjectProvider<DevAuthFilter> devAuthFilter) {
         devAuthFilter.ifAvailable(filter -> http.addFilterBefore(filter, AnonymousAuthenticationFilter.class));
 
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/ping").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/webhooks/**").permitAll()
                         // list payment definitions
                         .requestMatchers(HttpMethod.GET, "/payment-definitions").permitAll()
