@@ -1,5 +1,6 @@
 package io.labs64.paymentgateway.idempotency;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.labs64.paymentgateway.service.IdempotencyService;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.core.MethodParameter;
@@ -21,6 +22,7 @@ public class IdempotencyResponseBodyAdvice implements ResponseBodyAdvice<Object>
 
     private final IdempotencyService idempotencyService;
     private final HttpServletRequest request;
+    private final ObjectMapper objectMapper;
 
     @Override
     public boolean supports(
@@ -42,9 +44,13 @@ public class IdempotencyResponseBodyAdvice implements ResponseBodyAdvice<Object>
             idempotencyService.complete(idempotencyContext, new IdempotencyResponse(
                     status(serverHttpResponse),
                     HttpHeaders.copyOf(serverHttpResponse.getHeaders()),
-                    body));
+                    toJsonCompatibleBody(body)));
         }
         return body;
+    }
+
+    private Object toJsonCompatibleBody(final Object body) {
+        return body != null ? objectMapper.convertValue(body, Object.class) : null;
     }
 
     private int status(final ServerHttpResponse response) {
