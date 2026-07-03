@@ -20,8 +20,12 @@ public class PaymentProviderMessages {
         return msg.get("payment_provider.already_exists", provider);
     }
 
-    public String configRequired(final String provider) {
-        return msg.get("payment_provider.config_required", provider);
+    public String configNotSupported(final String provider) {
+        return msg.get("payment_provider.config_not_supported", provider);
+    }
+
+    public String configFieldRequired(final String provider, final String field) {
+        return msg.get("payment_provider.config_field_required", provider, field);
     }
 
     public String configScopeRequired(final String scope) {

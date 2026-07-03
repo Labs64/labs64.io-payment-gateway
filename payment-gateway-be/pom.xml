@@ -13,7 +13,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.5</version>
+        <version>4.1.0</version>
     </parent>
 
     <properties>
@@ -32,7 +32,7 @@
         <micrometer-tracing.version>1.6.5</micrometer-tracing.version>
         <lombok.version>1.18.44</lombok.version>
         <stripe.version>32.0.0</stripe.version>
-        <paypal.version>2.2.0</paypal.version>
+        <paypal.version>2.3.0</paypal.version>
         <!-- PLUGINS -->
         <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
         <openapi-generator-maven-plugin.version>7.21.0</openapi-generator-maven-plugin.version>

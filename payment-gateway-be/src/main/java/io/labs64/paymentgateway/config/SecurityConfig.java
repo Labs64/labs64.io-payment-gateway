@@ -24,7 +24,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/webhooks/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/providers/*/webhooks").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/providers/*/checkout-sessions/*/return").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/providers/*/checkout-sessions/*/cancel").permitAll()
                         // list payment definitions
                         .requestMatchers(HttpMethod.GET, "/payment-definitions").permitAll()
                         // get single payment provider including config

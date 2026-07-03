@@ -30,7 +30,9 @@ tags:
     description: Operations to create, execute, and manage payment instances.
   - name: PaymentTransactions
     description: Operations to retrieve payment transaction details and status.
-  - name: Webhooks
+  - name: ProviderCheckout
+    description: Provider browser checkout continuation endpoints.
+  - name: ProviderWebhooks
     description: Endpoints for receiving PSP webhook notifications.
 
 paths:
@@ -462,6 +464,19 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayPaymentRequest'
+            examples:
+              checkoutReturn:
+                summary: Hosted checkout continuation URLs
+                value:
+                  checkout:
+                    returnUrl: "https://checkout.example.com/payment/return"
+                    cancelUrl: "https://checkout.example.com/payment/cancel"
       responses:
         '200':
           description: >-
@@ -627,8 +642,68 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  # ─── Webhooks ───────────────────────────────────────────────────────
-  /webhooks/{provider}:
+  # Checkout Sessions
+  /providers/{provider}/checkout-sessions/{sessionId}/return:
+    get:
+      summary: Complete browser checkout session
+      description: >-
+        Handles browser return from an external PSP checkout flow. The gateway
+        restores the checkout session, lets the provider complete the payment
+        result, updates payment transaction state, and redirects the browser to
+        the tenant return URL stored in the checkout session when available.
+      operationId: returnProviderCheckoutSession
+      tags:
+        - ProviderCheckout
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ProviderPath'
+        - $ref: '#/components/parameters/CheckoutSessionIdPath'
+      responses:
+        '302':
+          description: Browser redirected after successful external checkout return.
+          headers:
+            Location:
+              description: Tenant return URL or gateway fallback URL.
+              schema:
+                type: string
+                format: uri
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /providers/{provider}/checkout-sessions/{sessionId}/cancel:
+    get:
+      summary: Cancel browser checkout session
+      description: >-
+        Handles browser cancellation from an external PSP checkout flow. The
+        gateway restores the checkout session, lets the provider handle the
+        cancellation when needed, updates payment transaction state, and
+        redirects the browser to the tenant cancel URL stored in the checkout session
+        when available.
+      operationId: cancelProviderCheckoutSession
+      tags:
+        - ProviderCheckout
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ProviderPath'
+        - $ref: '#/components/parameters/CheckoutSessionIdPath'
+      responses:
+        '302':
+          description: Browser redirected after external checkout cancellation.
+          headers:
+            Location:
+              description: Tenant cancel URL or gateway fallback URL.
+              schema:
+                type: string
+                format: uri
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # Provider Webhooks
+  /providers/{provider}/webhooks:
     post:
       summary: Receive PSP webhook
       description: >-
@@ -637,18 +712,12 @@ paths:
         processing. Webhook signatures are verified using PSP-specific mechanisms.
         This endpoint is intentionally unauthenticated — PSPs call it directly
         using their own signature verification mechanism.
-      operationId: handleWebhook
+      operationId: handleProviderWebhook
       tags:
-        - Webhooks
+        - ProviderWebhooks
       security: []
       parameters:
-        - name: provider
-          in: path
-          required: true
-          description: The PSP provider identifier (e.g., stripe, paypal, noop).
-          schema:
-            type: string
-            example: stripe
+        - $ref: '#/components/parameters/ProviderPath'
       requestBody:
         required: true
         content:
@@ -713,6 +782,16 @@ components:
         type: string
         format: uuid
         example: "550e8400-e29b-41d4-a716-446655440001"
+
+    CheckoutSessionIdPath:
+      name: sessionId
+      in: path
+      required: true
+      description: Unique identifier for the browser checkout session.
+      schema:
+        type: string
+        format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440002"
 
   # ─── Reusable Responses ─────────────────────────────────────────────
   responses:
@@ -1561,6 +1640,32 @@ components:
           type: string
           description: Human-readable status detail message.
           example: "The card has expired."
+
+    PayPaymentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        checkout:
+          $ref: '#/components/schemas/PaymentCheckoutRequest'
+
+    PaymentCheckoutRequest:
+      type: object
+      additionalProperties: true
+      description: >-
+        Provider-specific checkout continuation payload. The payment provider
+        validates this object and decides which values are stored in the
+        checkout session payload.
+      properties:
+        returnUrl:
+          type: string
+          format: uri
+          description: Tenant URL where the customer should return after successful external checkout completion.
+          example: "https://checkout.example.com/payment/return"
+        cancelUrl:
+          type: string
+          format: uri
+          description: Tenant URL where the customer should return after cancelling external checkout.
+          example: "https://checkout.example.com/payment/cancel"
 
     ExecutePaymentResponse:
       type: object

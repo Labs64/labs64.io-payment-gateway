@@ -93,21 +93,18 @@ management:
     readinessState:
       enabled: true
 
-  # Distributed Tracing
-  tracing:
-    sampling:
-      probability: 1.0
-
   # Metrics
   metrics:
     tags:
       application: ${spring.application.name}
-    export:
-      prometheus:
+  prometheus:
+    metrics:
+      export:
         enabled: true
 
 # Payment Gateway Configuration
 payment-gateway:
+  public-base-url: ${PAYMENT_GATEWAY_PUBLIC_BASE_URL:http://localhost:8080/api/v1}
   payment-definitions:
     - provider: "stripe"
       enabled: true
@@ -147,8 +144,7 @@ payment-gateway:
 # Remove this block and DevAuthFilter when JWT access token validation is implemented.
 labs64:
   security:
-    dev-auth:
-      enabled: ${DEV_AUTH_ENABLED:true}
+    dev-auth: { enabled: ${DEV_AUTH_ENABLED:true} }
 
 # Logging Configuration
 logging:

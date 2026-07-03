@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "payment-gateway")
 public class PaymentGatewayProperties {
 
+    private String publicBaseUrl = "http://localhost:8080/api/v1";
     private List<PaymentDefinition> paymentDefinitions = List.of();
     private RetryConfig retry = new RetryConfig();
     private RedisConfig redis = new RedisConfig();

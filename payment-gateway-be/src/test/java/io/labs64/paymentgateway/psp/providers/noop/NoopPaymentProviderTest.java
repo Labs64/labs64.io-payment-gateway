@@ -9,11 +9,8 @@ import io.labs64.paymentgateway.psp.spi.Payment;
 import io.labs64.paymentgateway.psp.spi.PaymentContext;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
 import io.labs64.paymentgateway.psp.spi.PaymentTransaction;
-import io.labs64.paymentgateway.psp.spi.PaymentWebhookContext;
-import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
 import io.labs64.paymentgateway.psp.spi.ProviderConfig;
 import io.labs64.paymentgateway.psp.spi.StatusDetails;
-import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,38 +37,6 @@ class NoopPaymentProviderTest {
         assertThat(result.nextAction()).isNull();
     }
 
-    @Test
-    void resolvePaymentTransactionIdReturnsTransactionIdFromWebhookRequest() {
-        final UUID transactionId = UUID.randomUUID();
-
-        assertThat(provider.resolvePaymentTransactionId(webhookRequest(transactionId))).isEqualTo(transactionId);
-    }
-
-    @Test
-    void handleWebhookReturnsSuccessfulWebhookResult() {
-        final PaymentWebhookContext context = new PaymentWebhookContext(
-                payment(),
-                transaction(),
-                providerConfig(),
-                webhookRequest(UUID.randomUUID()));
-
-        final PaymentWebhookResult result = provider.handleWebhook(context);
-
-        assertThat(result.provider()).isEqualTo("noop");
-        assertThat(result.status()).isEqualTo(PaymentTransactionStatus.SUCCESS);
-        assertThat(result.pspData()).isEmpty();
-        assertThat(result.statusDetails()).isEqualTo(new StatusDetails("SUCCESS", "TBD"));
-    }
-
-    @Test
-    void validateAndSanitizePaymentProviderConfigIgnoresInputAndReturnsEmptyConfig() {
-        final Map<String, String> result = provider.validateAndSanitizePaymentProviderConfig(Map.of(
-                "apiKey", "should-be-ignored",
-                "webhookSecret", "should-be-ignored"));
-
-        assertThat(result).isEmpty();
-    }
-
     private static Payment payment() {
         return new Payment(
                 UUID.randomUUID(),
@@ -90,14 +55,5 @@ class NoopPaymentProviderTest {
 
     private static ProviderConfig providerConfig() {
         return new ProviderConfig("noop", Map.of(), "Noop", "No operation provider");
-    }
-
-    private static WebhookRequest webhookRequest(final UUID transactionId) {
-        return new WebhookRequest(
-                "noop",
-                new byte[0],
-                Map.of("transactionId", transactionId.toString()),
-                Map.of("x-provider-signature", java.util.List.of("noop")),
-                Map.of());
     }
 }

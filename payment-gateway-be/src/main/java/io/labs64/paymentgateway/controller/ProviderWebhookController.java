@@ -17,23 +17,23 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.labs64.paymentgateway.service.WebhookService;
-import io.labs64.paymentgateway.api.WebhooksApi;
+import io.labs64.paymentgateway.api.ProviderWebhooksApi;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-public class WebhookController implements WebhooksApi {
+public class ProviderWebhookController implements ProviderWebhooksApi {
 
-    private static final Logger log = LoggerFactory.getLogger(WebhookController.class);
+    private static final Logger log = LoggerFactory.getLogger(ProviderWebhookController.class);
 
     private final WebhookService webhookService;
     private final HttpServletRequest httpServletRequest;
 
     @Override
-    public ResponseEntity<Void> handleWebhook(
+    public ResponseEntity<Void> handleProviderWebhook(
             String provider,
             Map<String, Object> requestBody) {
-        log.info("POST /webhooks/{} | correlationId={}, payloadKeys={}",
+        log.info("Provider webhook received | provider={}, correlationId={}, payloadKeys={}",
                 provider, MDC.get(CorrelationContextHolder.get().orElse("-")),
                 requestBody != null ? requestBody.keySet() : "null");
 

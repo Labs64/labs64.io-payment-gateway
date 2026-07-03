@@ -2,6 +2,7 @@ package io.labs64.paymentgateway.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import io.labs64.paymentgateway.entity.PaymentEntity;
@@ -20,6 +21,7 @@ import io.labs64.paymentgateway.model.PaymentStatus;
 import io.labs64.paymentgateway.model.PaymentTransaction;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
 import io.labs64.paymentgateway.model.PurchaseOrder;
+import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
 import io.labs64.paymentgateway.psp.spi.PaymentNextAction;
 import io.labs64.paymentgateway.security.AuthPrincipal;
 import io.labs64.paymentgateway.security.Scopes;
@@ -122,17 +124,20 @@ class PaymentControllerTest {
                 NextAction.TypeEnum.REDIRECT,
                 Map.of("url", "https://psp.example/redirect"));
 
-        when(service.pay(TENANT_ID, paymentId)).thenReturn(new PayPaymentResponse(payment, transaction, nextAction));
+        when(service.pay(TENANT_ID, paymentId, PaymentExecutionRequest.empty()))
+                .thenReturn(new PayPaymentResponse(payment, transaction, nextAction));
         when(paymentMapper.toDto(payment)).thenReturn(paymentDto);
         when(paymentTransactionMapper.toDto(transaction)).thenReturn(transactionDto);
 
-        final ResponseEntity<ExecutePaymentResponse> result = controller.payPayment(paymentId);
+        final ResponseEntity<ExecutePaymentResponse> result = controller.payPayment(paymentId, null);
+        final ExecutePaymentResponse body = Objects.requireNonNull(result.getBody());
+        final NextAction responseNextAction = Objects.requireNonNull(body.getNextAction());
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(result.getBody().getPayment()).isSameAs(paymentDto);
-        assertThat(result.getBody().getPaymentTransaction()).isSameAs(transactionDto);
-        assertThat(result.getBody().getNextAction().getType()).isEqualTo(NextAction.TypeEnum.REDIRECT);
-        assertThat(result.getBody().getNextAction().getDetails()).containsEntry("url", "https://psp.example/redirect");
+        assertThat(body.getPayment()).isSameAs(paymentDto);
+        assertThat(body.getPaymentTransaction()).isSameAs(transactionDto);
+        assertThat(responseNextAction.getType()).isEqualTo(NextAction.TypeEnum.REDIRECT);
+        assertThat(responseNextAction.getDetails()).containsEntry("url", "https://psp.example/redirect");
     }
 
     @Test

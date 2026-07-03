@@ -1,21 +1,30 @@
 package io.labs64.paymentgateway.service;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
 import io.labs64.paymentgateway.correlation.CorrelationEntityType;
 import io.labs64.paymentgateway.domain.PaymentTransactionFailureCode;
+import io.labs64.paymentgateway.entity.CheckoutSessionEntity;
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
 import io.labs64.paymentgateway.exception.ConflictException;
+import io.labs64.paymentgateway.exception.PspException;
 import io.labs64.paymentgateway.mapper.PaymentContextMapper;
 import io.labs64.paymentgateway.message.PaymentMessages;
 import io.labs64.paymentgateway.model.PaymentStatus;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
 import io.labs64.paymentgateway.model.PaymentType;
 import io.labs64.paymentgateway.model.StatusDetails;
+import io.labs64.paymentgateway.psp.spi.CheckoutPreparationContext;
+import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
+import io.labs64.paymentgateway.psp.spi.PaymentNextAction;
 import io.labs64.paymentgateway.psp.spi.PaymentContext;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
+import io.labs64.paymentgateway.psp.spi.CheckoutSessionDraft;
+import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
 import io.labs64.paymentgateway.service.filter.PaymentFilter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -34,6 +43,8 @@ import lombok.RequiredArgsConstructor;
 
 import static io.labs64.paymentgateway.domain.PaymentTransactionFailureCode.PAYMENT_PROVIDER_NOT_FOUND;
 import static io.labs64.paymentgateway.domain.PaymentTransactionFailureCode.PAYMENT_PROVIDER_DISABLED;
+import static io.labs64.paymentgateway.domain.PaymentTransactionFailureCode.PSP_ERROR;
+import static io.labs64.paymentgateway.domain.PaymentTransactionStatuses.isTerminal;
 
 /**
  * Implementation of {@link PaymentService}.
@@ -49,6 +60,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentProviderService paymentProviderService;
     private final PaymentTransactionService transactionService;
     private final PaymentNextActionService paymentNextActionService;
+    private final CheckoutSessionService checkoutSessionService;
     private final PaymentContextMapper paymentContextMapper;
     private final PaymentDefinitionService paymentDefinitionService;
     private final PaymentProviderRegistry providerRegistry;
@@ -134,13 +146,20 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PayPaymentResponse pay(final String tenantId, final UUID id) {
+        return pay(tenantId, id, PaymentExecutionRequest.empty());
+    }
+
+    @Override
+    @Transactional
+    public PayPaymentResponse pay(final String tenantId, final UUID id, final PaymentExecutionRequest request) {
         log.info("Pay the payment for tenantId={}, id={}", tenantId, id);
         final PaymentEntity payment = getPayablePayment(tenantId, id);
         final PaymentTransactionEntity transaction = createPendingTransaction(tenantId, payment);
+        final PaymentExecutionRequest executionRequest = request != null ? request : PaymentExecutionRequest.empty();
 
         return switch (preparePaymentAttempt(payment)) {
             case PaymentAttemptRejected rejected -> failPaymentAttempt(payment, transaction, rejected);
-            case PaymentAttemptReady ready -> executePaymentAttempt(payment, transaction, ready);
+            case PaymentAttemptReady ready -> executePaymentAttempt(payment, transaction, ready, executionRequest);
         };
     }
 
@@ -186,10 +205,20 @@ public class PaymentServiceImpl implements PaymentService {
     private PayPaymentResponse executePaymentAttempt(
             final PaymentEntity payment,
             final PaymentTransactionEntity transaction,
-            final PaymentAttemptReady attempt) {
-        final PaymentResult result = executeProvider(payment, transaction, attempt);
+            final PaymentAttemptReady attempt,
+            final PaymentExecutionRequest request) {
+        final PaymentProvider provider = providerRegistry.getProvider(attempt.paymentProvider().getProvider());
+        final CheckoutSessionEntity session = prepareCheckoutSession(payment, transaction, attempt, provider, request);
+        final PaymentResult result;
+        try {
+            result = executeProvider(payment, transaction, attempt, provider, session, request);
+        } catch (PspException ex) {
+            log.warn("PSP execution failed: paymentId={}, paymentTransactionId={}, provider={}, message={}",
+                    payment.getId(), transaction.getId(), attempt.paymentProvider().getProvider(), ex.getMessage(), ex);
+            return failPaymentAttempt(payment, transaction, new PaymentAttemptRejected(PSP_ERROR, ex.getMessage()));
+        }
 
-        applyExecutionResult(payment, transaction, result);
+        applyExecutionResult(payment, transaction, session, result);
 
         log.info("Payment executed: paymentId={}, paymentTransactionId={}, status={}",
                 payment.getId(), transaction.getId(), transaction.getStatus());
@@ -200,13 +229,39 @@ public class PaymentServiceImpl implements PaymentService {
     private PaymentResult executeProvider(
             final PaymentEntity payment,
             final PaymentTransactionEntity transaction,
-            final PaymentAttemptReady attempt) {
-        final PaymentProvider provider = providerRegistry.getProvider(attempt.paymentProvider().getProvider());
-        final PaymentContext context = paymentContextMapper.toContext(
-                payment,
-                transaction,
-                attempt.paymentProvider());
+            final PaymentAttemptReady attempt,
+            final PaymentProvider provider,
+            final CheckoutSessionEntity session,
+            final PaymentExecutionRequest request) {
+        final PaymentContext context = session == null
+                ? paymentContextMapper.toContext(payment, transaction, attempt.paymentProvider(), null, request)
+                : paymentContextMapper.toContext(payment, transaction, attempt.paymentProvider(), session, request);
         return provider.execute(context);
+    }
+
+    private CheckoutSessionEntity prepareCheckoutSession(
+            final PaymentEntity payment,
+            final PaymentTransactionEntity transaction,
+            final PaymentAttemptReady attempt,
+            final PaymentProvider provider,
+            final PaymentExecutionRequest request) {
+        if (!(provider instanceof ProviderCheckoutSupport checkoutSupport)) {
+            return null;
+        }
+
+        final CheckoutPreparationContext context = paymentContextMapper
+                .toCheckoutPreparationContext(payment, transaction, attempt.paymentProvider(), request);
+
+        return checkoutSupport
+                .prepareCheckoutSession(context)
+                .map((draft) -> createCheckoutSession(transaction, draft))
+                .orElse(null);
+    }
+
+    private CheckoutSessionEntity createCheckoutSession(
+            final PaymentTransactionEntity transaction,
+            final CheckoutSessionDraft draft) {
+        return checkoutSessionService.create(transaction, draft.payload(), draft.expiresAt());
     }
 
     private PayPaymentResponse failPaymentAttempt(
@@ -232,6 +287,7 @@ public class PaymentServiceImpl implements PaymentService {
     private void applyExecutionResult(
             final PaymentEntity payment,
             final PaymentTransactionEntity transaction,
+            final CheckoutSessionEntity session,
             final PaymentResult result) {
         final PaymentTransactionEntity updatedTransaction = transactionService.update(
                 transaction.getTenantId(),
@@ -256,9 +312,21 @@ public class PaymentServiceImpl implements PaymentService {
             paymentEventPublisher.publishClosed(payment, updatedTransaction);
         }
 
-        if (result.nextAction() != null) {
+        if (result.nextAction() != null && session != null) {
+            checkoutSessionService.updateNextAction(
+                    session.getTenantId(),
+                    session.getId(),
+                    toNextActionData(result.nextAction()));
+        } else if (result.nextAction() != null) {
             paymentNextActionService.create(transaction, result.nextAction());
         }
+    }
+
+    private Map<String, Object> toNextActionData(final PaymentNextAction nextAction) {
+        final Map<String, Object> data = new LinkedHashMap<>();
+        data.put("type", nextAction.type().name());
+        data.put("details", nextAction.details());
+        return data;
     }
 
     private StatusDetails toStatusDetails(final io.labs64.paymentgateway.psp.spi.StatusDetails source) {
@@ -266,10 +334,6 @@ public class PaymentServiceImpl implements PaymentService {
             return null;
         }
         return new StatusDetails(source.code(), source.message());
-    }
-
-    private boolean isTerminal(final PaymentTransactionStatus status) {
-        return PaymentTransactionStatus.SUCCESS.equals(status) || PaymentTransactionStatus.FAILED.equals(status);
     }
 
     private PaymentProviderEntity getActivePaymentProvider(final String tenantId, final String provider) {

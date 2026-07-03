@@ -1,6 +1,7 @@
 package io.labs64.paymentgateway.service;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -8,8 +9,12 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import io.labs64.paymentgateway.exception.ConflictException;
+import io.labs64.paymentgateway.exception.ValidationException;
 import io.labs64.paymentgateway.message.PaymentProviderMessages;
 import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
+import io.labs64.paymentgateway.psp.spi.PaymentProvider;
+import io.labs64.paymentgateway.psp.spi.ProviderConfigField;
+import io.labs64.paymentgateway.psp.spi.ProviderConfigSupport;
 import io.labs64.paymentgateway.service.filter.PaymentProviderFilter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -101,8 +106,7 @@ public class PaymentProviderServiceImpl implements PaymentProviderService {
         if (repository.existsByTenantIdAndProvider(tenantId, provider)) {
             throw new ConflictException(msg.alreadyExists(provider));
         }
-        final Map<String, String> config = paymentProviders.getProvider(provider)
-                .validateAndSanitizePaymentProviderConfig(Optional.ofNullable(entity.getConfig()).orElseGet(Collections::emptyMap));
+        final Map<String, String> config = sanitizeConfig(provider, entity.getConfig());
         entity.setConfig(config);
 
         entity.setTenantId(tenantId);
@@ -135,8 +139,7 @@ public class PaymentProviderServiceImpl implements PaymentProviderService {
                 .map(entity -> {
                     updater.accept(entity);
 
-                    final Map<String, String> config = paymentProviders.getProvider(provider)
-                            .validateAndSanitizePaymentProviderConfig(entity.getConfig());
+                    final Map<String, String> config = sanitizeConfig(provider, entity.getConfig());
                     entity.setConfig(config);
 
                     log.debug("Update payment provider: {}", entity);
@@ -162,5 +165,42 @@ public class PaymentProviderServiceImpl implements PaymentProviderService {
         final int affected = repository.deleteByTenantIdAndProvider(tenantId, provider);
         log.debug("Delete payment provider provider={} tenant={} affected={}", provider, tenantId, affected);
         return affected > 0;
+    }
+
+    private Map<String, String> sanitizeConfig(final String provider, final Map<String, String> rawConfig) {
+        final Map<String, String> source = Optional.ofNullable(rawConfig).orElseGet(Collections::emptyMap);
+        final PaymentProvider paymentProvider = paymentProviders.getProvider(provider);
+
+        if (!(paymentProvider instanceof ProviderConfigSupport configSupport)) {
+            if (source.isEmpty()) {
+                return Map.of();
+            }
+            throw new ValidationException(msg.configNotSupported(provider));
+        }
+
+        final Set<ProviderConfigField> fields = configSupport.configFields();
+        final Set<String> allowedNames = fields.stream()
+                .map(ProviderConfigField::name)
+                .collect(Collectors.toUnmodifiableSet());
+
+        final Map<String, String> sanitized = source.entrySet().stream()
+                .filter(entry -> allowedNames.contains(entry.getKey()))
+                .filter(entry -> entry.getValue() != null)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (_, right) -> right,
+                        LinkedHashMap::new));
+
+        fields.stream()
+                .filter(ProviderConfigField::required)
+                .filter(field -> StringUtils.isBlank(sanitized.get(field.name())))
+                .findFirst()
+                .ifPresent(field -> {
+                    throw new ValidationException(msg.configFieldRequired(provider, field.name()));
+                });
+
+        configSupport.validateConfig(Collections.unmodifiableMap(sanitized));
+        return sanitized;
     }
 }
