@@ -1,0 +1,106 @@
+name: Labs64.IO - Payment Gateway Backend - CI
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - "payment-gateway-be/**"
+      - ".github/workflows/payment-gateway-be-ci.yml"
+      - ".github/actions/payment-gateway-deps/**"
+      - ".github/compose/**"
+  pull_request:
+    paths:
+      - "payment-gateway-be/**"
+      - ".github/workflows/payment-gateway-be-ci.yml"
+      - ".github/actions/payment-gateway-deps/**"
+      - ".github/compose/**"
+  workflow_dispatch:
+
+concurrency:
+  group: payment-gateway-be-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: payment-gateway-be
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: paymentgateway
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+
+      REDIS_HOST: localhost
+      REDIS_PORT: "6379"
+
+      RABBITMQ_HOST: localhost
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: guest
+      RABBITMQ_PASSWORD: guest
+
+      SPRING_PROFILES_ACTIVE: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Start deps
+        uses: ./.github/actions/payment-gateway-deps
+        with:
+          action: up
+
+      - name: Maven verify
+        run: mvn -B verify
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./payment-gateway-be
+          push: false
+          platforms: linux/amd64,linux/arm64/v8
+          tags: payment-gateway:ci-${{ github.sha }}
+          cache-from: type=gha,scope=${{ github.workflow }}
+          cache-to: type=gha,mode=max,scope=${{ github.workflow }}
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: payment-gateway-be-test-reports
+          path: |
+            payment-gateway-be/target/surefire-reports/**
+            payment-gateway-be/target/failsafe-reports/**
+          if-no-files-found: ignore
+
+      - name: Stop deps
+        if: always()
+        uses: ./.github/actions/payment-gateway-deps
+        with:
+          action: down
+
+      - name: Update dependency graph
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: advanced-security/maven-dependency-submission-action@v4
+        with:
+          directory: payment-gateway-be

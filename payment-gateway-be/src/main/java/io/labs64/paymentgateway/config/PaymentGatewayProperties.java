@@ -1,11 +1,13 @@
 package io.labs64.paymentgateway.config;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.stereotype.Component;
 
 /**
  * Configuration properties for the Payment Gateway module.
@@ -13,17 +15,19 @@ import lombok.Setter;
  */
 @Getter
 @Setter
+@Component
 @ConfigurationProperties(prefix = "payment-gateway")
 public class PaymentGatewayProperties {
 
-    private List<PaymentMethodConfig> paymentMethods = List.of();
+    private List<PaymentDefinition> paymentDefinitions = List.of();
     private RetryConfig retry = new RetryConfig();
     private RedisConfig redis = new RedisConfig();
+    private IdempotencyConfig idempotency = new IdempotencyConfig();
 
     @Getter
     @Setter
-    public static class PaymentMethodConfig {
-        private String id;
+    public static class PaymentDefinition {
+        private String provider;
         private boolean enabled;
         private String name;
         private String description;
@@ -43,7 +47,16 @@ public class PaymentGatewayProperties {
     @Getter
     @Setter
     public static class RedisConfig {
-        private int idempotencyKeyTtlSeconds = 86400;
         private int distributedLockTtlSeconds = 30;
+    }
+
+    @Getter
+    @Setter
+    public static class IdempotencyConfig {
+        private Duration redisTtl = Duration.ofHours(3);
+        private Duration databaseTtl = Duration.ofDays(1);
+        private Duration processingTimeout = Duration.ofMinutes(5);
+        private Duration cleanupInterval = Duration.ofHours(1);
+        private int cleanupBatchSize = 1000;
     }
 }

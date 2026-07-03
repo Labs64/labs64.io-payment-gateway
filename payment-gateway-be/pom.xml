@@ -71,6 +71,10 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.projectreactor.netty</groupId>
             <artifactId>reactor-netty-http</artifactId>
         </dependency>
@@ -125,8 +129,8 @@
 
         <!-- Flyway -->
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -268,11 +272,11 @@
                         </goals>
                         <phase>generate-sources</phase>
                         <configuration>
-                            <inputSpec>${project.basedir}/src/main/resources/openapi/openapi-payment-gateway-${payment-gateway.version}.yaml</inputSpec>
+                            <inputSpec>${project.basedir}/src/main/resources/openapi/openapi-payment-gateway.yaml</inputSpec>
                             <generatorName>spring</generatorName>
                             <output>${project.build.directory}/generated-sources</output>
-                            <apiPackage>io.labs64.paymentgateway.${payment-gateway.version}.api</apiPackage>
-                            <modelPackage>io.labs64.paymentgateway.${payment-gateway.version}.model</modelPackage>
+                            <apiPackage>io.labs64.paymentgateway.api</apiPackage>
+                            <modelPackage>io.labs64.paymentgateway.model</modelPackage>
                             <generateSupportingFiles>true</generateSupportingFiles>
                             <configOptions>
                                 <useTags>true</useTags>
