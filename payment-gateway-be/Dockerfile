@@ -23,4 +23,4 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
 
 USER ${USER_NAME}
 
-ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar /home/${USER_NAME}/app.jar"]
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar /home/l64user/app.jar"]
