@@ -1,40 +1,31 @@
-# Compiled class file
+# --- Java / Maven ---
 *.class
-
-# Log file
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
 *.jar
 *.war
-*.nar
 *.ear
-*.zip
-*.tar.gz
-*.rar
-
-# virtual machine crash logs
 hs_err_pid*
 replay_pid*
-
-# IDE
-.vscode
-.idea
-*.iml
-
-# Build output
 target/
+
+# --- Python (if any scripts) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# --- Node (if any frontend) ---
 node_modules/
 
-# OS
+# --- IDE / OS ---
+.idea/
+.vscode/
+*.iml
 .DS_Store
 
-# Environment / secrets — use .env.example as a template
+# --- Environment ---
 .env
-!.env.example
+!/.env.example
+
+# --- Logs ---
+*.log
