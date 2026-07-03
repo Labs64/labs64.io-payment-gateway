@@ -27,6 +27,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/providers/*/webhooks").permitAll()
                         .requestMatchers(HttpMethod.GET, "/providers/*/checkout-sessions/*/return").permitAll()
                         .requestMatchers(HttpMethod.GET, "/providers/*/checkout-sessions/*/cancel").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/checkout-sessions/*/confirmation").permitAll()
                         // list payment definitions
                         .requestMatchers(HttpMethod.GET, "/payment-definitions").permitAll()
                         // get single payment provider including config

@@ -95,7 +95,7 @@ class ProviderCheckoutServiceImplTest {
 
         final URI redirect = service.complete(PROVIDER, session.getId(), Map.of("token", List.of("paypal-order")));
 
-        assertThat(redirect).isEqualTo(URI.create("https://checkout.example/return"));
+        assertThat(redirect).isEqualTo(expectedRedirect(session, "https://checkout.example/return"));
         assertThat(session.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.SUCCESS);
         assertThat(session.getPaymentTransaction().getStatusDetails()).isEqualTo(new StatusDetails("SUCCESS", "Captured"));
         assertThat(session.getPayment().getStatus()).isEqualTo(PaymentStatus.CLOSED);
@@ -127,7 +127,7 @@ class ProviderCheckoutServiceImplTest {
 
         final URI redirect = service.cancel(PROVIDER, session.getId(), Map.of("token", List.of("paypal-order")));
 
-        assertThat(redirect).isEqualTo(URI.create("https://checkout.example/cancel"));
+        assertThat(redirect).isEqualTo(expectedRedirect(session, "https://checkout.example/cancel"));
         assertThat(session.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.FAILED);
         assertThat(session.getPayment().getStatus()).isEqualTo(PaymentStatus.READY);
         verify(paymentRepository, never()).save(any());
@@ -200,6 +200,11 @@ class ProviderCheckoutServiceImplTest {
 
     private static PaymentNextAction redirect(final String url) {
         return new PaymentNextAction(NextAction.TypeEnum.REDIRECT, Map.of("url", url));
+    }
+
+    private static URI expectedRedirect(final CheckoutSessionEntity session, final String url) {
+        return URI.create(url
+                + "?sessionId=" + session.getId());
     }
 
     private static CheckoutSessionEntity session(final PaymentTransactionStatus transactionStatus) {

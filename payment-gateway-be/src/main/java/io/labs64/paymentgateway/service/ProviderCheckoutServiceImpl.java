@@ -28,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import static io.labs64.paymentgateway.domain.PaymentTransactionStatuses.isTerminal;
 
@@ -67,7 +68,7 @@ public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
                 return FALLBACK_REDIRECT;
             }
             applyResult(payment, transaction, result);
-            return redirectFrom(result.nextAction());
+            return withCheckoutIdentifiers(redirectFrom(result.nextAction()), session);
         }
 
         log.info("Ignoring duplicate checkout return: sessionId={}, paymentTransactionId={}, status={}",
@@ -97,7 +98,7 @@ public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
                 return FALLBACK_REDIRECT;
             }
             applyResult(payment, transaction, result);
-            return redirectFrom(result.nextAction());
+            return withCheckoutIdentifiers(redirectFrom(result.nextAction()), session);
         }
 
         return FALLBACK_REDIRECT;
@@ -189,6 +190,13 @@ public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
             }
         }
         return FALLBACK_REDIRECT;
+    }
+
+    private URI withCheckoutIdentifiers(final URI location, final CheckoutSessionEntity session) {
+        return UriComponentsBuilder.fromUri(location)
+                .queryParam("sessionId", session.getId())
+                .build(true)
+                .toUri();
     }
 
     private StatusDetails toStatusDetails(final io.labs64.paymentgateway.psp.spi.StatusDetails source) {

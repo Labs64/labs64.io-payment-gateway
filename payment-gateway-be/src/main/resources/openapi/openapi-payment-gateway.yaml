@@ -30,6 +30,8 @@ tags:
     description: Operations to create, execute, and manage payment instances.
   - name: PaymentTransactions
     description: Operations to retrieve payment transaction details and status.
+  - name: CheckoutSessions
+    description: Public checkout session confirmation views.
   - name: ProviderCheckout
     description: Provider browser checkout continuation endpoints.
   - name: ProviderWebhooks
@@ -643,6 +645,50 @@ paths:
           $ref: '#/components/responses/InternalError'
 
   # Checkout Sessions
+  /checkout-sessions/{sessionId}/confirmation:
+    get:
+      summary: Get checkout session confirmation
+      description: >-
+        Returns a public-safe confirmation view for a browser checkout session.
+        The response intentionally excludes tenant id, provider configuration,
+        PSP data, billing data, shipping data, extra metadata, and the full
+        purchase order.
+      operationId: getCheckoutSessionConfirmation
+      tags:
+        - CheckoutSessions
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CheckoutSessionIdPath'
+      responses:
+        '200':
+          description: Checkout session confirmation details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutSessionConfirmation'
+              example:
+                sessionId: "550e8400-e29b-41d4-a716-446655440010"
+                payment:
+                  id: "550e8400-e29b-41d4-a716-446655440000"
+                  provider: paypal
+                  status: CLOSED
+                  type: ONE_TIME
+                  description: "Order #10001"
+                  amount: 3000
+                  currency: USD
+                  createdAt: "2026-02-10T12:00:00Z"
+                paymentTransaction:
+                  id: "550e8400-e29b-41d4-a716-446655440001"
+                  status: SUCCESS
+                  statusDetails:
+                    code: SUCCESS
+                    message: Payment completed.
+                  createdAt: "2026-02-10T12:01:00Z"
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /providers/{provider}/checkout-sessions/{sessionId}/return:
     get:
       summary: Complete browser checkout session
@@ -663,7 +709,7 @@ paths:
           description: Browser redirected after successful external checkout return.
           headers:
             Location:
-              description: Tenant return URL or gateway fallback URL.
+              description: Tenant return URL with sessionId query parameter, or gateway fallback URL.
               schema:
                 type: string
                 format: uri
@@ -693,7 +739,7 @@ paths:
           description: Browser redirected after external checkout cancellation.
           headers:
             Location:
-              description: Tenant cancel URL or gateway fallback URL.
+              description: Tenant cancel URL with sessionId query parameter, or gateway fallback URL.
               schema:
                 type: string
                 format: uri
@@ -1488,6 +1534,99 @@ components:
               description: Tenant payments.
               items:
                 $ref: '#/components/schemas/Payment'
+
+    CheckoutSessionConfirmation:
+      type: object
+      additionalProperties: false
+      required:
+        - sessionId
+        - payment
+        - paymentTransaction
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: Checkout session identifier used by the public confirmation page.
+          readOnly: true
+        payment:
+          $ref: '#/components/schemas/ConfirmationPayment'
+        paymentTransaction:
+          $ref: '#/components/schemas/ConfirmationPaymentTransaction'
+
+    ConfirmationPayment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - provider
+        - status
+        - type
+        - amount
+        - currency
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Payment identifier.
+          readOnly: true
+        provider:
+          type: string
+          description: Payment provider used by the payment.
+          example: paypal
+        status:
+          allOf:
+            - $ref: '#/components/schemas/PaymentStatus'
+          readOnly: true
+        type:
+          allOf:
+            - $ref: '#/components/schemas/PaymentType'
+          readOnly: true
+        description:
+          type: string
+          nullable: true
+          description: Public payment description.
+          example: "Order #10001"
+        amount:
+          type: integer
+          format: int64
+          description: Final payment amount in minor units.
+          minimum: 1
+          example: 3000
+        currency:
+          $ref: '#/components/schemas/Currency'
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ConfirmationPaymentTransaction:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Payment transaction identifier.
+          readOnly: true
+        status:
+          allOf:
+            - $ref: '#/components/schemas/PaymentTransactionStatus'
+          readOnly: true
+        statusDetails:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/StatusDetails'
+          description: Public-safe normalized transaction status details.
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
 
     PaymentStatus:
       type: string

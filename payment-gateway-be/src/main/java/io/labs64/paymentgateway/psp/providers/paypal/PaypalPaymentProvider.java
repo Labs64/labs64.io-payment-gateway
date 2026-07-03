@@ -130,7 +130,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
                 PaymentTransactionStatus.PENDING,
                 Map.of(ORDER_ID, orderId, "status", status(order)),
                 new StatusDetails("PENDING", "PayPal order is waiting for buyer approval."),
-                new PaymentNextAction(NextAction.TypeEnum.REDIRECT, Map.of("url", approveUrl, ORDER_ID, orderId)));
+                new PaymentNextAction(NextAction.TypeEnum.REDIRECT, Map.of("url", approveUrl)));
     }
 
     @Override
