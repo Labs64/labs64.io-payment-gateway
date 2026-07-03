@@ -34,16 +34,15 @@ public class PaymentProviderController implements PaymentProvidersApi {
     private final PaymentProviderMessages msg;
 
     @Override
-    public ResponseEntity<PaymentProvider> getPaymentProvider(String provider, @Nullable Set<String> with) {
+    public ResponseEntity<PaymentProvider> getPaymentProvider(String provider) {
         final String tenantId = AuthContextHolder.require().tenantId();
 
-        log.info("Payment provider get requested | tenantId={}, provider={}, with={}",
-                tenantId, provider, with);
+        log.info("Payment provider get requested | tenantId={}, provider={}", tenantId, provider);
 
-        requireConfigScope(with);
+        requireWriteScopeForConfig();
 
         final PaymentProviderEntity entity = service.get(tenantId, provider);
-        final PaymentProvider response = mapper.toDto(entity, with);
+        final PaymentProvider response = mapper.toDtoWithConfig(entity);
 
         return ResponseEntity.ok(response);
     }
@@ -52,19 +51,16 @@ public class PaymentProviderController implements PaymentProvidersApi {
     public ResponseEntity<PaymentProviderListResponse> listPaymentProviders(
             @Nullable String currency,
             @Nullable String country,
-            @Nullable Boolean active,
-            @Nullable Set<String> with) {
+            @Nullable Boolean active) {
         final String tenantId = AuthContextHolder.require().tenantId();
 
-        log.info("Payment provider list requested | tenantId={}, currency={}, country={}, active={}, with={}",
-                tenantId, currency, country, active, with);
-
-        requireConfigScope(with);
+        log.info("Payment provider list requested | tenantId={}, currency={}, country={}, active={}",
+                tenantId, currency, country, active);
 
         final PaymentProviderFilter filter = new PaymentProviderFilter(currency, country, active);
 
         final Page<PaymentProviderEntity> list = service.list(tenantId, filter, Pageable.unpaged());
-        final PaymentProviderListResponse response = mapper.toPage(list, with);
+        final PaymentProviderListResponse response = mapper.toPage(list);
 
         return ResponseEntity.ok(response);
     }
@@ -78,7 +74,7 @@ public class PaymentProviderController implements PaymentProvidersApi {
                 tenantId, provider, request.getActive(), configKeys);
 
         final PaymentProviderEntity entity = service.create(tenantId, provider, mapper.toEntity(request));
-        final PaymentProvider response = mapper.toDto(entity, Set.of("config"));
+        final PaymentProvider response = mapper.toDtoWithConfig(entity);
 
         return ResponseEntity.ok().body(response);
     }
@@ -94,7 +90,7 @@ public class PaymentProviderController implements PaymentProvidersApi {
                 tenantId, provider, request.getActive(), configKeys);
 
         final PaymentProviderEntity entity = service.update(tenantId, provider, (pm) -> mapper.updateEntity(request, pm));
-        final PaymentProvider response = mapper.toDto(entity, Set.of("config"));
+        final PaymentProvider response = mapper.toDtoWithConfig(entity);
 
         return ResponseEntity.ok(response);
     }
@@ -113,10 +109,7 @@ public class PaymentProviderController implements PaymentProvidersApi {
         return ResponseEntity.noContent().build();
     }
 
-    private void requireConfigScope(final Set<String> with) {
-        if (with == null || !with.contains("config")) {
-            return;
-        }
+    private void requireWriteScopeForConfig() {
         if (!AuthContextHolder.require().hasScope(Scopes.PAYMENT_PROVIDER_WRITE)) {
             throw new ForbiddenException(msg.configScopeRequired(Scopes.PAYMENT_PROVIDER_WRITE));
         }

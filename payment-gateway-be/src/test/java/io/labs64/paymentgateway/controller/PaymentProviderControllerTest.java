@@ -2,7 +2,6 @@ package io.labs64.paymentgateway.controller;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.exception.ForbiddenException;
@@ -69,26 +68,26 @@ class PaymentProviderControllerTest {
     }
 
     @Test
-    void getPaymentProviderUsesTenantAndIncludesConfigWhenScopeAllowsIt() {
+    void getPaymentProviderUsesTenantAndAlwaysIncludesConfigWhenScopeAllowsIt() {
         final PaymentProviderEntity entity = entity();
         final PaymentProvider dto = dto(PROVIDER);
         when(service.get(TENANT_ID, PROVIDER)).thenReturn(entity);
-        when(mapper.toDto(entity, Set.of("config"))).thenReturn(dto);
+        when(mapper.toDtoWithConfig(entity)).thenReturn(dto);
 
-        final ResponseEntity<PaymentProvider> result = controller.getPaymentProvider(PROVIDER, Set.of("config"));
+        final ResponseEntity<PaymentProvider> result = controller.getPaymentProvider(PROVIDER);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).isSameAs(dto);
         verify(service).get(TENANT_ID, PROVIDER);
-        verify(mapper).toDto(entity, Set.of("config"));
+        verify(mapper).toDtoWithConfig(entity);
     }
 
     @Test
-    void getPaymentProviderRejectsConfigIncludeWithoutWriteScope() {
+    void getPaymentProviderRejectsWithoutWriteScope() {
         authenticate(Scopes.PAYMENT_PROVIDER_READ);
         when(msg.configScopeRequired(Scopes.PAYMENT_PROVIDER_WRITE)).thenReturn("scope required");
 
-        assertThatThrownBy(() -> controller.getPaymentProvider(PROVIDER, Set.of("config")))
+        assertThatThrownBy(() -> controller.getPaymentProvider(PROVIDER))
                 .isInstanceOf(ForbiddenException.class);
 
         verifyNoInteractions(service, mapper);
@@ -99,13 +98,12 @@ class PaymentProviderControllerTest {
         final PageImpl<PaymentProviderEntity> page = new PageImpl<>(List.of(entity()));
         final PaymentProviderListResponse response = new PaymentProviderListResponse();
         when(service.list(eq(TENANT_ID), any(PaymentProviderFilter.class), eq(Pageable.unpaged()))).thenReturn(page);
-        when(mapper.toPage(page, Set.of("config"))).thenReturn(response);
+        when(mapper.toPage(page)).thenReturn(response);
 
         final ResponseEntity<PaymentProviderListResponse> result = controller.listPaymentProviders(
                 "USD",
                 "US",
-                true,
-                Set.of("config"));
+                true);
 
         final ArgumentCaptor<PaymentProviderFilter> filterCaptor = ArgumentCaptor.forClass(PaymentProviderFilter.class);
         verify(service).list(eq(TENANT_ID), filterCaptor.capture(), eq(Pageable.unpaged()));
@@ -128,7 +126,7 @@ class PaymentProviderControllerTest {
 
         when(mapper.toEntity(request)).thenReturn(mapped);
         when(service.create(TENANT_ID, PROVIDER, mapped)).thenReturn(saved);
-        when(mapper.toDto(saved, Set.of("config"))).thenReturn(dto);
+        when(mapper.toDtoWithConfig(saved)).thenReturn(dto);
 
         final ResponseEntity<PaymentProvider> result = controller.createPaymentProvider(PROVIDER, request);
 
@@ -148,7 +146,7 @@ class PaymentProviderControllerTest {
             updater.accept(saved);
             return saved;
         });
-        when(mapper.toDto(saved, Set.of("config"))).thenReturn(dto);
+        when(mapper.toDtoWithConfig(saved)).thenReturn(dto);
 
         final ResponseEntity<PaymentProvider> result = controller.updatePaymentProvider(PROVIDER, request);
 

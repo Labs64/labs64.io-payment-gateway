@@ -85,9 +85,8 @@ paths:
       description: >-
         Returns tenant payment providers created from globally supported payment
         provider definitions in YAML. If active is omitted, both active and
-        inactive tenant payment providers are returned. Use with=config to include
-        tenant PSP configuration; this requires payment-provider:write in
-        addition to payment-provider:read.
+        inactive tenant payment providers are returned. Tenant PSP configuration
+        is never returned by this list endpoint.
       operationId: listPaymentProviders
       tags:
         - PaymentProviders
@@ -117,21 +116,6 @@ paths:
           example: true
           schema:
             type: boolean
-        - name: with
-          in: query
-          required: false
-          description: >-
-            Optional comma-separated expansions. Supported value: config.
-            Including config requires payment-provider:write scope.
-          style: form
-          explode: false
-          schema:
-            type: array
-            uniqueItems: true
-            items:
-              type: string
-              enum:
-                - config
       responses:
         '200':
           description: List of tenant payment providers
@@ -166,9 +150,9 @@ paths:
     get:
       summary: Get a single payment provider
       description: >-
-        Retrieve details of a tenant payment provider by provider. Use
-        with=config to include tenant PSP configuration; this requires
-        payment-provider:write in addition to payment-provider:read.
+        Retrieve details of a tenant payment provider by provider, including
+        tenant PSP configuration. This endpoint requires payment-provider:write
+        scope because it exposes sensitive provider configuration.
       operationId: getPaymentProvider
       tags:
         - PaymentProviders
@@ -176,21 +160,6 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/ProviderPath'
-        - name: with
-          in: query
-          required: false
-          description: >-
-            Optional comma-separated expansions. Supported value: config.
-            Including config requires payment-provider:write scope.
-          style: form
-          explode: false
-          schema:
-            type: array
-            uniqueItems: true
-            items:
-              type: string
-              enum:
-                - config
       responses:
         '200':
           description: Payment method details
@@ -205,6 +174,8 @@ paths:
                 icon: null
                 recurring: true
                 active: true
+                config:
+                  apiKey: sk_test_***
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
@@ -970,8 +941,9 @@ components:
         config:
           type: object
           description: >-
-            Tenant PSP configuration. Returned only when with=config is
-            requested and the token has payment-provider:write scope.
+            Tenant PSP configuration. Returned by single-provider, create, and
+            update endpoints that require payment-provider:write scope. Never
+            returned by the list endpoint.
           additionalProperties:
             type: string
           readOnly: true

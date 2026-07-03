@@ -3,7 +3,6 @@ package io.labs64.paymentgateway.mapper;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.model.PaymentProvider;
@@ -41,7 +40,7 @@ class PaymentProviderMapperTest {
     void toDtoUsesProviderAsPublicIdAndMasksConfigByDefault() {
         final PaymentProviderEntity entity = entity("tenant-a", "stripe");
 
-        final PaymentProvider dto = mapper.toDto(entity, Set.of());
+        final PaymentProvider dto = mapper.toDto(entity);
 
         assertThat(dto.getId()).isEqualTo("stripe");
         assertThat(dto.getName()).isEqualTo("Stripe");
@@ -51,10 +50,10 @@ class PaymentProviderMapperTest {
     }
 
     @Test
-    void toDtoIncludesConfigOnlyWhenRequested() {
+    void toDtoWithConfigIncludesConfig() {
         final PaymentProviderEntity entity = entity("tenant-a", "stripe");
 
-        final PaymentProvider dto = mapper.toDto(entity, Set.of("config"));
+        final PaymentProvider dto = mapper.toDtoWithConfig(entity);
 
         assertThat(dto.getConfig()).containsEntry("apiKey", "secret");
     }
@@ -92,14 +91,13 @@ class PaymentProviderMapperTest {
     }
 
     @Test
-    void toPageMapsItemsWithConfigFlag() {
+    void toPageMapsItemsWithoutConfig() {
         final PaymentProviderListResponse response = mapper.toPage(
-                new PageImpl<>(List.of(entity("tenant-a", "stripe"))),
-                Set.of("config"));
+                new PageImpl<>(List.of(entity("tenant-a", "stripe"))));
 
         assertThat(response.getItems()).hasSize(1);
         assertThat(response.getItems().get(0).getId()).isEqualTo("stripe");
-        assertThat(response.getItems().get(0).getConfig()).containsEntry("apiKey", "secret");
+        assertThat(response.getItems().get(0).getConfig()).isNull();
     }
 
     private static PaymentProviderEntity entity(final String tenantId, final String provider) {

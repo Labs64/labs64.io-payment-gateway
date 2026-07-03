@@ -1,7 +1,6 @@
 package io.labs64.paymentgateway.mapper;
 
 import java.util.LinkedHashMap;
-import java.util.Set;
 
 import org.mapstruct.AfterMapping;
 import org.mapstruct.BeanMapping;
@@ -38,11 +37,11 @@ public interface PaymentProviderMapper {
     @Mapping(target = "icon", ignore = true)
     @Mapping(target = "recurring", ignore = true)
     @Mapping(target = "config", ignore = true)
-    PaymentProvider toDtoInternal(PaymentProviderEntity entity);
+    PaymentProvider toDto(PaymentProviderEntity entity);
 
-    default PaymentProvider toDto(final PaymentProviderEntity entity, final Set<String> with) {
-        final PaymentProvider dto = toDtoInternal(entity);
-        if (dto != null && with != null && with.contains("config")) {
+    default PaymentProvider toDtoWithConfig(final PaymentProviderEntity entity) {
+        final PaymentProvider dto = toDto(entity);
+        if (dto != null) {
             dto.setConfig(entity.getConfig());
         }
         return dto;
@@ -67,10 +66,10 @@ public interface PaymentProviderMapper {
         }
     }
 
-    default PaymentProviderListResponse toPage(final Page<PaymentProviderEntity> source, final Set<String> with) {
+    default PaymentProviderListResponse toPage(final Page<PaymentProviderEntity> source) {
         final PaymentProviderListResponse response = new PaymentProviderListResponse();
         response.setItems(source.getContent().stream()
-                .map(entity -> toDto(entity, with))
+                .map(this::toDto)
                 .toList());
         return response;
     }

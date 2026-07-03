@@ -27,8 +27,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/webhooks/**").permitAll()
                         // list payment definitions
                         .requestMatchers(HttpMethod.GET, "/payment-definitions").permitAll()
-                        // get & list payment providers
-                        .requestMatchers(HttpMethod.GET, "/payment-providers/**")
+                        // get single payment provider including config
+                        .requestMatchers(HttpMethod.GET, "/payment-providers/*")
+                        .hasAuthority(scope(Scopes.PAYMENT_PROVIDER_WRITE))
+                        // list payment providers without config
+                        .requestMatchers(HttpMethod.GET, "/payment-providers")
                         .hasAuthority(scope(Scopes.PAYMENT_PROVIDER_READ))
                         // create payment provider
                         .requestMatchers(HttpMethod.POST, "/payment-providers/**")

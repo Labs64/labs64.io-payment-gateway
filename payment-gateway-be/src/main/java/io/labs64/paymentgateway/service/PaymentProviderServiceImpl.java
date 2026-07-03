@@ -30,8 +30,8 @@ import lombok.RequiredArgsConstructor;
  * <p>
  * Provider availability comes from {@link PaymentDefinitionService}; tenant
  * ownership, active state, display overrides, and PSP configuration come from
- * {@link PaymentProviderEntity} records. DTO shaping, config masking, and
- * {@code with=config} handling intentionally belong to mapper/controller layers.
+ * {@link PaymentProviderEntity} records. DTO shaping and config masking
+ * intentionally belong to mapper/controller layers.
  */
 @Slf4j
 @Service
