@@ -12,7 +12,6 @@ import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,7 +33,7 @@ public class WebhookController implements WebhooksApi {
             String provider,
             Map<String, Object> requestBody) {
         log.info("POST /webhooks/{} | correlationId={}, payloadKeys={}",
-                provider, MDC.get(CorrelationContextHolder.get().orElse("-")),
+                provider, CorrelationContextHolder.get().orElse("-"),
                 requestBody != null ? requestBody.keySet() : "null");
 
         webhookService.processWebhook(toWebhookRequest(provider, requestBody));
