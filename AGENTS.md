@@ -13,7 +13,7 @@ Unified payment gateway: consolidates PSPs (Stripe, PayPal, NoOp) into a single 
 
 | Path | Service | Stack | Port |
 |------|---------|-------|------|
-| `payment-gateway-be/` | Backend | Java 25, Spring Boot 4.0.5, Maven | 8080 |
+| `payment-gateway-be/` | Backend | Java 25, Spring Boot 4.1.0, Maven | 8080 |
 
 ## Critical guardrails
 
