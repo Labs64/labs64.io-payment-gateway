@@ -27,6 +27,10 @@ public class SecurityConfig {
                         // Prometheus scrape endpoint — reached unauthenticated by the in-cluster
                         // scraper (pod annotation), restricted at the network layer. See OBSERVABILITY.md.
                         .requestMatchers(HttpMethod.GET, "/actuator/prometheus").permitAll()
+                        // OpenAPI spec + Swagger UI — public docs, aggregated by the gateway at
+                        // gateway.localhost/payment-gateway/v3/api-docs (see AGENTS.md).
+                        .requestMatchers(HttpMethod.GET, "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                        .permitAll()
                         .requestMatchers(HttpMethod.POST, "/webhooks/**").permitAll()
                         // list payment definitions
                         .requestMatchers(HttpMethod.GET, "/payment-definitions").permitAll()
