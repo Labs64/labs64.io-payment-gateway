@@ -24,6 +24,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/actuator/health/**").permitAll()
+                        // Prometheus scrape endpoint — reached unauthenticated by the in-cluster
+                        // scraper (pod annotation), restricted at the network layer. See OBSERVABILITY.md.
+                        .requestMatchers(HttpMethod.GET, "/actuator/prometheus").permitAll()
                         .requestMatchers(HttpMethod.POST, "/webhooks/**").permitAll()
                         // list payment definitions
                         .requestMatchers(HttpMethod.GET, "/payment-definitions").permitAll()

@@ -93,11 +93,7 @@ management:
     readinessState:
       enabled: true
 
-  # Distributed Tracing
-  tracing:
-    sampling:
-      probability: 1.0
-
+  # Distributed tracing is infrastructure-owned (OTel Java Agent) — no in-app tracer/sampler.
   # Metrics
   metrics:
     tags:
