@@ -16,6 +16,7 @@ import io.labs64.paymentgateway.model.PaymentType;
 import io.labs64.paymentgateway.model.StatusDetails;
 import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
+import io.labs64.paymentgateway.psp.spi.ProviderWebhookSupport;
 import io.labs64.paymentgateway.psp.spi.PaymentWebhookContext;
 import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
 import io.labs64.paymentgateway.psp.spi.WebhookRequest;
@@ -27,6 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static io.labs64.paymentgateway.domain.PaymentTransactionStatuses.isTerminal;
 
 /**
  * Implementation of {@link WebhookService}.
@@ -51,7 +54,11 @@ public class WebhookServiceImpl implements WebhookService {
         log.info("Processing webhook from provider={}", request.provider());
 
         final PaymentProvider paymentProvider = providerRegistry.getProvider(request.provider());
-        final UUID transactionId = paymentProvider.resolvePaymentTransactionId(request);
+        if (!(paymentProvider instanceof ProviderWebhookSupport webhookSupport)) {
+            throw new ValidationException("Payment provider does not support webhooks: " + request.provider());
+        }
+
+        final UUID transactionId = webhookSupport.resolveTransactionId(request);
         final PaymentTransactionEntity transaction = paymentTransactionRepository.findById(transactionId)
                 .orElseThrow(() -> new NotFoundException("Payment transaction not found for ID: " + transactionId));
         final PaymentEntity payment = transaction.getPayment();
@@ -64,7 +71,7 @@ public class WebhookServiceImpl implements WebhookService {
                 paymentContextMapper.toPaymentTransaction(transaction),
                 paymentContextMapper.toProviderConfig(payment.getPaymentProvider()),
                 request);
-        final PaymentWebhookResult result = paymentProvider.handleWebhook(context);
+        final PaymentWebhookResult result = webhookSupport.handleWebhook(context);
 
         if (isTerminal(transaction.getStatus())) {
             return handleAlreadyTerminalTransaction(transaction, result);
@@ -107,10 +114,6 @@ public class WebhookServiceImpl implements WebhookService {
         }
 
         throw new ConflictException("Payment transaction already has terminal status: " + transaction.getStatus());
-    }
-
-    private boolean isTerminal(final PaymentTransactionStatus status) {
-        return PaymentTransactionStatus.SUCCESS.equals(status) || PaymentTransactionStatus.FAILED.equals(status);
     }
 
     private StatusDetails toStatusDetails(final io.labs64.paymentgateway.psp.spi.StatusDetails source) {

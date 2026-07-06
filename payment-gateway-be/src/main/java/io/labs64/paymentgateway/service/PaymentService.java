@@ -5,7 +5,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 import io.labs64.paymentgateway.entity.PaymentEntity;
-import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
+import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
 import io.labs64.paymentgateway.service.filter.PaymentFilter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,4 +30,6 @@ public interface PaymentService {
     PaymentEntity close(String tenantId, UUID id);
 
     PayPaymentResponse pay(String tenantId, UUID id);
+
+    PayPaymentResponse pay(String tenantId, UUID id, PaymentExecutionRequest request);
 }

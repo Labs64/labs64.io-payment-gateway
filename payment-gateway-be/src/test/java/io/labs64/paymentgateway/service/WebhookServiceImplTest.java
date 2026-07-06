@@ -20,6 +20,7 @@ import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.PaymentTransaction;
 import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
 import io.labs64.paymentgateway.psp.spi.ProviderConfig;
+import io.labs64.paymentgateway.psp.spi.ProviderWebhookSupport;
 import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import io.labs64.paymentgateway.repository.CorrelationTraceRepository;
 import io.labs64.paymentgateway.repository.PaymentRepository;
@@ -63,7 +64,7 @@ class WebhookServiceImplTest {
     private PaymentEventPublisher paymentEventPublisher;
 
     @Mock
-    private PaymentProvider paymentProvider;
+    private WebhookCapableProvider paymentProvider;
 
     @InjectMocks
     private WebhookServiceImpl service;
@@ -106,6 +107,17 @@ class WebhookServiceImplTest {
     }
 
     @Test
+    void processWebhookRejectsProviderWithoutWebhookCapability() {
+        final WebhookRequest request = request(PROVIDER, UUID.randomUUID());
+        when(providerRegistry.getProvider(request.provider())).thenReturn(new NonWebhookProvider());
+
+        assertThatThrownBy(() -> service.processWebhook(request))
+                .isInstanceOf(ValidationException.class);
+
+        verify(paymentTransactionRepository, never()).findById(any());
+    }
+
+    @Test
     void processWebhookIgnoresDuplicateTerminalWebhookWithSameStatus() {
         final PaymentEntity payment = payment(PROVIDER, PaymentStatus.CLOSED);
         final PaymentTransactionEntity transaction = transaction(payment, PaymentTransactionStatus.SUCCESS);
@@ -144,7 +156,7 @@ class WebhookServiceImplTest {
 
     private void stubTransactionLookup(final WebhookRequest request, final PaymentTransactionEntity transaction) {
         when(providerRegistry.getProvider(request.provider())).thenReturn(paymentProvider);
-        when(paymentProvider.resolvePaymentTransactionId(request)).thenReturn(transaction.getId());
+        when(paymentProvider.resolveTransactionId(request)).thenReturn(transaction.getId());
         when(paymentTransactionRepository.findById(transaction.getId())).thenReturn(Optional.of(transaction));
         when(correlationTraceRepository.findFirstByEntityTypeAndEntityIdOrderByCreatedAtDesc(
                 anyString(),
@@ -211,5 +223,21 @@ class WebhookServiceImplTest {
                 Map.of("transactionId", transactionId.toString()),
                 Map.of(),
                 Map.of());
+    }
+
+    private interface WebhookCapableProvider extends PaymentProvider, ProviderWebhookSupport {
+    }
+
+    private static class NonWebhookProvider implements PaymentProvider {
+
+        @Override
+        public String provider() {
+            return PROVIDER;
+        }
+
+        @Override
+        public io.labs64.paymentgateway.psp.spi.PaymentResult execute(final io.labs64.paymentgateway.psp.spi.PaymentContext context) {
+            return null;
+        }
     }
 }

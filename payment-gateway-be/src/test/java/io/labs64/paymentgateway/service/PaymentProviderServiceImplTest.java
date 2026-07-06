@@ -10,8 +10,14 @@ import io.labs64.paymentgateway.config.PaymentGatewayProperties.PaymentDefinitio
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.exception.ConflictException;
 import io.labs64.paymentgateway.exception.NotFoundException;
+import io.labs64.paymentgateway.exception.ValidationException;
 import io.labs64.paymentgateway.message.PaymentProviderMessages;
 import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
+import io.labs64.paymentgateway.psp.spi.PaymentContext;
+import io.labs64.paymentgateway.psp.spi.PaymentProvider;
+import io.labs64.paymentgateway.psp.spi.PaymentResult;
+import io.labs64.paymentgateway.psp.spi.ProviderConfigField;
+import io.labs64.paymentgateway.psp.spi.ProviderConfigSupport;
 import io.labs64.paymentgateway.repository.PaymentProviderRepository;
 import io.labs64.paymentgateway.repository.PaymentRepository;
 import io.labs64.paymentgateway.service.filter.PaymentProviderFilter;
@@ -52,8 +58,7 @@ class PaymentProviderServiceImplTest {
     @Mock
     private PaymentProviderRegistry paymentProviders;
 
-    @Mock
-    private io.labs64.paymentgateway.psp.spi.PaymentProvider pspProvider;
+    private final ConfigurableProvider pspProvider = new ConfigurableProvider();
 
     @InjectMocks
     private PaymentProviderServiceImpl service;
@@ -98,7 +103,7 @@ class PaymentProviderServiceImplTest {
     }
 
     @Test
-    void createAssignsTenantAndProviderAppliesDefaultsAndSanitizesConfig() {
+    void createAssignsTenantAndProviderAppliesDefaultsAndFiltersConfig() {
         final PaymentProviderEntity input = PaymentProviderEntity.builder()
                 .active(true)
                 .config(Map.of("apiKey", "raw", "extra", "trash"))
@@ -108,8 +113,6 @@ class PaymentProviderServiceImplTest {
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition));
         when(repository.existsByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(false);
         when(paymentProviders.getProvider(PROVIDER)).thenReturn(pspProvider);
-        when(pspProvider.validateAndSanitizePaymentProviderConfig(input.getConfig()))
-                .thenReturn(Map.of("apiKey", "sanitized"));
         when(repository.save(any(PaymentProviderEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         final PaymentProviderEntity result = service.create(TENANT_ID, PROVIDER, input);
@@ -118,7 +121,7 @@ class PaymentProviderServiceImplTest {
         assertThat(result.getProvider()).isEqualTo(PROVIDER);
         assertThat(result.getName()).isEqualTo("Stripe");
         assertThat(result.getDescription()).isEqualTo("Cards");
-        assertThat(result.getConfig()).containsExactly(Map.entry("apiKey", "sanitized"));
+        assertThat(result.getConfig()).containsExactly(Map.entry("apiKey", "raw"));
         verify(repository).save(input);
     }
 
@@ -134,7 +137,6 @@ class PaymentProviderServiceImplTest {
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition(PROVIDER)));
         when(repository.existsByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(false);
         when(paymentProviders.getProvider(PROVIDER)).thenReturn(pspProvider);
-        when(pspProvider.validateAndSanitizePaymentProviderConfig(input.getConfig())).thenReturn(input.getConfig());
         when(repository.save(any(PaymentProviderEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         final PaymentProviderEntity result = service.create(TENANT_ID, PROVIDER, input);
@@ -159,8 +161,6 @@ class PaymentProviderServiceImplTest {
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition(PROVIDER)));
         when(repository.findByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(Optional.of(entity));
         when(paymentProviders.getProvider(PROVIDER)).thenReturn(pspProvider);
-        when(pspProvider.validateAndSanitizePaymentProviderConfig(any()))
-                .thenReturn(Map.of("apiKey", "sanitized", "webhookSecret", "sanitized-secret"));
 
         final PaymentProviderEntity result = service.update(TENANT_ID, PROVIDER, target -> {
             target.setActive(false);
@@ -169,8 +169,40 @@ class PaymentProviderServiceImplTest {
 
         assertThat(result.isActive()).isFalse();
         assertThat(result.getConfig())
-                .containsEntry("apiKey", "sanitized")
-                .containsEntry("webhookSecret", "sanitized-secret");
+                .containsEntry("apiKey", "raw")
+                .containsEntry("webhookSecret", "raw-secret");
+    }
+
+    @Test
+    void createThrowsWhenProviderDoesNotAcceptConfig() {
+        final PaymentProviderEntity input = PaymentProviderEntity.builder()
+                .active(true)
+                .config(Map.of("apiKey", "raw"))
+                .build();
+
+        when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition(PROVIDER)));
+        when(repository.existsByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(false);
+        when(paymentProviders.getProvider(PROVIDER)).thenReturn(new NonConfigurableProvider());
+        when(msg.configNotSupported(PROVIDER)).thenReturn("config not supported");
+
+        assertThatThrownBy(() -> service.create(TENANT_ID, PROVIDER, input))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void createThrowsWhenRequiredConfigFieldIsMissing() {
+        final PaymentProviderEntity input = PaymentProviderEntity.builder()
+                .active(true)
+                .config(Map.of("extra", "trash"))
+                .build();
+
+        when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition(PROVIDER)));
+        when(repository.existsByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(false);
+        when(paymentProviders.getProvider(PROVIDER)).thenReturn(pspProvider);
+        when(msg.configFieldRequired(PROVIDER, "apiKey")).thenReturn("apiKey required");
+
+        assertThatThrownBy(() -> service.create(TENANT_ID, PROVIDER, input))
+                .isInstanceOf(ValidationException.class);
     }
 
     @Test
@@ -239,5 +271,33 @@ class PaymentProviderServiceImplTest {
         definition.setSupportedCurrencies(currencies);
         definition.setSupportedCountries(countries);
         return definition;
+    }
+
+    private static class ConfigurableProvider extends NonConfigurableProvider implements ProviderConfigSupport {
+
+        @Override
+        public Set<ProviderConfigField> configFields() {
+            return Set.of(
+                    ProviderConfigField.required("apiKey"),
+                    ProviderConfigField.optional("webhookSecret"));
+        }
+
+        @Override
+        public void validateConfig(final Map<String, String> config) {
+            // Provider-specific validation hook; core already filtered unknown keys and required fields.
+        }
+    }
+
+    private static class NonConfigurableProvider implements PaymentProvider {
+
+        @Override
+        public String provider() {
+            return PROVIDER;
+        }
+
+        @Override
+        public PaymentResult execute(final PaymentContext context) {
+            return null;
+        }
     }
 }

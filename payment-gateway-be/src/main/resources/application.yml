@@ -98,12 +98,14 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
-    export:
-      prometheus:
+  prometheus:
+    metrics:
+      export:
         enabled: true
 
 # Payment Gateway Configuration
 payment-gateway:
+  public-base-url: ${PAYMENT_GATEWAY_PUBLIC_BASE_URL:http://localhost:8080}
   payment-definitions:
     - provider: "stripe"
       enabled: true

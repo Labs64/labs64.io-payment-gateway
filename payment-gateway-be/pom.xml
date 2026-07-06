@@ -30,7 +30,7 @@
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <lombok.version>1.18.44</lombok.version>
         <stripe.version>32.0.0</stripe.version>
-        <paypal.version>2.2.0</paypal.version>
+        <paypal.version>2.3.0</paypal.version>
         <!-- PLUGINS -->
         <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
         <openapi-generator-maven-plugin.version>7.21.0</openapi-generator-maven-plugin.version>

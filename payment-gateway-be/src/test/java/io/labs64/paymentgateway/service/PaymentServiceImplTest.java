@@ -8,9 +8,11 @@ import io.labs64.paymentgateway.config.PaymentGatewayProperties.PaymentDefinitio
 import io.labs64.paymentgateway.correlation.CorrelationEntityType;
 import io.labs64.paymentgateway.entity.PaymentEntity;
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
+import io.labs64.paymentgateway.entity.CheckoutSessionEntity;
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
 import io.labs64.paymentgateway.exception.ConflictException;
 import io.labs64.paymentgateway.exception.PaymentNotPayableException;
+import io.labs64.paymentgateway.exception.PspException;
 import io.labs64.paymentgateway.mapper.PaymentContextMapper;
 import io.labs64.paymentgateway.message.PaymentMessages;
 import io.labs64.paymentgateway.model.PaymentStatus;
@@ -18,8 +20,13 @@ import io.labs64.paymentgateway.model.PaymentTransactionStatus;
 import io.labs64.paymentgateway.model.StatusDetails;
 import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
 import io.labs64.paymentgateway.psp.spi.PaymentContext;
+import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
+import io.labs64.paymentgateway.psp.spi.PaymentNextAction;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
+import io.labs64.paymentgateway.psp.spi.CheckoutSessionDraft;
+import io.labs64.paymentgateway.psp.spi.CheckoutPreparationContext;
+import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
 import io.labs64.paymentgateway.repository.PaymentRepository;
 import io.labs64.paymentgateway.service.filter.PaymentFilter;
 import org.junit.jupiter.api.Test;
@@ -61,6 +68,9 @@ class PaymentServiceImplTest {
     private PaymentNextActionService paymentNextActionService;
 
     @Mock
+    private CheckoutSessionService checkoutSessionService;
+
+    @Mock
     private PaymentContextMapper paymentContextMapper;
 
     @Mock
@@ -77,6 +87,9 @@ class PaymentServiceImplTest {
 
     @Mock
     private PaymentProvider pspProvider;
+
+    @Mock
+    private CheckoutCapableProvider checkoutCapableProvider;
 
     @InjectMocks
     private PaymentServiceImpl service;
@@ -148,7 +161,12 @@ class PaymentServiceImplTest {
         when(transactionService.create(any(), any())).thenReturn(transaction);
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition()));
         when(providerRegistry.getProvider(PROVIDER)).thenReturn(pspProvider);
-        when(paymentContextMapper.toContext(payment, transaction, payment.getPaymentProvider())).thenReturn(context);
+        when(paymentContextMapper.toContext(
+                payment,
+                transaction,
+                payment.getPaymentProvider(),
+                null,
+                PaymentExecutionRequest.empty())).thenReturn(context);
         when(pspProvider.execute(context)).thenReturn(result);
         when(transactionService.update(any(), any(), any())).thenAnswer(invocation -> {
             final java.util.function.Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
@@ -178,7 +196,12 @@ class PaymentServiceImplTest {
         when(transactionService.create(any(), any())).thenReturn(transaction);
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition()));
         when(providerRegistry.getProvider(PROVIDER)).thenReturn(pspProvider);
-        when(paymentContextMapper.toContext(payment, transaction, payment.getPaymentProvider())).thenReturn(context);
+        when(paymentContextMapper.toContext(
+                payment,
+                transaction,
+                payment.getPaymentProvider(),
+                null,
+                PaymentExecutionRequest.empty())).thenReturn(context);
         when(pspProvider.execute(context)).thenReturn(new PaymentResult(
                 PROVIDER,
                 PaymentTransactionStatus.SUCCESS,
@@ -190,6 +213,63 @@ class PaymentServiceImplTest {
         service.pay(TENANT_ID, payment.getId());
 
         verify(pspProvider).execute(context);
+    }
+
+    @Test
+    void payCreatesCheckoutSessionForCheckoutProviderAndStoresNextActionOnSession() {
+        final PaymentEntity payment = payment();
+        final PaymentTransactionEntity transaction = transaction(payment);
+        final PaymentExecutionRequest executionRequest = new PaymentExecutionRequest(Map.of(
+                "returnUrl", "https://checkout.example/return"));
+        final CheckoutPreparationContext preparationContext = new CheckoutPreparationContext(
+                null,
+                null,
+                null,
+                executionRequest);
+        final CheckoutSessionDraft draft = new CheckoutSessionDraft(executionRequest.checkout(), null);
+        final CheckoutSessionEntity session = CheckoutSessionEntity.builder()
+                .id(UUID.randomUUID())
+                .tenantId(TENANT_ID)
+                .paymentId(payment.getId())
+                .paymentTransactionId(transaction.getId())
+                .payload(draft.payload())
+                .build();
+        final PaymentContext context = new PaymentContext(null, null, null);
+        final PaymentNextAction nextAction = new PaymentNextAction(
+                io.labs64.paymentgateway.model.NextAction.TypeEnum.REDIRECT,
+                Map.of("redirectUrl", "https://paypal.example/approve"));
+
+        when(paymentRepository.findByIdAndTenantId(payment.getId(), TENANT_ID)).thenReturn(Optional.of(payment));
+        when(transactionService.create(any(), any())).thenReturn(transaction);
+        when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition()));
+        when(providerRegistry.getProvider(PROVIDER)).thenReturn(checkoutCapableProvider);
+        when(paymentContextMapper.toCheckoutPreparationContext(payment, transaction, payment.getPaymentProvider(), executionRequest))
+                .thenReturn(preparationContext);
+        when(checkoutCapableProvider.prepareCheckoutSession(preparationContext)).thenReturn(Optional.of(draft));
+        when(checkoutSessionService.create(transaction, draft.payload(), draft.expiresAt())).thenReturn(session);
+        when(paymentContextMapper.toContext(payment, transaction, payment.getPaymentProvider(), session, executionRequest))
+                .thenReturn(context);
+        when(checkoutCapableProvider.execute(context)).thenReturn(new PaymentResult(
+                PROVIDER,
+                PaymentTransactionStatus.PENDING,
+                Map.of("orderId", "paypal-order"),
+                null,
+                nextAction));
+        when(transactionService.update(any(), any(), any())).thenAnswer(invocation -> {
+            final java.util.function.Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
+            updater.accept(transaction);
+            return transaction;
+        });
+
+        final PayPaymentResponse response = service.pay(TENANT_ID, payment.getId(), executionRequest);
+
+        assertThat(response.nextAction()).isSameAs(nextAction);
+        verify(checkoutSessionService).create(transaction, draft.payload(), draft.expiresAt());
+        verify(checkoutSessionService).updateNextAction(
+                eq(TENANT_ID),
+                eq(session.getId()),
+                eq(Map.of("type", "REDIRECT", "details", Map.of("redirectUrl", "https://paypal.example/approve"))));
+        verify(paymentNextActionService, never()).create(any(), any());
     }
 
     @Test
@@ -212,6 +292,41 @@ class PaymentServiceImplTest {
         assertThat(response.transaction().getStatusDetails().getCode()).isEqualTo("PAYMENT_PROVIDER_DISABLED");
         verify(providerRegistry, never()).getProvider(any());
         verify(paymentEventPublisher).publishFinalized(payment, transaction);
+    }
+
+    @Test
+    void payCreatesFailedTransactionWhenProviderExecutionFails() {
+        final PaymentEntity payment = payment();
+        final PaymentTransactionEntity transaction = transaction(payment);
+        final PaymentContext context = new PaymentContext(null, null, null);
+
+        when(paymentRepository.findByIdAndTenantId(payment.getId(), TENANT_ID)).thenReturn(Optional.of(payment));
+        when(transactionService.create(any(), any())).thenReturn(transaction);
+        when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition()));
+        when(providerRegistry.getProvider(PROVIDER)).thenReturn(pspProvider);
+        when(paymentContextMapper.toContext(
+                payment,
+                transaction,
+                payment.getPaymentProvider(),
+                null,
+                PaymentExecutionRequest.empty())).thenReturn(context);
+        when(pspProvider.execute(context)).thenThrow(new PspException("PayPal order creation failed."));
+        when(transactionService.update(any(), any(), any())).thenAnswer(invocation -> {
+            final java.util.function.Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
+            updater.accept(transaction);
+            return transaction;
+        });
+
+        final PayPaymentResponse response = service.pay(TENANT_ID, payment.getId());
+
+        assertThat(response.transaction().getStatus()).isEqualTo(PaymentTransactionStatus.FAILED);
+        assertThat(response.transaction().getStatusDetails()).isEqualTo(
+                new StatusDetails("PSP_ERROR", "PayPal order creation failed."));
+        assertThat(response.nextAction()).isNull();
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.READY);
+        verify(paymentEventPublisher).publishFinalized(payment, transaction);
+        verify(paymentEventPublisher, never()).publishClosed(any(), any());
+        verify(paymentNextActionService, never()).create(any(), any());
     }
 
     @Test
@@ -301,5 +416,8 @@ class PaymentServiceImplTest {
         definition.setProvider(PROVIDER);
         definition.setEnabled(true);
         return definition;
+    }
+
+    private interface CheckoutCapableProvider extends PaymentProvider, ProviderCheckoutSupport {
     }
 }

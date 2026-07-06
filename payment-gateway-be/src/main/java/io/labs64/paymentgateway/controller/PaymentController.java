@@ -1,20 +1,27 @@
 package io.labs64.paymentgateway.controller;
 
-import java.util.UUID;
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.labs64.paymentgateway.entity.PaymentEntity;
 import io.labs64.paymentgateway.idempotency.IdempotentOperation;
 import io.labs64.paymentgateway.mapper.PaymentMapper;
 import io.labs64.paymentgateway.mapper.PaymentTransactionMapper;
+import io.labs64.paymentgateway.model.CreatePaymentRequest;
+import io.labs64.paymentgateway.model.ExecutePaymentResponse;
 import io.labs64.paymentgateway.model.NextAction;
+import io.labs64.paymentgateway.model.PayPaymentRequest;
 import io.labs64.paymentgateway.model.Payment;
 import io.labs64.paymentgateway.model.PaymentListResponse;
 import io.labs64.paymentgateway.model.PaymentStatus;
 import io.labs64.paymentgateway.model.PaymentTransaction;
+import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
 import io.labs64.paymentgateway.psp.spi.PaymentNextAction;
 import io.labs64.paymentgateway.security.AuthContextHolder;
 import io.labs64.paymentgateway.service.PayPaymentResponse;
+import io.labs64.paymentgateway.service.PaymentService;
 import io.labs64.paymentgateway.service.filter.PaymentFilter;
+import io.labs64.paymentgateway.api.PaymentsApi;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
@@ -23,19 +30,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
-import io.labs64.paymentgateway.service.PaymentService;
-import io.labs64.paymentgateway.api.PaymentsApi;
-import io.labs64.paymentgateway.model.CreatePaymentRequest;
-import io.labs64.paymentgateway.model.ExecutePaymentResponse;
-import lombok.RequiredArgsConstructor;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @RestController
 @RequiredArgsConstructor
 public class PaymentController implements PaymentsApi {
+    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
+    };
+
     private final PaymentService service;
     private final PaymentMapper paymentMapper;
     private final PaymentTransactionMapper paymentTransactionMapper;
+    private final ObjectMapper objectMapper;
 
     @Override
     public ResponseEntity<Payment> getPayment(final UUID paymentId) {
@@ -82,12 +90,12 @@ public class PaymentController implements PaymentsApi {
 
     @Override
     @IdempotentOperation
-    public ResponseEntity<ExecutePaymentResponse> payPayment(final UUID paymentId) {
+    public ResponseEntity<ExecutePaymentResponse> payPayment(final UUID paymentId, final PayPaymentRequest request) {
         final String tenantId = AuthContextHolder.require().tenantId();
 
         log.info("Payment attempt requested | tenantId={}, paymentId={}", tenantId, paymentId);
 
-        final PayPaymentResponse paymentResponse = service.pay(tenantId, paymentId);
+        final PayPaymentResponse paymentResponse = service.pay(tenantId, paymentId, toPaymentExecutionRequest(request));
         final Payment payment = paymentMapper.toDto(paymentResponse.payment());
         final PaymentTransaction transaction = paymentTransactionMapper.toDto(paymentResponse.transaction());
 
@@ -104,6 +112,13 @@ public class PaymentController implements PaymentsApi {
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    private PaymentExecutionRequest toPaymentExecutionRequest(final PayPaymentRequest request) {
+        if (request == null || request.getCheckout() == null) {
+            return PaymentExecutionRequest.empty();
+        }
+        return new PaymentExecutionRequest(objectMapper.convertValue(request.getCheckout(), MAP_TYPE));
     }
 
     @Override

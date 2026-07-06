@@ -31,7 +31,10 @@ public class SecurityConfig {
                         // gateway.localhost/payment-gateway/v3/api-docs (see AGENTS.md).
                         .requestMatchers(HttpMethod.GET, "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()
-                        .requestMatchers(HttpMethod.POST, "/webhooks/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/providers/*/webhooks").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/providers/*/checkout-sessions/*/return").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/providers/*/checkout-sessions/*/cancel").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/checkout-sessions/*/confirmation").permitAll()
                         // list payment definitions
                         .requestMatchers(HttpMethod.GET, "/payment-definitions").permitAll()
                         // get single payment provider including config
