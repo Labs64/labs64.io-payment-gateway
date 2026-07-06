@@ -65,7 +65,11 @@ public class CheckoutSessionConfirmationMapper {
             return number.longValue();
         }
         if (value instanceof String stringValue && !stringValue.isBlank()) {
-            return Long.valueOf(stringValue);
+            try {
+                return Long.valueOf(stringValue);
+            } catch (NumberFormatException ex) {
+                return null;
+            }
         }
         return null;
     }
