@@ -81,7 +81,7 @@ public class GlobalExceptionHandler {
         error.setCode(code);
         error.setMessage(message);
         error.setTimestamp(OffsetDateTime.now());
-        CorrelationContextHolder.get().ifPresent(s -> error.setTraceId(MDC.get(s)));
+        CorrelationContextHolder.get().ifPresent(error::setTraceId);
 
         return ResponseEntity.status(status).body(error);
     }
