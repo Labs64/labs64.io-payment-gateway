@@ -537,7 +537,11 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
             return number.intValue();
         }
         if (value instanceof String stringValue && StringUtils.isNotBlank(stringValue)) {
-            return Integer.parseInt(stringValue.trim());
+            try {
+                return Integer.parseInt(stringValue.trim());
+            } catch (NumberFormatException ex) {
+                throw new ValidationException("PayPal payment requires " + path + ".", ex);
+            }
         }
         throw new ValidationException("PayPal payment requires " + path + ".");
     }
