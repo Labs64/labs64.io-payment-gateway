@@ -11,16 +11,24 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import com.paypal.sdk.Environment;
 import com.paypal.sdk.PaypalServerSdkClient;
 import com.paypal.sdk.authentication.ClientCredentialsAuthModel;
 import com.paypal.sdk.http.response.ApiResponse;
+import com.paypal.sdk.models.Address;
+import com.paypal.sdk.models.AmountBreakdown;
 import com.paypal.sdk.models.AmountWithBreakdown;
 import com.paypal.sdk.models.CaptureOrderInput;
 import com.paypal.sdk.models.CheckoutPaymentIntent;
 import com.paypal.sdk.models.CreateOrderInput;
+import com.paypal.sdk.models.FulfillmentType;
+import com.paypal.sdk.models.ItemCategory;
+import com.paypal.sdk.models.ItemRequest;
 import com.paypal.sdk.models.LinkDescription;
+import com.paypal.sdk.models.Money;
+import com.paypal.sdk.models.Name;
 import com.paypal.sdk.models.Order;
 import com.paypal.sdk.models.OrderApplicationContext;
 import com.paypal.sdk.models.OrderApplicationContextShippingPreference;
@@ -28,7 +36,13 @@ import com.paypal.sdk.models.OrderApplicationContextUserAction;
 import com.paypal.sdk.models.OrderCaptureRequest;
 import com.paypal.sdk.models.OrderRequest;
 import com.paypal.sdk.models.OrderStatus;
+import com.paypal.sdk.models.Payer;
+import com.paypal.sdk.models.PhoneNumber;
+import com.paypal.sdk.models.PhoneType;
+import com.paypal.sdk.models.PhoneWithType;
 import com.paypal.sdk.models.PurchaseUnitRequest;
+import com.paypal.sdk.models.ShippingDetails;
+import com.paypal.sdk.models.ShippingName;
 import io.labs64.paymentgateway.config.PaymentGatewayProperties;
 import io.labs64.paymentgateway.exception.PspException;
 import io.labs64.paymentgateway.exception.ValidationException;
@@ -76,6 +90,10 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
     private static final String APPROVE_REL = "approve";
     private static final String CONTENT_TYPE_JSON = "application/json";
     private static final String PREFER_REPRESENTATION = "return=representation";
+    private static final int PAYPAL_MAX_DESCRIPTION_LENGTH = 127;
+    private static final int PAYPAL_MAX_ITEM_NAME_LENGTH = 127;
+    private static final int PAYPAL_MAX_ITEM_DESCRIPTION_LENGTH = 127;
+    private static final int PAYPAL_MAX_SKU_LENGTH = 127;
 
     private static final Set<ProviderConfigField> CONFIG_FIELDS = Set.of(
             ProviderConfigField.required(CLIENT_ID),
@@ -198,31 +216,198 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
     }
 
     private OrderRequest toOrderRequest(final PaymentContext context) {
-        return new OrderRequest.Builder(
+        final OrderRequest.Builder builder = new OrderRequest.Builder(
                 CheckoutPaymentIntent.CAPTURE,
-                List.of(new PurchaseUnitRequest.Builder(toAmount(context.payment().purchaseOrder()))
-                        .referenceId(context.transaction().id().toString())
-                        .description(context.payment().description())
-                        .build()))
-                .applicationContext(toApplicationContext(context.checkoutSession().id()))
-                .build();
+                List.of(toPurchaseUnit(context)))
+                .applicationContext(toApplicationContext(
+                        context.checkoutSession().id(),
+                        hasShippingInfo(context.payment().shippingInfo())))
+                .payer(toPayer(context.payment().billingInfo()));
+        return builder.build();
     }
 
-    private AmountWithBreakdown toAmount(final Map<String, Object> purchaseOrder) {
+    private PurchaseUnitRequest toPurchaseUnit(final PaymentContext context) {
+        final Map<String, Object> purchaseOrder = context.payment().purchaseOrder();
+        final List<ItemRequest> items = toItems(purchaseOrder, hasShippingInfo(context.payment().shippingInfo()));
+        final PurchaseUnitRequest.Builder builder = new PurchaseUnitRequest.Builder(toAmount(purchaseOrder, items))
+                .referenceId(context.transaction().id().toString())
+                .customId(context.payment().id().toString())
+                .invoiceId(context.transaction().id().toString())
+                .description(limit(context.payment().description(), PAYPAL_MAX_DESCRIPTION_LENGTH));
+
+        if (!items.isEmpty()) {
+            builder.items(items);
+        }
+
+        final ShippingDetails shipping = toShipping(context.payment().shippingInfo());
+        if (shipping != null) {
+            builder.shipping(shipping);
+        }
+
+        return builder.build();
+    }
+
+    private AmountWithBreakdown toAmount(final Map<String, Object> purchaseOrder, final List<ItemRequest> items) {
         final String currency = requireString(purchaseOrder, "currency");
         final BigDecimal grossAmount = requireAmount(purchaseOrder, "grossAmount");
+        final AmountWithBreakdown.Builder builder = new AmountWithBreakdown.Builder(
+                currency,
+                toMajorUnits(grossAmount));
 
-        return new AmountWithBreakdown.Builder(currency, grossAmount.movePointLeft(2)
-                .setScale(2, RoundingMode.UNNECESSARY)
-                .toPlainString())
-                .build();
+        final AmountBreakdown breakdown = toBreakdown(purchaseOrder, currency, items);
+        if (breakdown != null) {
+            builder.breakdown(breakdown);
+        }
+
+        return builder.build();
     }
 
-    private OrderApplicationContext toApplicationContext(final UUID checkoutSessionId) {
+    private AmountBreakdown toBreakdown(
+            final Map<String, Object> purchaseOrder,
+            final String currency,
+            final List<ItemRequest> items) {
+        if (items.isEmpty()) {
+            return null;
+        }
+
+        final BigDecimal itemTotal = items.stream()
+                .map(item -> fromMajorUnits(item.getUnitAmount().getValue())
+                        .multiply(new BigDecimal(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        final BigDecimal taxTotal = optionalAmount(purchaseOrder, "taxAmount").orElse(BigDecimal.ZERO);
+        final BigDecimal grossAmount = requireAmount(purchaseOrder, "grossAmount");
+        if (itemTotal.add(taxTotal).compareTo(grossAmount) != 0) {
+            throw new ValidationException("PayPal payment requires purchaseOrder items and taxAmount to match grossAmount.");
+        }
+
+        final AmountBreakdown.Builder builder = new AmountBreakdown.Builder()
+                .itemTotal(toMoney(currency, itemTotal));
+        if (taxTotal.compareTo(BigDecimal.ZERO) > 0) {
+            builder.taxTotal(toMoney(currency, taxTotal));
+        }
+        return builder.build();
+    }
+
+    private List<ItemRequest> toItems(final Map<String, Object> purchaseOrder, final boolean physicalGoods) {
+        final Object source = purchaseOrder != null ? purchaseOrder.get("items") : null;
+        if (!(source instanceof List<?> rawItems) || rawItems.isEmpty()) {
+            return List.of();
+        }
+
+        return rawItems.stream()
+                .filter(Map.class::isInstance)
+                .map(Map.class::cast)
+                .map(item -> toItem(item, requireString(purchaseOrder, "currency"), physicalGoods))
+                .toList();
+    }
+
+    private ItemRequest toItem(
+            final Map<?, ?> item,
+            final String currency,
+            final boolean physicalGoods) {
+        final String name = limit(
+                requireString(item, "name", "purchaseOrder.items[].name"),
+                PAYPAL_MAX_ITEM_NAME_LENGTH);
+        final ItemRequest.Builder builder = new ItemRequest.Builder(
+                name,
+                toMoney(currency, requireAmount(item, "price", "purchaseOrder.items[].price")),
+                String.valueOf(requireInteger(item, "quantity", "purchaseOrder.items[].quantity")))
+                .category(physicalGoods ? ItemCategory.PHYSICAL_GOODS : ItemCategory.DIGITAL_GOODS);
+
+        optionalString(item, "description").ifPresent(value ->
+                builder.description(limit(value, PAYPAL_MAX_ITEM_DESCRIPTION_LENGTH)));
+        optionalString(item, "sku").ifPresent(value -> builder.sku(limit(value, PAYPAL_MAX_SKU_LENGTH)));
+        optionalString(item, "url").ifPresent(builder::url);
+        optionalString(item, "image").ifPresent(builder::imageUrl);
+
+        return builder.build();
+    }
+
+    private Payer toPayer(final Map<String, Object> billingInfo) {
+        if (billingInfo == null || billingInfo.isEmpty()) {
+            return null;
+        }
+
+        final Payer.Builder builder = new Payer.Builder();
+        optionalString(billingInfo, "email").ifPresent(builder::emailAddress);
+        toName(billingInfo).ifPresent(builder::name);
+        toPayerPhone(billingInfo).ifPresent(builder::phone);
+        toAddress(billingInfo).ifPresent(builder::address);
+        return builder.build();
+    }
+
+    private ShippingDetails toShipping(final Map<String, Object> shippingInfo) {
+        if (!hasShippingInfo(shippingInfo)) {
+            return null;
+        }
+
+        final ShippingDetails.Builder builder = new ShippingDetails.Builder()
+                .type(FulfillmentType.SHIPPING);
+        toShippingName(shippingInfo).ifPresent(builder::name);
+        optionalString(shippingInfo, "email").ifPresent(builder::emailAddress);
+        toAddress(shippingInfo).ifPresent(builder::address);
+        return builder.build();
+    }
+
+    private static Optional<Name> toName(final Map<String, Object> source) {
+        final Optional<String> firstName = optionalString(source, "firstName");
+        final Optional<String> lastName = optionalString(source, "lastName");
+        if (firstName.isEmpty() && lastName.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(new Name.Builder()
+                .givenName(firstName.orElse(null))
+                .surname(lastName.orElse(null))
+                .build());
+    }
+
+    private static Optional<ShippingName> toShippingName(final Map<String, Object> source) {
+        final String fullName = Stream.of(
+                        optionalString(source, "firstName").orElse(""),
+                        optionalString(source, "lastName").orElse(""))
+                .filter(StringUtils::isNotBlank)
+                .reduce((left, right) -> left + " " + right)
+                .orElse(null);
+        return StringUtils.isBlank(fullName)
+                ? Optional.empty()
+                : Optional.of(new ShippingName.Builder().fullName(fullName).build());
+    }
+
+    private static Optional<Address> toAddress(final Map<String, Object> source) {
+        final Optional<String> country = optionalString(source, "country");
+        if (country.isEmpty()) {
+            return Optional.empty();
+        }
+
+        final Address.Builder builder = new Address.Builder(country.get());
+        optionalString(source, "address1").ifPresent(builder::addressLine1);
+        optionalString(source, "address2").ifPresent(builder::addressLine2);
+        optionalString(source, "city").ifPresent(builder::adminArea2);
+        optionalString(source, "state").ifPresent(builder::adminArea1);
+        optionalString(source, "postalCode").ifPresent(builder::postalCode);
+        return Optional.of(builder.build());
+    }
+
+    private static Optional<PhoneWithType> toPayerPhone(final Map<String, Object> source) {
+        return optionalString(source, "phone")
+                .map(phone -> new PhoneWithType.Builder(new PhoneNumber.Builder(phone).build())
+                        .phoneType(PhoneType.MOBILE)
+                        .build());
+    }
+
+    private static boolean hasShippingInfo(final Map<String, Object> shippingInfo) {
+        return shippingInfo != null && !shippingInfo.isEmpty();
+    }
+
+    private OrderApplicationContext toApplicationContext(
+            final UUID checkoutSessionId,
+            final boolean hasShippingInfo) {
         return new OrderApplicationContext.Builder()
                 .returnUrl(providerCheckoutUrl(checkoutSessionId, "return"))
                 .cancelUrl(providerCheckoutUrl(checkoutSessionId, "cancel"))
-                .shippingPreference(OrderApplicationContextShippingPreference.NO_SHIPPING)
+                .shippingPreference(hasShippingInfo
+                        ? OrderApplicationContextShippingPreference.SET_PROVIDED_ADDRESS
+                        : OrderApplicationContextShippingPreference.NO_SHIPPING)
                 .userAction(OrderApplicationContextUserAction.PAY_NOW)
                 .build();
     }
@@ -298,6 +483,21 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
         return stringValue.trim();
     }
 
+    private static String requireString(final Map<?, ?> source, final String field, final String path) {
+        final Object value = source != null ? source.get(field) : null;
+        if (!(value instanceof String stringValue) || StringUtils.isBlank(stringValue)) {
+            throw new ValidationException("PayPal payment requires " + path + ".");
+        }
+        return stringValue.trim();
+    }
+
+    private static Optional<String> optionalString(final Map<?, ?> source, final String field) {
+        final Object value = source != null ? source.get(field) : null;
+        return value instanceof String stringValue && StringUtils.isNotBlank(stringValue)
+                ? Optional.of(stringValue.trim())
+                : Optional.empty();
+    }
+
     private static BigDecimal requireAmount(final Map<String, Object> source, final String field) {
         final Object value = source != null ? source.get(field) : null;
         if (value instanceof Number number) {
@@ -307,6 +507,60 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
             return new BigDecimal(stringValue.trim());
         }
         throw new ValidationException("PayPal payment requires purchaseOrder." + field + ".");
+    }
+
+    private static BigDecimal requireAmount(final Map<?, ?> source, final String field, final String path) {
+        final Object value = source != null ? source.get(field) : null;
+        if (value instanceof Number number) {
+            return new BigDecimal(number.toString());
+        }
+        if (value instanceof String stringValue && StringUtils.isNotBlank(stringValue)) {
+            return new BigDecimal(stringValue.trim());
+        }
+        throw new ValidationException("PayPal payment requires " + path + ".");
+    }
+
+    private static Optional<BigDecimal> optionalAmount(final Map<String, Object> source, final String field) {
+        final Object value = source != null ? source.get(field) : null;
+        if (value instanceof Number number) {
+            return Optional.of(new BigDecimal(number.toString()));
+        }
+        if (value instanceof String stringValue && StringUtils.isNotBlank(stringValue)) {
+            return Optional.of(new BigDecimal(stringValue.trim()));
+        }
+        return Optional.empty();
+    }
+
+    private static int requireInteger(final Map<?, ?> source, final String field, final String path) {
+        final Object value = source != null ? source.get(field) : null;
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value instanceof String stringValue && StringUtils.isNotBlank(stringValue)) {
+            return Integer.parseInt(stringValue.trim());
+        }
+        throw new ValidationException("PayPal payment requires " + path + ".");
+    }
+
+    private static Money toMoney(final String currency, final BigDecimal minorUnits) {
+        return new Money.Builder(currency, toMajorUnits(minorUnits)).build();
+    }
+
+    private static String toMajorUnits(final BigDecimal minorUnits) {
+        return minorUnits.movePointLeft(2)
+                .setScale(2, RoundingMode.UNNECESSARY)
+                .toPlainString();
+    }
+
+    private static BigDecimal fromMajorUnits(final String majorUnits) {
+        return new BigDecimal(majorUnits).movePointRight(2);
+    }
+
+    private static String limit(final String value, final int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
     }
 
     private static String requireQueryParam(final ProviderCheckoutContext context, final String field) {
