@@ -34,7 +34,7 @@ public class ProviderWebhookController implements ProviderWebhooksApi {
             String provider,
             Map<String, Object> requestBody) {
         log.info("Provider webhook received | provider={}, correlationId={}, payloadKeys={}",
-                provider, MDC.get(CorrelationContextHolder.get().orElse("-")),
+                provider, CorrelationContextHolder.get().orElse("-"),
                 requestBody != null ? requestBody.keySet() : "null");
 
         webhookService.processWebhook(toWebhookRequest(provider, requestBody));
