@@ -23,7 +23,14 @@ public class SecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/health/**").permitAll()
+                        // Prometheus scrape endpoint — reached unauthenticated by the in-cluster
+                        // scraper (pod annotation), restricted at the network layer. See OBSERVABILITY.md.
+                        .requestMatchers(HttpMethod.GET, "/actuator/prometheus").permitAll()
+                        // OpenAPI spec + Swagger UI — public docs, aggregated by the gateway at
+                        // gateway.localhost/payment-gateway/v3/api-docs (see AGENTS.md).
+                        .requestMatchers(HttpMethod.GET, "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                        .permitAll()
                         .requestMatchers(HttpMethod.POST, "/providers/*/webhooks").permitAll()
                         .requestMatchers(HttpMethod.GET, "/providers/*/checkout-sessions/*/return").permitAll()
                         .requestMatchers(HttpMethod.GET, "/providers/*/checkout-sessions/*/cancel").permitAll()

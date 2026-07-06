@@ -15,7 +15,10 @@
                     <pattern>
                         {
                         "app": "${appName}",
-                        "pod": "${HOSTNAME:-unknown}"
+                        "pod": "${HOSTNAME:-unknown}",
+                        "correlationId": "%mdc{correlationId:-}",
+                        "traceId": "%mdc{trace_id:-}",
+                        "spanId": "%mdc{span_id:-}"
                         }
                     </pattern>
                 </pattern>
