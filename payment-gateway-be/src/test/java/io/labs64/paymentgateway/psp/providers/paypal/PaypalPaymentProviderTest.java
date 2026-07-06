@@ -1,5 +1,7 @@
 package io.labs64.paymentgateway.psp.providers.paypal;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -11,9 +13,13 @@ import io.labs64.paymentgateway.model.PaymentTransactionStatus;
 import io.labs64.paymentgateway.psp.spi.CheckoutPreparationContext;
 import io.labs64.paymentgateway.psp.spi.CheckoutSession;
 import io.labs64.paymentgateway.psp.spi.CheckoutSessionDraft;
+import io.labs64.paymentgateway.psp.spi.Payment;
+import io.labs64.paymentgateway.psp.spi.PaymentContext;
 import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
+import io.labs64.paymentgateway.psp.spi.PaymentTransaction;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutContext;
+import io.labs64.paymentgateway.psp.spi.ProviderConfig;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigField;
 import org.junit.jupiter.api.Test;
 
@@ -111,6 +117,20 @@ class PaypalPaymentProviderTest {
     }
 
     @Test
+    void executeRejectsFractionalItemQuantity() {
+        assertThatThrownBy(() -> provider.execute(paymentContextWithItemQuantity(new BigDecimal("1.5"))))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("PayPal payment requires purchaseOrder.items[].quantity.");
+    }
+
+    @Test
+    void executeRejectsZeroItemQuantity() {
+        assertThatThrownBy(() -> provider.execute(paymentContextWithItemQuantity(0)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessage("PayPal payment requires purchaseOrder.items[].quantity.");
+    }
+
+    @Test
     void cancelCheckoutReturnsRedirectToStoredCancelUrl() {
         final ProviderCheckoutContext context = new ProviderCheckoutContext(
                 null,
@@ -141,5 +161,27 @@ class PaypalPaymentProviderTest {
 
     private static CheckoutPreparationContext checkoutContext(final Map<String, Object> checkout) {
         return new CheckoutPreparationContext(null, null, null, new PaymentExecutionRequest(checkout));
+    }
+
+    private static PaymentContext paymentContextWithItemQuantity(final Object quantity) {
+        return new PaymentContext(
+                new Payment(
+                        UUID.randomUUID(),
+                        null,
+                        "Test payment",
+                        null,
+                        Map.of(
+                                "currency", "USD",
+                                "grossAmount", 3000,
+                                "items", List.of(Map.of(
+                                        "name", "Widget",
+                                        "price", 3000,
+                                        "quantity", quantity))),
+                        null,
+                        null,
+                        null),
+                new PaymentTransaction(UUID.randomUUID(), PaymentTransactionStatus.PENDING),
+                new ProviderConfig("paypal", config("sandbox"), "PayPal", null),
+                new CheckoutSession(UUID.randomUUID(), Map.of(), null, null));
     }
 }

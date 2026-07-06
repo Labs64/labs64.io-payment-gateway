@@ -533,16 +533,23 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
 
     private static int requireInteger(final Map<?, ?> source, final String field, final String path) {
         final Object value = source != null ? source.get(field) : null;
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        if (value instanceof String stringValue && StringUtils.isNotBlank(stringValue)) {
-            try {
-                return Integer.parseInt(stringValue.trim());
-            } catch (NumberFormatException ex) {
-                throw new ValidationException("PayPal payment requires " + path + ".", ex);
+
+        try {
+            final int integerValue;
+            if (value instanceof Number number) {
+                integerValue = new BigDecimal(number.toString()).intValueExact();
+            } else if (value instanceof String stringValue && StringUtils.isNotBlank(stringValue)) {
+                integerValue = Integer.parseInt(stringValue.trim());
+            } else {
+                integerValue = 0;
             }
+
+            if (integerValue > 0) {
+                return integerValue;
+            }
+        } catch (ArithmeticException | NumberFormatException ignored) {
         }
+
         throw new ValidationException("PayPal payment requires " + path + ".");
     }
 
