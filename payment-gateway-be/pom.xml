@@ -206,6 +206,14 @@
         </dependency>
     </dependencies>
 
+    <repositories>
+        <repository>
+            <id>labs64-nexus</id>
+            <name>Labs64 Nexus Releases</name>
+            <url>https://nexus.labs64.com/repository/maven-releases/</url>
+        </repository>
+    </repositories>
+
     <build>
         <plugins>
             <plugin>
