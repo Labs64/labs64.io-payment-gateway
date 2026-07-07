@@ -2,6 +2,7 @@ package io.labs64.paymentgateway.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -23,8 +24,6 @@ import io.labs64.paymentgateway.model.PaymentTransactionStatus;
 import io.labs64.paymentgateway.model.PurchaseOrder;
 import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
 import io.labs64.paymentgateway.psp.spi.PaymentNextAction;
-import io.labs64.paymentgateway.security.AuthPrincipal;
-import io.labs64.paymentgateway.security.Scopes;
 import io.labs64.paymentgateway.service.PayPaymentResponse;
 import io.labs64.paymentgateway.service.PaymentService;
 import io.labs64.paymentgateway.service.filter.PaymentFilter;
@@ -40,9 +39,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.TestingAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
+import io.labs64.authcontext.UserContext;
+import io.labs64.authcontext.UserContextHolder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -75,7 +73,7 @@ class PaymentControllerTest {
 
     @AfterEach
     void tearDown() {
-        SecurityContextHolder.clearContext();
+        UserContextHolder.clear();
     }
 
     @Test
@@ -157,14 +155,8 @@ class PaymentControllerTest {
     }
 
     private static void authenticate() {
-        final TestingAuthenticationToken authentication = new TestingAuthenticationToken(
-                new AuthPrincipal(TENANT_ID),
-                "n/a",
-                List.of(
-                        new SimpleGrantedAuthority("SCOPE_" + Scopes.PAYMENT_WRITE),
-                        new SimpleGrantedAuthority("SCOPE_" + Scopes.PAYMENT_PAY)));
-        authentication.setAuthenticated(true);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        UserContextHolder.set(
+                new UserContext("test-user", TENANT_ID, Set.of("ecommerce-role"), "test-request-id"));
     }
 
     private static CreatePaymentRequest createRequest() {

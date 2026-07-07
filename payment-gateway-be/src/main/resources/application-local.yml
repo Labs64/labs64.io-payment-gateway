@@ -1,3 +1,11 @@
+# Gateway-less local run (`just run`): no trusted X-Auth-* headers exist, so
+# disable the fail-closed auth-context filter and use a fixed dev tenant.
+labs64:
+  auth-context:
+    enabled: false
+  tenant:
+    default: t_dev
+
 spring:
   # Local PostgreSQL — credentials driven by .env / environment variables
   datasource:

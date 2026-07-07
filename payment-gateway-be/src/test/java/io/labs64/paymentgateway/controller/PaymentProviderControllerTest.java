@@ -2,6 +2,7 @@ package io.labs64.paymentgateway.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.exception.ForbiddenException;
@@ -11,8 +12,6 @@ import io.labs64.paymentgateway.model.PaymentProvider;
 import io.labs64.paymentgateway.model.PaymentProviderCreateRequest;
 import io.labs64.paymentgateway.model.PaymentProviderListResponse;
 import io.labs64.paymentgateway.model.PaymentProviderUpdateRequest;
-import io.labs64.paymentgateway.security.AuthPrincipal;
-import io.labs64.paymentgateway.security.Scopes;
 import io.labs64.paymentgateway.service.PaymentProviderService;
 import io.labs64.paymentgateway.service.filter.PaymentProviderFilter;
 import org.junit.jupiter.api.AfterEach;
@@ -27,9 +26,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.TestingAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
+import io.labs64.authcontext.UserContext;
+import io.labs64.paymentgateway.security.Roles;
+import io.labs64.authcontext.UserContextHolder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -59,12 +58,12 @@ class PaymentProviderControllerTest {
 
     @BeforeEach
     void setUp() {
-        authenticate(Scopes.PAYMENT_PROVIDER_READ, Scopes.PAYMENT_PROVIDER_WRITE);
+        authenticate(Roles.PAYMENT_PROVIDER_ADMIN);
     }
 
     @AfterEach
     void tearDown() {
-        SecurityContextHolder.clearContext();
+        UserContextHolder.clear();
     }
 
     @Test
@@ -84,8 +83,8 @@ class PaymentProviderControllerTest {
 
     @Test
     void getPaymentProviderRejectsWithoutWriteScope() {
-        authenticate(Scopes.PAYMENT_PROVIDER_READ);
-        when(msg.configScopeRequired(Scopes.PAYMENT_PROVIDER_WRITE)).thenReturn("scope required");
+        authenticate("ecommerce-role");
+        when(msg.configScopeRequired(Roles.PAYMENT_PROVIDER_ADMIN)).thenReturn("scope required");
 
         assertThatThrownBy(() -> controller.getPaymentProvider(PROVIDER))
                 .isInstanceOf(ForbiddenException.class);
@@ -164,16 +163,9 @@ class PaymentProviderControllerTest {
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     }
 
-    private static void authenticate(final String... scopes) {
-        final List<SimpleGrantedAuthority> authorities = java.util.Arrays.stream(scopes)
-                .map(scope -> new SimpleGrantedAuthority("SCOPE_" + scope))
-                .toList();
-        final TestingAuthenticationToken authentication = new TestingAuthenticationToken(
-                new AuthPrincipal(TENANT_ID),
-                "n/a",
-                authorities);
-        authentication.setAuthenticated(true);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+    private static void authenticate(final String... roles) {
+        UserContextHolder.set(
+                new UserContext("test-user", TENANT_ID, Set.of(roles), "test-request-id"));
     }
 
     private static PaymentProviderEntity entity() {
