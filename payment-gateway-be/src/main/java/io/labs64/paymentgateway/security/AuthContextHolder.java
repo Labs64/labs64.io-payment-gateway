@@ -2,42 +2,45 @@ package io.labs64.paymentgateway.security;
 
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.apache.commons.lang3.StringUtils;
 
+import io.labs64.authcontext.UserContextHolder;
 import io.labs64.paymentgateway.exception.TenantRequiredException;
 
 /**
- * Reads the current application auth context from Spring Security.
+ * Reads the current application auth context from the trusted gateway headers
+ * ({@code l64-auth-context-spring-boot-starter}, RFC-03).
+ *
+ * <p>{@code labs64.tenant.default} (wired by {@link AuthContextDefaults}) is a
+ * dev-only fallback for gateway-less local runs — never set it in production.
  */
-public class AuthContextHolder {
+public final class AuthContextHolder {
 
-    private static final String SCOPE_PREFIX = "SCOPE_";
+    private static volatile String defaultTenantId = "";
 
-    public AuthContextHolder() {
+    private AuthContextHolder() {
+    }
+
+    static void setDefaultTenantId(final String tenantId) {
+        defaultTenantId = tenantId == null ? "" : tenantId;
     }
 
     public static Optional<AuthContext> get() {
-        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return Optional.empty();
+        final Optional<io.labs64.authcontext.UserContext> userContext = UserContextHolder.get();
+        if (userContext.isPresent()) {
+            final String tenantId = userContext.get().tenantId() != null
+                    ? userContext.get().tenantId()
+                    : fallbackTenantId();
+            if (tenantId == null) {
+                return Optional.empty();
+            }
+            return Optional.of(new AuthContext(tenantId, userContext.get().roles()));
         }
-
-        final String tenantId = tenantId(authentication);
-        if (tenantId == null || tenantId.isBlank()) {
-            return Optional.empty();
+        if (StringUtils.isNotBlank(defaultTenantId)) {
+            return Optional.of(new AuthContext(defaultTenantId, Set.of()));
         }
-
-        final Set<String> scopes = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .filter(authority -> authority != null && authority.startsWith(SCOPE_PREFIX))
-                .map(authority -> authority.substring(SCOPE_PREFIX.length()))
-                .collect(Collectors.toUnmodifiableSet());
-
-        return Optional.of(new AuthContext(tenantId, scopes));
+        return Optional.empty();
     }
 
     public static AuthContext require() {
@@ -48,10 +51,7 @@ public class AuthContextHolder {
         return require().tenantId();
     }
 
-    private static String tenantId(final Authentication authentication) {
-        if (authentication.getPrincipal() instanceof AuthPrincipal(String tenantId)) {
-            return tenantId;
-        }
-        return null;
+    private static String fallbackTenantId() {
+        return StringUtils.isNotBlank(defaultTenantId) ? defaultTenantId : null;
     }
 }

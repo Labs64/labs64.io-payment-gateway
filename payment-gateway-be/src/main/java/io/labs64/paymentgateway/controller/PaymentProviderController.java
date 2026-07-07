@@ -10,7 +10,7 @@ import io.labs64.paymentgateway.message.PaymentProviderMessages;
 import io.labs64.paymentgateway.model.PaymentProviderCreateRequest;
 import io.labs64.paymentgateway.model.PaymentProviderUpdateRequest;
 import io.labs64.paymentgateway.security.AuthContextHolder;
-import io.labs64.paymentgateway.security.Scopes;
+import io.labs64.paymentgateway.security.Roles;
 import io.labs64.paymentgateway.service.filter.PaymentProviderFilter;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
@@ -110,8 +110,8 @@ public class PaymentProviderController implements PaymentProvidersApi {
     }
 
     private void requireWriteScopeForConfig() {
-        if (!AuthContextHolder.require().hasScope(Scopes.PAYMENT_PROVIDER_WRITE)) {
-            throw new ForbiddenException(msg.configScopeRequired(Scopes.PAYMENT_PROVIDER_WRITE));
+        if (!AuthContextHolder.require().hasRole(Roles.PAYMENT_PROVIDER_ADMIN)) {
+            throw new ForbiddenException(msg.configScopeRequired(Roles.PAYMENT_PROVIDER_ADMIN));
         }
     }
 }

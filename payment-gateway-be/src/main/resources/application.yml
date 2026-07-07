@@ -141,12 +141,25 @@ payment-gateway:
     cleanup-interval: ${IDEMPOTENCY_CLEANUP_INTERVAL:PT1H}
     cleanup-batch-size: ${IDEMPOTENCY_CLEANUP_BATCH_SIZE:1000}
 
-# Temporary local-development authentication.
-# Remove this block and DevAuthFilter when JWT access token validation is implemented.
+# Trusted gateway auth-context (RFC-03, l64-auth-context-spring-boot-starter).
+# Fail-closed: non-public paths 401 without valid X-Auth-* headers from the
+# gateway. Public prefixes cover PSP webhooks, browser redirect returns and the
+# payment-definitions listing (no JWT possible on those flows; webhook
+# authenticity is verified by PSP signature checks in WebhookService).
+# tenant.default is a dev-only fallback for gateway-less runs.
 labs64:
-  security:
-    dev-auth:
-      enabled: ${DEV_AUTH_ENABLED:true}
+  auth-context:
+    enabled: ${LABS64_AUTHCONTEXT_ENABLED:true}
+    public-paths:
+      - /actuator
+      - /v3/api-docs
+      - /swagger-ui
+      - /error
+      - /providers/
+      - /checkout-sessions/
+      - /payment-definitions
+  tenant:
+    default: ${LABS64_TENANT_DEFAULT:}
 
 # Logging Configuration
 logging:

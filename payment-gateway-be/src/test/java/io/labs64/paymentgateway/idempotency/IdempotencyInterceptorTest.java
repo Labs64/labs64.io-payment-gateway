@@ -7,17 +7,14 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import io.labs64.paymentgateway.security.AuthPrincipal;
-import io.labs64.paymentgateway.security.Scopes;
 import io.labs64.paymentgateway.service.IdempotencyService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.authentication.TestingAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
+import io.labs64.authcontext.UserContext;
+import io.labs64.authcontext.UserContextHolder;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerMapping;
 
@@ -35,7 +32,7 @@ class IdempotencyInterceptorTest {
 
     @AfterEach
     void tearDown() {
-        SecurityContextHolder.clearContext();
+        UserContextHolder.clear();
     }
 
     @Test
@@ -118,12 +115,8 @@ class IdempotencyInterceptorTest {
     }
 
     private static void authenticate() {
-        final TestingAuthenticationToken authentication = new TestingAuthenticationToken(
-                new AuthPrincipal("tenant-a"),
-                "n/a",
-                java.util.List.of(new SimpleGrantedAuthority("SCOPE_" + Scopes.PAYMENT_WRITE)));
-        authentication.setAuthenticated(true);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        UserContextHolder.set(new UserContext("test-user", "tenant-a",
+                java.util.Set.of("ecommerce-role"), "test-request-id"));
     }
 
     private static ObjectMapper objectMapper() {

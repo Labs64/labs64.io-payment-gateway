@@ -3,23 +3,21 @@ package io.labs64.paymentgateway.security;
 import java.util.Set;
 
 /**
- * Application-level authentication view.
- * <p>
- * This facade intentionally hides whether authentication data came from the
- * temporary development headers or from a verified JWT token.
+ * Application-level authentication view over the trusted gateway auth-context
+ * (RFC-03). Roles come from the gateway-verified {@code X-Auth-Roles} header.
  */
-public record AuthContext(String tenantId, Set<String> scopes) {
+public record AuthContext(String tenantId, Set<String> roles) {
 
-    public boolean hasScope(final String scope) {
-        return scopes != null && scopes.contains(scope);
+    public boolean hasRole(final String role) {
+        return roles != null && roles.contains(role);
     }
 
-    public boolean hasAnyScope(final String... scopes) {
-        if (scopes == null) {
+    public boolean hasAnyRole(final String... candidates) {
+        if (candidates == null) {
             return false;
         }
-        for (String scope : scopes) {
-            if (hasScope(scope)) {
+        for (String role : candidates) {
+            if (hasRole(role)) {
                 return true;
             }
         }
