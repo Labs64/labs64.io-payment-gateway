@@ -29,13 +29,13 @@ public final class AuthContextHolder {
     public static Optional<AuthContext> get() {
         final Optional<io.labs64.authcontext.UserContext> userContext = UserContextHolder.get();
         if (userContext.isPresent()) {
-            final String tenantId = userContext.get().tenantId() != null
-                    ? userContext.get().tenantId()
-                    : fallbackTenantId();
-            if (tenantId == null) {
+            final io.labs64.authcontext.UserContext ctx = userContext.get();
+            final String tenantId = StringUtils.isNotBlank(ctx.tenantId()) ? ctx.tenantId() : fallbackTenantId();
+            if (StringUtils.isBlank(tenantId)) {
                 return Optional.empty();
             }
-            return Optional.of(new AuthContext(tenantId, userContext.get().roles()));
+            final Set<String> roles = ctx.roles() == null ? Set.of() : Set.copyOf(ctx.roles());
+            return Optional.of(new AuthContext(tenantId, roles));
         }
         if (StringUtils.isNotBlank(defaultTenantId)) {
             return Optional.of(new AuthContext(defaultTenantId, Set.of()));
