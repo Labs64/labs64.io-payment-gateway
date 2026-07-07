@@ -40,7 +40,7 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 - **Provider registry**: `PaymentProviderRegistry` in `psp/internal/` manages provider lookup.
 - **Idempotency**: Redis-backed idempotency with `IdempotencyInterceptor`, `IdempotencyService`, `IdempotencyCleanupScheduler`.
 - **Correlation**: `CorrelationTraceService` + `CorrelationContextHolder` for request tracing.
-- **Multi-tenancy & security**: trusted gateway auth-context (`X-Auth-*`, RFC-03 via `l64-auth-context-spring-boot-starter`); `AuthContextHolder` supplies tenant + roles (dev fallback: `labs64.tenant.default` in the `local` profile). Path-level RBAC is enforced at the Traefik gateway; PSP webhooks / redirect returns / payment-definitions are public paths (webhook authenticity = PSP signature checks).
+- **Multi-tenancy & security**: trusted gateway auth-context (`X-Auth-*`, `l64-auth-context-spring-boot-starter`); `AuthContextHolder` supplies tenant + roles (dev fallback: `labs64.tenant.default` in the `local` profile). Path-level RBAC is enforced at the Traefik gateway; PSP webhooks / redirect returns / payment-definitions are public paths (webhook authenticity = PSP signature checks).
 - **Cross-cutting**: `CorrelationIdFilter`, `GlobalExceptionHandler`, `CorsConfig`, `FasterxmlJacksonConfig`.
 - **Observability**: Actuator + Micrometer Tracing (OTLP/HTTP) + Prometheus scrape at `/actuator/prometheus`.
 - **Database**: PostgreSQL (payments, transactions, providers).

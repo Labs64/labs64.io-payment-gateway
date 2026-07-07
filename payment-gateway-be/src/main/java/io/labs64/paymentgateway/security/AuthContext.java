@@ -3,8 +3,8 @@ package io.labs64.paymentgateway.security;
 import java.util.Set;
 
 /**
- * Application-level authentication view over the trusted gateway auth-context
- * (RFC-03). Roles come from the gateway-verified {@code X-Auth-Roles} header.
+ * Application-level authentication view over the trusted gateway auth-context.
+ * Roles come from the gateway-verified {@code X-Auth-Roles} header.
  */
 public record AuthContext(String tenantId, Set<String> roles) {
 

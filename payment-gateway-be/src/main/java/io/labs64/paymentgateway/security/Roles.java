@@ -1,7 +1,7 @@
 package io.labs64.paymentgateway.security;
 
 /**
- * Operation-level role names (RFC-03 authorization split: path-level RBAC is
+ * Operation-level role names (authorization split: path-level RBAC is
  * enforced at the gateway via the module's role-mapping fragment; finer
  * operation checks live here, against the trusted {@code X-Auth-Roles}).
  */

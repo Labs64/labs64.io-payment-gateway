@@ -81,7 +81,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <!-- Trusted gateway auth-context (RFC-03): X-Auth-* parsing, fail-closed
+        <!-- Trusted gateway auth-context: X-Auth-* parsing, fail-closed
              enforcement and propagation. Replaces the former in-app Spring Security
              stack (SecurityConfig/DevAuthFilter). Served by JitPack from
              Labs64/labs64.io-commons. -->
