@@ -794,9 +794,10 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: >-
-        JWT token containing tenantId claim. Scopes: payment-provider:read,
-        payment-provider:write, payment:read, payment:write, payment:pay,
-        payment-transaction:read.
+        JWT token containing tenantId claim. Access is controlled by
+        gateway-verified roles supplied via the X-Auth-Roles header:
+        PAYMENT_PROVIDER_READ, PAYMENT_PROVIDER_ADMIN, PAYMENT_READ,
+        PAYMENT_WRITE, PAYMENT_PAY, PAYMENT_TRANSACTION_READ.
 
   # ─── Reusable Parameters ────────────────────────────────────────────
   parameters:
