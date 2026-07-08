@@ -16,10 +16,8 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
 
 servers:
-  - url: /payment-gateway/api/v1
-    description: Via API Gateway (Traefik owns and strips the version prefix)
-  - url: http://localhost:8080
-    description: Local Development Server (direct, root-mapped)
+  - url: /api/v1
+    description: Via API Gateway (Traefik strips the module prefix)
 
 tags:
   - name: PaymentDefinitions
