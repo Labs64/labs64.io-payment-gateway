@@ -110,7 +110,10 @@ public class PaymentProviderController implements PaymentProvidersApi {
     }
 
     private void requireWriteScopeForConfig() {
-        if (!AuthContextHolder.require().hasRole(Roles.PAYMENT_PROVIDER_ADMIN)) {
+        final var ctx = AuthContextHolder.require();
+        if (!ctx.hasRole(Roles.PAYMENT_PROVIDER_ADMIN)) {
+            log.warn("Authorization rejected — missing role {} | tenantId={}, roles={}",
+                    Roles.PAYMENT_PROVIDER_ADMIN, ctx.tenantId(), ctx.roles());
             throw new ForbiddenException(msg.configScopeRequired(Roles.PAYMENT_PROVIDER_ADMIN));
         }
     }

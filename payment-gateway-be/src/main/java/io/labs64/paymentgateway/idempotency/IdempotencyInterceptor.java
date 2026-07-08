@@ -10,6 +10,8 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.labs64.paymentgateway.service.IdempotencyService;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
@@ -24,6 +26,8 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class IdempotencyInterceptor implements HandlerInterceptor {
+
+    private static final Logger log = LoggerFactory.getLogger(IdempotencyInterceptor.class);
 
     public static final String IDEMPOTENCY_KEY_HEADER = "Idempotency-Key";
     public static final String REQUEST_CONTEXT_ATTRIBUTE = IdempotencyInterceptor.class.getName() + ".context";
@@ -58,6 +62,8 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        log.info("Idempotent replay | key={}, method={}, path={}, status={}",
+                idempotencyKey, request.getMethod(), request.getRequestURI(), cachedResponse.get().status());
         writeCachedResponse(response, cachedResponse.get());
         return false;
     }

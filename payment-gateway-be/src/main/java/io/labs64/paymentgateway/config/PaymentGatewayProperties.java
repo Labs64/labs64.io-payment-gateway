@@ -3,8 +3,11 @@ package io.labs64.paymentgateway.config;
 import java.time.Duration;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.stereotype.Component;
@@ -19,11 +22,24 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "payment-gateway")
 public class PaymentGatewayProperties {
 
+    private static final Logger log = LoggerFactory.getLogger(PaymentGatewayProperties.class);
+
     private String publicBaseUrl = "http://localhost:8080/api/v1";
     private List<PaymentDefinition> paymentDefinitions = List.of();
     private RetryConfig retry = new RetryConfig();
     private RedisConfig redis = new RedisConfig();
     private IdempotencyConfig idempotency = new IdempotencyConfig();
+
+    @PostConstruct
+    void logConfiguration() {
+        long enabledCount = paymentDefinitions.stream().filter(PaymentDefinition::isEnabled).count();
+        log.info("Payment gateway config — paymentDefinitions: {} ({} enabled), retry.maxRetries: {}, "
+                + "idempotency.redisTtl: {}, idempotency.cleanupInterval: {}",
+                paymentDefinitions.size(), enabledCount,
+                retry.getMaxRetries(),
+                idempotency.getRedisTtl(),
+                idempotency.getCleanupInterval());
+    }
 
     @Getter
     @Setter
