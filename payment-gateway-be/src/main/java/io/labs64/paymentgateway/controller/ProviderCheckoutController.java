@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import io.labs64.paymentgateway.api.ProviderCheckoutApi;
 import io.labs64.paymentgateway.service.ProviderCheckoutService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -23,14 +24,18 @@ public class ProviderCheckoutController implements ProviderCheckoutApi {
     private final ProviderCheckoutService service;
     private final HttpServletRequest httpServletRequest;
 
+    /** Public path — overrides the global bearerAuth requirement so Swagger UI doesn't show it as locked. */
     @Override
+    @SecurityRequirements
     public ResponseEntity<Void> returnProviderCheckoutSession(
             final String provider,
             final UUID sessionId) {
         return redirect(service.complete(provider, sessionId, queryParams()));
     }
 
+    /** Public path — overrides the global bearerAuth requirement so Swagger UI doesn't show it as locked. */
     @Override
+    @SecurityRequirements
     public ResponseEntity<Void> cancelProviderCheckoutSession(
             final String provider,
             final UUID sessionId) {

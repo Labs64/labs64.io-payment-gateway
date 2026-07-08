@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.labs64.paymentgateway.service.WebhookService;
 import io.labs64.paymentgateway.api.ProviderWebhooksApi;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -29,7 +30,9 @@ public class ProviderWebhookController implements ProviderWebhooksApi {
     private final WebhookService webhookService;
     private final HttpServletRequest httpServletRequest;
 
+    /** Public path — overrides the global bearerAuth requirement so Swagger UI doesn't show it as locked. */
     @Override
+    @SecurityRequirements
     public ResponseEntity<Void> handleProviderWebhook(
             String provider,
             Map<String, Object> requestBody) {

@@ -141,7 +141,7 @@ payment-gateway:
     cleanup-interval: ${IDEMPOTENCY_CLEANUP_INTERVAL:PT1H}
     cleanup-batch-size: ${IDEMPOTENCY_CLEANUP_BATCH_SIZE:1000}
 
-# Trusted gateway auth-context (l64-auth-context-spring-boot-starter).
+# Trusted gateway auth-context (auth-context-spring-boot-starter).
 # Fail-closed: non-public paths 401 without valid X-Auth-* headers from the
 # gateway. Public prefixes cover PSP webhooks, browser redirect returns and the
 # payment-definitions listing (no JWT possible on those flows; webhook

@@ -7,6 +7,7 @@ import io.labs64.paymentgateway.entity.CheckoutSessionEntity;
 import io.labs64.paymentgateway.mapper.CheckoutSessionConfirmationMapper;
 import io.labs64.paymentgateway.model.CheckoutSessionConfirmation;
 import io.labs64.paymentgateway.service.CheckoutSessionConfirmationService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,9 @@ public class CheckoutSessionController implements CheckoutSessionsApi {
     private final CheckoutSessionConfirmationService service;
     private final CheckoutSessionConfirmationMapper mapper;
 
+    /** Public path — overrides the global bearerAuth requirement so Swagger UI doesn't show it as locked. */
     @Override
+    @SecurityRequirements
     public ResponseEntity<CheckoutSessionConfirmation> getCheckoutSessionConfirmation(final UUID sessionId) {
         log.info("Checkout session confirmation requested | sessionId={}", sessionId);
 

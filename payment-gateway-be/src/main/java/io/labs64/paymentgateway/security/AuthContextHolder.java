@@ -10,7 +10,7 @@ import io.labs64.paymentgateway.exception.TenantRequiredException;
 
 /**
  * Reads the current application auth context from the trusted gateway headers
- * ({@code l64-auth-context-spring-boot-starter}).
+ * ({@code auth-context-spring-boot-starter}).
  *
  * <p>{@code labs64.tenant.default} (wired by {@link AuthContextDefaults}) is a
  * dev-only fallback for gateway-less local runs — never set it in production.
