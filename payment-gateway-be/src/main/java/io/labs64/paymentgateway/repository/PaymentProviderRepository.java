@@ -19,7 +19,7 @@ import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 @Repository
 public interface PaymentProviderRepository extends JpaRepository<PaymentProviderEntity, UUID> {
 
-    Optional<PaymentProviderEntity> findByTenantIdAndProvider(String tenantId, String provider);
+    Optional<PaymentProviderEntity> findByTenantIdAndId(String tenantId, UUID id);
 
     @Query("""
             SELECT pm
@@ -34,7 +34,5 @@ public interface PaymentProviderRepository extends JpaRepository<PaymentProvider
             @Param("active") Boolean active,
             Pageable pageable);
 
-    boolean existsByTenantIdAndProvider(String tenantId, String provider);
-
-    int deleteByTenantIdAndProvider(String tenantId, String provider);
+    int deleteByTenantIdAndId(String tenantId, UUID id);
 }

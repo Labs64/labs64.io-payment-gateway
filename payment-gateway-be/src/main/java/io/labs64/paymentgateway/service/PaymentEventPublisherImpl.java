@@ -114,8 +114,12 @@ public class PaymentEventPublisherImpl implements PaymentEventPublisher {
 
     private PaymentSnapshot toPayment(final PaymentEntity payment, final OffsetDateTime fallbackTimestamp) {
         final PaymentProviderEntity paymentProvider = payment.getPaymentProvider();
+        final UUID paymentProviderId = payment.getPaymentProviderId() != null
+                ? payment.getPaymentProviderId()
+                : paymentProvider != null ? paymentProvider.getId() : null;
         return new PaymentSnapshot(
                 payment.getId(),
+                paymentProviderId,
                 paymentProvider != null ? paymentProvider.getProvider() : null,
                 payment.getStatus(),
                 payment.getType(),

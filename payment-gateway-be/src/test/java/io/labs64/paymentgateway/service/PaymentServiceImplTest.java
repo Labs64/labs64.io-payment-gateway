@@ -51,6 +51,7 @@ class PaymentServiceImplTest {
 
     private static final String TENANT_ID = "tenant-a";
     private static final String PROVIDER = "stripe";
+    private static final UUID PAYMENT_PROVIDER_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440010");
 
     @Mock
     private PaymentRepository paymentRepository;
@@ -121,10 +122,10 @@ class PaymentServiceImplTest {
                 .purchaseOrder(Map.of("grossAmount", 3000L))
                 .build();
         final PaymentProviderEntity paymentProvider = paymentProvider(true);
-        when(paymentProviderService.get(TENANT_ID, PROVIDER)).thenReturn(paymentProvider);
+        when(paymentProviderService.get(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(paymentProvider);
         when(paymentRepository.save(input)).thenReturn(input);
 
-        final PaymentEntity result = service.create(TENANT_ID, PROVIDER, input);
+        final PaymentEntity result = service.create(TENANT_ID, PAYMENT_PROVIDER_ID, input);
 
         assertThat(result.getTenantId()).isEqualTo(TENANT_ID);
         assertThat(result.getPaymentProvider()).isSameAs(paymentProvider);
@@ -136,10 +137,10 @@ class PaymentServiceImplTest {
 
     @Test
     void createRejectsInactivePaymentProvider() {
-        when(paymentProviderService.get(TENANT_ID, PROVIDER)).thenReturn(paymentProvider(false));
+        when(paymentProviderService.get(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(paymentProvider(false));
         when(msg.inactivePaymentProvider(PROVIDER)).thenReturn("inactive");
 
-        assertThatThrownBy(() -> service.create(TENANT_ID, PROVIDER, payment()))
+        assertThatThrownBy(() -> service.create(TENANT_ID, PAYMENT_PROVIDER_ID, payment()))
                 .isInstanceOf(ConflictException.class);
 
         verify(paymentRepository, never()).save(any());

@@ -93,9 +93,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentEntity create(final String tenantId, final String provider, final PaymentEntity entity) {
+    public PaymentEntity create(final String tenantId, final UUID paymentProviderId, final PaymentEntity entity) {
         entity.setTenantId(tenantId);
-        entity.setPaymentProvider(getActivePaymentProvider(tenantId, provider));
+        entity.setPaymentProvider(getActivePaymentProvider(tenantId, paymentProviderId));
         entity.setStatus(PaymentStatus.READY);
 
         final PaymentEntity saved = paymentRepository.save(entity);
@@ -336,10 +336,10 @@ public class PaymentServiceImpl implements PaymentService {
         return new StatusDetails(source.code(), source.message());
     }
 
-    private PaymentProviderEntity getActivePaymentProvider(final String tenantId, final String provider) {
-        final PaymentProviderEntity paymentProvider = paymentProviderService.get(tenantId, provider);
+    private PaymentProviderEntity getActivePaymentProvider(final String tenantId, final UUID paymentProviderId) {
+        final PaymentProviderEntity paymentProvider = paymentProviderService.get(tenantId, paymentProviderId);
         if (!paymentProvider.isActive()) {
-            throw new ConflictException(msg.inactivePaymentProvider(provider));
+            throw new ConflictException(msg.inactivePaymentProvider(paymentProvider.getProvider()));
         }
         return paymentProvider;
     }

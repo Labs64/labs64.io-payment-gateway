@@ -40,6 +40,7 @@ class PaymentEventPublisherImplTest {
     private static final String TENANT_ID = "tenant-a";
     private static final String PROVIDER = "noop";
     private static final String CORRELATION_ID = "correlation-1";
+    private static final UUID PAYMENT_PROVIDER_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440010");
 
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
@@ -83,6 +84,7 @@ class PaymentEventPublisherImplTest {
         assertThat(message.tenantId()).isEqualTo(TENANT_ID);
         assertThat(message.correlationId()).isEqualTo(CORRELATION_ID);
         assertThat(message.payload().payment().id()).isEqualTo(payment.getId());
+        assertThat(message.payload().payment().paymentProviderId()).isEqualTo(PAYMENT_PROVIDER_ID);
         assertThat(message.payload().payment().provider()).isEqualTo(PROVIDER);
         assertThat(message.payload().payment().purchaseOrder()).containsEntry("grossAmount", 3000L);
         assertThat(message.payload().transaction().id()).isEqualTo(transaction.getId());
@@ -105,6 +107,7 @@ class PaymentEventPublisherImplTest {
                 new PaymentEventPayload(
                         new PaymentSnapshot(
                                 payment.getId(),
+                                PAYMENT_PROVIDER_ID,
                                 PROVIDER,
                                 PaymentStatus.READY,
                                 payment.getType(),
@@ -121,7 +124,7 @@ class PaymentEventPublisherImplTest {
 
         publisher.send(new PaymentEvent(PaymentEventRoute.CREATED, message));
 
-        final ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        final var captor = ArgumentCaptor.forClass(Message.class);
         verify(streamBridge).send(eq("paymentCreated-out-0"), captor.capture());
         assertThat(captor.getValue().getHeaders()).containsEntry("eventType", "payment.created");
         assertThat(captor.getValue().getHeaders()).containsEntry("X-Correlation-ID", CORRELATION_ID);
@@ -132,8 +135,9 @@ class PaymentEventPublisherImplTest {
         return PaymentEntity.builder()
                 .id(UUID.randomUUID())
                 .tenantId(TENANT_ID)
+                .paymentProviderId(PAYMENT_PROVIDER_ID)
                 .paymentProvider(PaymentProviderEntity.builder()
-                        .id(UUID.randomUUID())
+                        .id(PAYMENT_PROVIDER_ID)
                         .tenantId(TENANT_ID)
                         .provider(PROVIDER)
                         .build())

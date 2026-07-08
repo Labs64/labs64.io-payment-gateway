@@ -53,6 +53,7 @@ class PaymentControllerTest {
 
     private static final String TENANT_ID = "tenant-a";
     private static final String PROVIDER = "stripe";
+    private static final UUID PAYMENT_PROVIDER_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440010");
 
     @Mock
     private PaymentService service;
@@ -84,14 +85,14 @@ class PaymentControllerTest {
         final Payment dto = new Payment();
 
         when(paymentMapper.toEntity(request)).thenReturn(mapped);
-        when(service.create(TENANT_ID, PROVIDER, mapped)).thenReturn(saved);
+        when(service.create(TENANT_ID, PAYMENT_PROVIDER_ID, mapped)).thenReturn(saved);
         when(paymentMapper.toDto(saved)).thenReturn(dto);
 
         final ResponseEntity<Payment> result = controller.createPayment(request);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(result.getBody()).isSameAs(dto);
-        verify(service).create(TENANT_ID, PROVIDER, mapped);
+        verify(service).create(TENANT_ID, PAYMENT_PROVIDER_ID, mapped);
     }
 
     @Test
@@ -161,7 +162,7 @@ class PaymentControllerTest {
 
     private static CreatePaymentRequest createRequest() {
         return new CreatePaymentRequest(
-                PROVIDER,
+                PAYMENT_PROVIDER_ID,
                 new PurchaseOrder("USD", List.of(new OrderItem("Widget", 3000L, 1)), 3000L),
                 new BillingInfo("customer@example.com"));
     }

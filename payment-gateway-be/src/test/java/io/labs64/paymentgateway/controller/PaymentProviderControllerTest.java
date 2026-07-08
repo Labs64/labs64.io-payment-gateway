@@ -3,6 +3,7 @@ package io.labs64.paymentgateway.controller;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.exception.ForbiddenException;
@@ -43,6 +44,7 @@ class PaymentProviderControllerTest {
 
     private static final String TENANT_ID = "tenant-a";
     private static final String PROVIDER = "stripe";
+    private static final UUID PAYMENT_PROVIDER_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440010");
 
     @Mock
     private PaymentProviderService service;
@@ -70,14 +72,14 @@ class PaymentProviderControllerTest {
     void getPaymentProviderUsesTenantAndAlwaysIncludesConfigWhenScopeAllowsIt() {
         final PaymentProviderEntity entity = entity();
         final PaymentProvider dto = dto(PROVIDER);
-        when(service.get(TENANT_ID, PROVIDER)).thenReturn(entity);
+        when(service.get(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(entity);
         when(mapper.toDtoWithConfig(entity)).thenReturn(dto);
 
-        final ResponseEntity<PaymentProvider> result = controller.getPaymentProvider(PROVIDER);
+        final ResponseEntity<PaymentProvider> result = controller.getPaymentProvider(PAYMENT_PROVIDER_ID);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).isSameAs(dto);
-        verify(service).get(TENANT_ID, PROVIDER);
+        verify(service).get(TENANT_ID, PAYMENT_PROVIDER_ID);
         verify(mapper).toDtoWithConfig(entity);
     }
 
@@ -86,7 +88,7 @@ class PaymentProviderControllerTest {
         authenticate("ecommerce-role");
         when(msg.configScopeRequired(Roles.PAYMENT_PROVIDER_ADMIN)).thenReturn("scope required");
 
-        assertThatThrownBy(() -> controller.getPaymentProvider(PROVIDER))
+        assertThatThrownBy(() -> controller.getPaymentProvider(PAYMENT_PROVIDER_ID))
                 .isInstanceOf(ForbiddenException.class);
 
         verifyNoInteractions(service, mapper);
@@ -113,10 +115,11 @@ class PaymentProviderControllerTest {
     }
 
     @Test
-    void createPaymentProviderPassesPathProviderSeparatelyFromMappedEntity() {
-        final PaymentProviderCreateRequest request = new PaymentProviderCreateRequest(true);
+    void createPaymentProviderPassesMappedEntityWithProviderFromRequest() {
+        final PaymentProviderCreateRequest request = new PaymentProviderCreateRequest(PROVIDER, true);
         request.setConfig(Map.of("apiKey", "secret"));
         final PaymentProviderEntity mapped = PaymentProviderEntity.builder()
+                .provider(PROVIDER)
                 .active(true)
                 .config(Map.of("apiKey", "secret"))
                 .build();
@@ -124,14 +127,14 @@ class PaymentProviderControllerTest {
         final PaymentProvider dto = dto(PROVIDER);
 
         when(mapper.toEntity(request)).thenReturn(mapped);
-        when(service.create(TENANT_ID, PROVIDER, mapped)).thenReturn(saved);
+        when(service.create(TENANT_ID, mapped)).thenReturn(saved);
         when(mapper.toDtoWithConfig(saved)).thenReturn(dto);
 
-        final ResponseEntity<PaymentProvider> result = controller.createPaymentProvider(PROVIDER, request);
+        final ResponseEntity<PaymentProvider> result = controller.createPaymentProvider(request);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).isSameAs(dto);
-        verify(service).create(TENANT_ID, PROVIDER, mapped);
+        verify(service).create(TENANT_ID, mapped);
     }
 
     @Test
@@ -140,25 +143,25 @@ class PaymentProviderControllerTest {
         final PaymentProviderEntity saved = entity();
         final PaymentProvider dto = dto(PROVIDER);
 
-        when(service.update(eq(TENANT_ID), eq(PROVIDER), any())).thenAnswer(invocation -> {
+        when(service.update(eq(TENANT_ID), eq(PAYMENT_PROVIDER_ID), any())).thenAnswer(invocation -> {
             final java.util.function.Consumer<PaymentProviderEntity> updater = invocation.getArgument(2);
             updater.accept(saved);
             return saved;
         });
         when(mapper.toDtoWithConfig(saved)).thenReturn(dto);
 
-        final ResponseEntity<PaymentProvider> result = controller.updatePaymentProvider(PROVIDER, request);
+        final ResponseEntity<PaymentProvider> result = controller.updatePaymentProvider(PAYMENT_PROVIDER_ID, request);
 
         assertThat(result.getBody()).isSameAs(dto);
         verify(mapper).updateEntity(request, saved);
-        verify(service).update(eq(TENANT_ID), eq(PROVIDER), any());
+        verify(service).update(eq(TENANT_ID), eq(PAYMENT_PROVIDER_ID), any());
     }
 
     @Test
     void deletePaymentProviderReturnsNoContentWhenDeleted() {
-        when(service.delete(TENANT_ID, PROVIDER)).thenReturn(true);
+        when(service.delete(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(true);
 
-        final ResponseEntity<Void> result = controller.deletePaymentProvider(PROVIDER);
+        final ResponseEntity<Void> result = controller.deletePaymentProvider(PAYMENT_PROVIDER_ID);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     }
@@ -171,6 +174,7 @@ class PaymentProviderControllerTest {
     private static PaymentProviderEntity entity() {
         return PaymentProviderEntity.builder()
                 .tenantId(TENANT_ID)
+                .id(PAYMENT_PROVIDER_ID)
                 .provider(PROVIDER)
                 .active(true)
                 .name("Stripe")
@@ -181,7 +185,8 @@ class PaymentProviderControllerTest {
 
     private static PaymentProvider dto(final String id) {
         final PaymentProvider dto = new PaymentProvider();
-        dto.setId(id);
+        dto.setId(PAYMENT_PROVIDER_ID);
+        dto.setProvider(id);
         return dto;
     }
 }

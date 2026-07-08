@@ -1,6 +1,7 @@
 package io.labs64.paymentgateway.controller;
 
 import java.util.Set;
+import java.util.UUID;
 
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.exception.ForbiddenException;
@@ -34,14 +35,14 @@ public class PaymentProviderController implements PaymentProvidersApi {
     private final PaymentProviderMessages msg;
 
     @Override
-    public ResponseEntity<PaymentProvider> getPaymentProvider(String provider) {
+    public ResponseEntity<PaymentProvider> getPaymentProvider(final UUID paymentProviderId) {
         final String tenantId = AuthContextHolder.require().tenantId();
 
-        log.info("Payment provider get requested | tenantId={}, provider={}", tenantId, provider);
+        log.info("Payment provider get requested | tenantId={}, paymentProviderId={}", tenantId, paymentProviderId);
 
         requireWriteScopeForConfig();
 
-        final PaymentProviderEntity entity = service.get(tenantId, provider);
+        final PaymentProviderEntity entity = service.get(tenantId, paymentProviderId);
         final PaymentProvider response = mapper.toDtoWithConfig(entity);
 
         return ResponseEntity.ok(response);
@@ -66,14 +67,14 @@ public class PaymentProviderController implements PaymentProvidersApi {
     }
 
     @Override
-    public ResponseEntity<PaymentProvider> createPaymentProvider(String provider, PaymentProviderCreateRequest request) {
+    public ResponseEntity<PaymentProvider> createPaymentProvider(final PaymentProviderCreateRequest request) {
         final String tenantId = AuthContextHolder.require().tenantId();
         final Set<String> configKeys = request.getConfig() != null ? request.getConfig().keySet() : null;
 
         log.info("Payment provider create requested | tenantId={}, provider={}, active={}, configKeys={}",
-                tenantId, provider, request.getActive(), configKeys);
+                tenantId, request.getProvider(), request.getActive(), configKeys);
 
-        final PaymentProviderEntity entity = service.create(tenantId, provider, mapper.toEntity(request));
+        final PaymentProviderEntity entity = service.create(tenantId, mapper.toEntity(request));
         final PaymentProvider response = mapper.toDtoWithConfig(entity);
 
         return ResponseEntity.ok().body(response);
@@ -81,29 +82,29 @@ public class PaymentProviderController implements PaymentProvidersApi {
 
     @Override
     public ResponseEntity<PaymentProvider> updatePaymentProvider(
-            final String provider,
+            final UUID paymentProviderId,
             final PaymentProviderUpdateRequest request) {
         final String tenantId = AuthContextHolder.require().tenantId();
         final Set<String> configKeys = request.getConfig() != null ? request.getConfig().keySet() : null;
 
-        log.info("Payment provider update requested | tenantId={}, provider={}, active={}, configKeys={}",
-                tenantId, provider, request.getActive(), configKeys);
+        log.info("Payment provider update requested | tenantId={}, paymentProviderId={}, active={}, configKeys={}",
+                tenantId, paymentProviderId, request.getActive(), configKeys);
 
-        final PaymentProviderEntity entity = service.update(tenantId, provider, (pm) -> mapper.updateEntity(request, pm));
+        final PaymentProviderEntity entity = service.update(tenantId, paymentProviderId, (pm) -> mapper.updateEntity(request, pm));
         final PaymentProvider response = mapper.toDtoWithConfig(entity);
 
         return ResponseEntity.ok(response);
     }
 
     @Override
-    public ResponseEntity<Void> deletePaymentProvider(final String provider) {
+    public ResponseEntity<Void> deletePaymentProvider(final UUID paymentProviderId) {
         final String tenantId = AuthContextHolder.require().tenantId();
 
-        log.info("Payment provider delete requested | tenantId={}, provider={}",
-                tenantId, provider);
+        log.info("Payment provider delete requested | tenantId={}, paymentProviderId={}",
+                tenantId, paymentProviderId);
 
-        if (!service.delete(tenantId, provider)) {
-            throw new NotFoundException(msg.notFound(provider));
+        if (!service.delete(tenantId, paymentProviderId)) {
+            throw new NotFoundException(msg.notFound(paymentProviderId.toString()));
         }
 
         return ResponseEntity.noContent().build();

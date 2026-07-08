@@ -3,6 +3,7 @@ package io.labs64.paymentgateway.mapper;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.model.PaymentProvider;
@@ -16,12 +17,13 @@ import org.springframework.data.domain.PageImpl;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class PaymentProviderMapperTest {
+    private static final UUID PAYMENT_PROVIDER_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440010");
 
     private final PaymentProviderMapper mapper = Mappers.getMapper(PaymentProviderMapper.class);
 
     @Test
-    void toEntityDoesNotTakeProviderOwnershipFromCreateRequest() {
-        final PaymentProviderCreateRequest request = new PaymentProviderCreateRequest(true);
+    void toEntityMapsProviderFromCreateRequestButDoesNotMapTenantOwnership() {
+        final PaymentProviderCreateRequest request = new PaymentProviderCreateRequest("stripe", true);
         request.setConfig(Map.of("apiKey", "secret"));
         request.setName("Tenant Stripe");
         request.setDescription("Cards");
@@ -29,7 +31,7 @@ class PaymentProviderMapperTest {
         final PaymentProviderEntity entity = mapper.toEntity(request);
 
         assertThat(entity.getTenantId()).isNull();
-        assertThat(entity.getProvider()).isNull();
+        assertThat(entity.getProvider()).isEqualTo("stripe");
         assertThat(entity.isActive()).isTrue();
         assertThat(entity.getName()).isEqualTo("Tenant Stripe");
         assertThat(entity.getDescription()).isEqualTo("Cards");
@@ -37,12 +39,13 @@ class PaymentProviderMapperTest {
     }
 
     @Test
-    void toDtoUsesProviderAsPublicIdAndMasksConfigByDefault() {
+    void toDtoUsesTenantPaymentProviderIdAndMasksConfigByDefault() {
         final PaymentProviderEntity entity = entity("tenant-a", "stripe");
 
         final PaymentProvider dto = mapper.toDto(entity);
 
-        assertThat(dto.getId()).isEqualTo("stripe");
+        assertThat(dto.getId()).isEqualTo(PAYMENT_PROVIDER_ID);
+        assertThat(dto.getProvider()).isEqualTo("stripe");
         assertThat(dto.getName()).isEqualTo("Stripe");
         assertThat(dto.getDescription()).isEqualTo("Cards");
         assertThat(dto.getActive()).isTrue();
@@ -96,13 +99,15 @@ class PaymentProviderMapperTest {
                 new PageImpl<>(List.of(entity("tenant-a", "stripe"))));
 
         assertThat(response.getItems()).hasSize(1);
-        assertThat(response.getItems().get(0).getId()).isEqualTo("stripe");
-        assertThat(response.getItems().get(0).getConfig()).isNull();
+        assertThat(response.getItems().getFirst().getId()).isEqualTo(PAYMENT_PROVIDER_ID);
+        assertThat(response.getItems().getFirst().getProvider()).isEqualTo("stripe");
+        assertThat(response.getItems().getFirst().getConfig()).isNull();
     }
 
     private static PaymentProviderEntity entity(final String tenantId, final String provider) {
         return PaymentProviderEntity.builder()
                 .tenantId(tenantId)
+                .id(PAYMENT_PROVIDER_ID)
                 .provider(provider)
                 .active(true)
                 .name("Stripe")

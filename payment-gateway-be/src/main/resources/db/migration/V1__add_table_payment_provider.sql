@@ -21,8 +21,7 @@ CREATE TRIGGER trg_payment_provider_updated_at
     FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 
--- One tenant-owned payment provider overlay per globally supported payment provider.
-CREATE UNIQUE INDEX IF NOT EXISTS ux_payment_provider_tenant_provider ON payment_provider (tenant_id, provider);
 CREATE UNIQUE INDEX IF NOT EXISTS ux_payment_provider_tenant_id ON payment_provider (tenant_id, id);
 CREATE INDEX IF NOT EXISTS ix_payment_provider_tenant ON payment_provider (tenant_id);
+CREATE INDEX IF NOT EXISTS ix_payment_provider_tenant_provider ON payment_provider (tenant_id, provider);
 CREATE INDEX IF NOT EXISTS ix_payment_provider_tenant_active ON payment_provider (tenant_id, active);
