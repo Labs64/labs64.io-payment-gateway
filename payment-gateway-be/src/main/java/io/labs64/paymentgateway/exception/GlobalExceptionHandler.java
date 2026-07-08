@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(final ApiException ex) {
-        log.warn("API error: code={}, message={}", ex.getErrorCode(), ex.getMessage());
+        log.warn("API error: code={}, message={}", ex.getErrorCode(), ex.toString());
         return buildResponse(ex.getStatus(), ex.getErrorCode(), ex.getMessage());
     }
 
@@ -45,7 +45,7 @@ public class GlobalExceptionHandler {
                 ? msg.invalidField(firstError.getField(), firstError.getDefaultMessage())
                 : msg.failed();
 
-        log.warn("Request validation error: {}", message);
+        log.warn("Request validation error: {} | ex={}", message, ex.toString());
         return buildResponse(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, message);
     }
 
@@ -56,7 +56,7 @@ public class GlobalExceptionHandler {
                 .map(v -> msg.invalidField(String.valueOf(v.getPropertyPath()), v.getMessage()))
                 .orElse(msg.failed());
 
-        log.warn("Request constraint violation: {}", message);
+        log.warn("Request constraint violation: {} | ex={}", message, ex.toString());
         return buildResponse(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, message);
     }
 

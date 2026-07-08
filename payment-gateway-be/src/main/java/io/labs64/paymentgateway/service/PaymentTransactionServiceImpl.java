@@ -32,14 +32,14 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
     @Override
     @Transactional(readOnly = true)
     public Optional<PaymentTransactionEntity> find(final String tenantId, final UUID id) {
-        log.debug("Find payment transaction for tenantId={}, id={}", tenantId, id);
+        log.debug("Find payment transaction for id={}", id);
         return repository.findByIdAndTenantId(id, tenantId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaymentTransactionEntity get(final String tenantId, final UUID id) {
-        log.debug("Get payment transaction for tenantId={}, id={}", tenantId, id);
+        log.debug("Get payment transaction for id={}", id);
         return find(tenantId, id).orElseThrow(() -> new NotFoundException(msg.notFound(id)));
     }
 
@@ -49,14 +49,13 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
             final String tenantId,
             final PaymentTransactionFilter filter,
             final Pageable pageable) {
-        log.debug("Loading payment transactions for tenantId={}, filter={}",
-                tenantId, filter);
+        log.debug("Loading payment transactions for filter={}", filter);
 
         final UUID paymentId = filter != null ? filter.paymentId() : null;
         final PaymentTransactionStatus status = filter != null ? filter.status() : null;
         final Page<PaymentTransactionEntity> result = repository.searchByTenantId(tenantId, paymentId, status, pageable);
 
-        log.debug("Found {} payment transactions for tenantId={}, filter={}", result.getTotalElements(), tenantId, filter);
+        log.debug("Found {} payment transactions for filter={}", result.getTotalElements(), filter);
 
         return result;
     }
@@ -64,7 +63,7 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
     @Override
     @Transactional
     public PaymentTransactionEntity create(final String tenantId, final PaymentTransactionEntity entity) {
-        log.info("Creating payment transaction for tenantId={}, PaymentTransaction={}", tenantId, entity);
+        log.info("Creating payment transaction");
 
         if (entity == null) {
             throw new ValidationException(msg.required());
@@ -79,7 +78,7 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
 
         final PaymentTransactionEntity saved = repository.save(entity);
 
-        log.info("Payment transaction created for tenantId={}, PaymentTransaction={}", tenantId, saved);
+        log.info("Payment transaction created | id={}", saved.getId());
 
         return saved;
     }
@@ -90,12 +89,12 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
             final String tenantId,
             final UUID id,
             final Consumer<PaymentTransactionEntity> updater) {
-        log.info("Updating payment transaction for tenantId={}, id={}", tenantId, id);
+        log.info("Updating payment transaction | id={}", id);
 
         return find(tenantId, id)
                 .map((pt) -> {
                     updater.accept(pt);
-                    log.debug("Update payment transaction: {}", pt);
+                    log.debug("Update payment transaction | id={}", pt.getId());
                     return pt;
                 })
                 .orElseThrow(() -> new NotFoundException(msg.notFound(id)));
