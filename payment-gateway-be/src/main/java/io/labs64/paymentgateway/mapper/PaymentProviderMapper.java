@@ -21,7 +21,6 @@ public interface PaymentProviderMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
-    @Mapping(target = "provider", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     PaymentProviderEntity toEntity(PaymentProviderCreateRequest source);
@@ -33,7 +32,6 @@ public interface PaymentProviderMapper {
         }
     }
 
-    @Mapping(target = "id", source = "provider")
     @Mapping(target = "icon", ignore = true)
     @Mapping(target = "recurring", ignore = true)
     @Mapping(target = "config", ignore = true)

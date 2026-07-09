@@ -3,6 +3,7 @@ package io.labs64.paymentgateway.mapper;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +25,7 @@ import org.springframework.data.domain.PageRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class PaymentMapperTest {
+    private static final UUID PAYMENT_PROVIDER_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440010");
 
     private final PaymentMapper mapper = new PaymentMapperImpl(
             new PaymentJsonMapper(new ObjectMapper().registerModule(new JavaTimeModule())));
@@ -58,14 +60,19 @@ class PaymentMapperTest {
 
         final Payment dto = mapper.toDto(entity);
 
+        final PurchaseOrder purchaseOrder = Objects.requireNonNull(dto.getPurchaseOrder());
+        final BillingInfo billingInfo = Objects.requireNonNull(dto.getBillingInfo());
+        final Recurrence recurrence = Objects.requireNonNull(dto.getRecurrence());
+
         assertThat(dto.getId()).isEqualTo(entity.getId());
+        assertThat(dto.getPaymentProviderId()).isEqualTo(PAYMENT_PROVIDER_ID);
         assertThat(dto.getProvider()).isEqualTo("stripe");
         assertThat(dto.getStatus()).isEqualTo(PaymentStatus.READY);
         assertThat(dto.getType()).isEqualTo(PaymentType.RECURRING);
-        assertThat(dto.getPurchaseOrder().getCurrency()).isEqualTo("USD");
-        assertThat(dto.getPurchaseOrder().getGrossAmount()).isEqualTo(3000L);
-        assertThat(dto.getBillingInfo().getEmail()).isEqualTo("customer@example.com");
-        assertThat(dto.getRecurrence().getType()).isEqualTo(Recurrence.TypeEnum.DURATION);
+        assertThat(purchaseOrder.getCurrency()).isEqualTo("USD");
+        assertThat(purchaseOrder.getGrossAmount()).isEqualTo(3000L);
+        assertThat(billingInfo.getEmail()).isEqualTo("customer@example.com");
+        assertThat(recurrence.getType()).isEqualTo(Recurrence.TypeEnum.DURATION);
         assertThat(dto.getExtra()).containsEntry("source", "test");
     }
 
@@ -101,7 +108,7 @@ class PaymentMapperTest {
 
     private static CreatePaymentRequest createPaymentRequest() {
         return new CreatePaymentRequest(
-                "stripe",
+                PAYMENT_PROVIDER_ID,
                 purchaseOrder(),
                 new BillingInfo("customer@example.com"))
                 .recurrence(new Recurrence(Recurrence.TypeEnum.DURATION, "P1M", "Europe/Kiev"))
@@ -112,7 +119,11 @@ class PaymentMapperTest {
         return PaymentEntity.builder()
                 .id(UUID.randomUUID())
                 .tenantId("tenant-a")
-                .paymentProvider(PaymentProviderEntity.builder().provider("stripe").build())
+                .paymentProviderId(PAYMENT_PROVIDER_ID)
+                .paymentProvider(PaymentProviderEntity.builder()
+                        .id(PAYMENT_PROVIDER_ID)
+                        .provider("stripe")
+                        .build())
                 .status(PaymentStatus.READY)
                 .purchaseOrder(Map.of(
                         "currency", "USD",

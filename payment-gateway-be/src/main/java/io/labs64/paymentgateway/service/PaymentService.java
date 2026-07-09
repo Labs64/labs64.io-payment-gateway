@@ -23,7 +23,7 @@ public interface PaymentService {
             final PaymentFilter filter,
             final Pageable pageable);
 
-    PaymentEntity create(String tenantId, String provider, PaymentEntity entity);
+    PaymentEntity create(String tenantId, UUID paymentProviderId, PaymentEntity entity);
 
     PaymentEntity update(String tenantId, UUID id, Consumer<PaymentEntity> updater);
 

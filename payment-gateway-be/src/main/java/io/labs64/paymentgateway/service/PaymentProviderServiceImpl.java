@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -50,21 +51,19 @@ public class PaymentProviderServiceImpl implements PaymentProviderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<PaymentProviderEntity> find(final String tenantId, final String provider) {
-        log.debug("Find payment provider for tenantId={}, provider={}", tenantId, provider);
+    public Optional<PaymentProviderEntity> find(final String tenantId, final UUID paymentProviderId) {
+        log.debug("Find payment provider for tenantId={}, paymentProviderId={}", tenantId, paymentProviderId);
 
-        if (paymentDefinitionService.findEnabled(provider).isEmpty()) {
-            return Optional.empty();
-        }
-
-        return repository.findByTenantIdAndProvider(tenantId, provider);
+        return repository.findByTenantIdAndId(tenantId, paymentProviderId)
+                .filter(entity -> paymentDefinitionService.findEnabled(entity.getProvider()).isPresent());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PaymentProviderEntity get(final String tenantId, final String provider) {
-        log.debug("Get payment provider for tenantId={}, provider={}", tenantId, provider);
-        return find(tenantId, provider).orElseThrow(() -> new NotFoundException(msg.notFound(provider)));
+    public PaymentProviderEntity get(final String tenantId, final UUID paymentProviderId) {
+        log.debug("Get payment provider for tenantId={}, paymentProviderId={}", tenantId, paymentProviderId);
+        return find(tenantId, paymentProviderId)
+                .orElseThrow(() -> new NotFoundException(msg.notFound(paymentProviderId.toString())));
     }
 
     @Override
@@ -96,16 +95,13 @@ public class PaymentProviderServiceImpl implements PaymentProviderService {
 
     @Override
     @Transactional
-    public PaymentProviderEntity create(final String tenantId, final String provider,
-                                        final PaymentProviderEntity entity) {
+    public PaymentProviderEntity create(final String tenantId, final PaymentProviderEntity entity) {
+        final String provider = entity.getProvider();
         log.info("Creating tenant payment provider for tenantId={}, provider={}", tenantId, provider);
 
         final PaymentDefinition providerDefinition = paymentDefinitionService.findEnabled(provider)
                 .orElseThrow(() -> new NotFoundException(msg.notSupported(provider)));
 
-        if (repository.existsByTenantIdAndProvider(tenantId, provider)) {
-            throw new ConflictException(msg.alreadyExists(provider));
-        }
         final Map<String, String> config = sanitizeConfig(provider, entity.getConfig());
         entity.setConfig(config);
 
@@ -128,42 +124,43 @@ public class PaymentProviderServiceImpl implements PaymentProviderService {
 
     @Override
     @Transactional
-    public PaymentProviderEntity update(final String tenantId, final String provider,
+    public PaymentProviderEntity update(final String tenantId, final UUID paymentProviderId,
                                         final Consumer<PaymentProviderEntity> updater) {
-        log.info("Updating payment provider for tenantId={}, provider={}", tenantId, provider);
+        log.info("Updating payment provider for tenantId={}, paymentProviderId={}", tenantId, paymentProviderId);
 
+        final PaymentProviderEntity entity = find(tenantId, paymentProviderId)
+                .orElseThrow(() -> new NotFoundException(msg.notFound(paymentProviderId.toString())));
+
+        final String provider = entity.getProvider();
         paymentDefinitionService.findEnabled(provider)
                 .orElseThrow(() -> new NotFoundException(msg.notSupported(provider)));
 
-        return find(tenantId, provider)
-                .map(entity -> {
-                    updater.accept(entity);
+        updater.accept(entity);
 
-                    final Map<String, String> config = sanitizeConfig(provider, entity.getConfig());
-                    entity.setConfig(config);
+        final Map<String, String> config = sanitizeConfig(provider, entity.getConfig());
+        entity.setConfig(config);
 
-                    log.debug("Update payment provider: {}", entity);
-                    return entity;
-                })
-                .orElseThrow(() -> new NotFoundException(msg.notFound(provider)));
+        log.debug("Update payment provider: {}", entity);
+        return entity;
     }
 
     @Override
     @Transactional
-    public boolean delete(final String tenantId, final String provider) {
-        log.info("Deleting payment provider for tenantId={}, provider={}", tenantId, provider);
+    public boolean delete(final String tenantId, final UUID paymentProviderId) {
+        log.info("Deleting payment provider for tenantId={}, paymentProviderId={}", tenantId, paymentProviderId);
 
-        final Optional<PaymentProviderEntity> paymentProvider = repository.findByTenantIdAndProvider(tenantId, provider);
+        final Optional<PaymentProviderEntity> paymentProvider = repository.findByTenantIdAndId(tenantId, paymentProviderId);
         if (paymentProvider.isEmpty()) {
             return false;
         }
 
+        final String provider = paymentProvider.get().getProvider();
         if (paymentRepository.existsByTenantIdAndPaymentProviderId(tenantId, paymentProvider.get().getId())) {
             throw new ConflictException(msg.cannotDeleteWithPayments(provider));
         }
 
-        final int affected = repository.deleteByTenantIdAndProvider(tenantId, provider);
-        log.debug("Delete payment provider provider={} tenant={} affected={}", provider, tenantId, affected);
+        final int affected = repository.deleteByTenantIdAndId(tenantId, paymentProviderId);
+        log.debug("Delete payment provider id={} provider={} tenant={} affected={}", paymentProviderId, provider, tenantId, affected);
         return affected > 0;
     }
 

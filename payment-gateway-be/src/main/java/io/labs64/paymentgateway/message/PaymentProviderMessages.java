@@ -16,10 +16,6 @@ public class PaymentProviderMessages {
         return msg.get("payment_provider.not_supported", provider);
     }
 
-    public String alreadyExists(final String provider) {
-        return msg.get("payment_provider.already_exists", provider);
-    }
-
     public String configNotSupported(final String provider) {
         return msg.get("payment_provider.config_not_supported", provider);
     }

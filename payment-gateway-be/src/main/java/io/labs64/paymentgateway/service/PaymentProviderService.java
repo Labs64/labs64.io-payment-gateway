@@ -1,6 +1,7 @@
 package io.labs64.paymentgateway.service;
 
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
@@ -18,23 +19,23 @@ import org.springframework.data.domain.Pageable;
 public interface PaymentProviderService {
 
     /**
-     * Finds a tenant payment provider only when the provider is globally supported
-     * and enabled in YAML.
+     * Finds a tenant payment provider by id only when its provider is globally
+     * supported and enabled in YAML.
      *
      * @param tenantId tenant identifier from the authenticated request context
-     * @param provider globally supported provider identifier, for example {@code stripe}
+     * @param paymentProviderId tenant payment provider identifier
      * @return tenant payment provider if both the YAML provider and tenant record exist
      */
-    Optional<PaymentProviderEntity> find(String tenantId, String provider);
+    Optional<PaymentProviderEntity> find(String tenantId, UUID paymentProviderId);
 
     /**
      * Returns a tenant payment provider or raises a not-found API exception.
      *
      * @param tenantId tenant identifier from the authenticated request context
-     * @param provider globally supported provider identifier
+     * @param paymentProviderId tenant payment provider identifier
      * @return existing tenant payment provider
      */
-    PaymentProviderEntity get(String tenantId, String provider);
+    PaymentProviderEntity get(String tenantId, UUID paymentProviderId);
 
     /**
      * Lists tenant payment providers for providers allowed by YAML and optional
@@ -61,15 +62,13 @@ public interface PaymentProviderService {
      * <p>
      * The caller supplies a prepared entity, usually produced by a mapper. The
      * service assigns tenant/provider ownership, applies YAML display defaults
-     * where needed, validates the required PSP configuration presence, and
-     * rejects duplicate tenant/provider records.
+     * where needed, and validates the required PSP configuration.
      *
      * @param tenantId tenant identifier from the authenticated request context
-     * @param provider globally supported provider identifier
      * @param entity   tenant payment provider entity to persist
      * @return persisted tenant payment provider
      */
-    PaymentProviderEntity create(String tenantId, String provider, PaymentProviderEntity entity);
+    PaymentProviderEntity create(String tenantId, PaymentProviderEntity entity);
 
     /**
      * Updates an existing tenant payment provider.
@@ -79,18 +78,18 @@ public interface PaymentProviderService {
      * tenant/provider lookup and provider support checks.
      *
      * @param tenantId tenant identifier from the authenticated request context
-     * @param provider globally supported provider identifier
+     * @param paymentProviderId tenant payment provider identifier
      * @param updater  mutation callback applied to the managed entity
      * @return updated tenant payment provider
      */
-    PaymentProviderEntity update(String tenantId, String provider, Consumer<PaymentProviderEntity> updater);
+    PaymentProviderEntity update(String tenantId, UUID paymentProviderId, Consumer<PaymentProviderEntity> updater);
 
     /**
-     * Deletes a tenant payment provider by provider.
+     * Deletes a tenant payment provider by id.
      *
      * @param tenantId tenant identifier from the authenticated request context
-     * @param provider globally supported provider identifier
+     * @param paymentProviderId tenant payment provider identifier
      * @return {@code true} when a tenant record was deleted
      */
-    boolean delete(String tenantId, String provider);
+    boolean delete(String tenantId, UUID paymentProviderId);
 }

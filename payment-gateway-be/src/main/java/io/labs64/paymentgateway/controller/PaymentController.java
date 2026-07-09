@@ -81,7 +81,7 @@ public class PaymentController implements PaymentsApi {
 
         log.info("Payment create requested | tenantId={}, request={}", tenantId, request);
 
-        final PaymentEntity entity = service.create(tenantId, request.getProvider(), paymentMapper.toEntity(request));
+        final PaymentEntity entity = service.create(tenantId, request.getPaymentProviderId(), paymentMapper.toEntity(request));
         final Payment response = paymentMapper.toDto(entity);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

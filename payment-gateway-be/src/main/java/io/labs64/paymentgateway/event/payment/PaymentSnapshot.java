@@ -15,6 +15,7 @@ import io.labs64.paymentgateway.model.PaymentType;
  */
 public record PaymentSnapshot(
         UUID id,
+        UUID paymentProviderId,
         String provider,
         PaymentStatus status,
         PaymentType type,

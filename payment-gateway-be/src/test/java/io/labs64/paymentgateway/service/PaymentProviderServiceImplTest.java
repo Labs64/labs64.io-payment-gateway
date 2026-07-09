@@ -34,7 +34,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,6 +41,7 @@ class PaymentProviderServiceImplTest {
 
     private static final String TENANT_ID = "tenant-a";
     private static final String PROVIDER = "stripe";
+    private static final UUID PAYMENT_PROVIDER_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440010");
 
     @Mock
     private PaymentDefinitionService paymentDefinitionService;
@@ -65,21 +65,23 @@ class PaymentProviderServiceImplTest {
 
     @Test
     void findReturnsEmptyWhenProviderDefinitionIsDisabledOrMissing() {
+        when(repository.findByTenantIdAndId(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(Optional.of(entity(PROVIDER)));
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.empty());
 
-        assertThat(service.find(TENANT_ID, PROVIDER)).isEmpty();
+        assertThat(service.find(TENANT_ID, PAYMENT_PROVIDER_ID)).isEmpty();
 
+        verify(repository).findByTenantIdAndId(TENANT_ID, PAYMENT_PROVIDER_ID);
         verify(paymentDefinitionService).findEnabled(PROVIDER);
-        verifyNoMoreInteractions(repository);
     }
 
     @Test
     void findReturnsTenantPaymentProviderWhenDefinitionIsEnabled() {
         final PaymentProviderEntity entity = entity(PROVIDER);
+        entity.setId(PAYMENT_PROVIDER_ID);
+        when(repository.findByTenantIdAndId(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(Optional.of(entity));
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition(PROVIDER)));
-        when(repository.findByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(Optional.of(entity));
 
-        assertThat(service.find(TENANT_ID, PROVIDER)).containsSame(entity);
+        assertThat(service.find(TENANT_ID, PAYMENT_PROVIDER_ID)).containsSame(entity);
     }
 
     @Test
@@ -106,16 +108,16 @@ class PaymentProviderServiceImplTest {
     void createAssignsTenantAndProviderAppliesDefaultsAndFiltersConfig() {
         final PaymentProviderEntity input = PaymentProviderEntity.builder()
                 .active(true)
+                .provider(PROVIDER)
                 .config(Map.of("apiKey", "raw", "extra", "trash"))
                 .build();
         final PaymentDefinition definition = definition(PROVIDER);
 
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition));
-        when(repository.existsByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(false);
         when(paymentProviders.getProvider(PROVIDER)).thenReturn(pspProvider);
         when(repository.save(any(PaymentProviderEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        final PaymentProviderEntity result = service.create(TENANT_ID, PROVIDER, input);
+        final PaymentProviderEntity result = service.create(TENANT_ID, input);
 
         assertThat(result.getTenantId()).isEqualTo(TENANT_ID);
         assertThat(result.getProvider()).isEqualTo(PROVIDER);
@@ -129,40 +131,31 @@ class PaymentProviderServiceImplTest {
     void createKeepsTenantDisplayOverrides() {
         final PaymentProviderEntity input = PaymentProviderEntity.builder()
                 .active(true)
+                .provider(PROVIDER)
                 .name("My Stripe")
                 .description("")
                 .config(Map.of("apiKey", "raw"))
                 .build();
 
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition(PROVIDER)));
-        when(repository.existsByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(false);
         when(paymentProviders.getProvider(PROVIDER)).thenReturn(pspProvider);
         when(repository.save(any(PaymentProviderEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        final PaymentProviderEntity result = service.create(TENANT_ID, PROVIDER, input);
+        final PaymentProviderEntity result = service.create(TENANT_ID, input);
 
         assertThat(result.getName()).isEqualTo("My Stripe");
         assertThat(result.getDescription()).isEmpty();
     }
 
     @Test
-    void createThrowsWhenProviderAlreadyExists() {
-        when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition(PROVIDER)));
-        when(repository.existsByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(true);
-        when(msg.alreadyExists(PROVIDER)).thenReturn("exists");
-
-        assertThatThrownBy(() -> service.create(TENANT_ID, PROVIDER, entity(PROVIDER)))
-                .isInstanceOf(ConflictException.class);
-    }
-
-    @Test
     void updateAppliesUpdaterAndSanitizesMergedConfig() {
         final PaymentProviderEntity entity = entity(PROVIDER);
+        entity.setId(PAYMENT_PROVIDER_ID);
+        when(repository.findByTenantIdAndId(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(Optional.of(entity));
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition(PROVIDER)));
-        when(repository.findByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(Optional.of(entity));
         when(paymentProviders.getProvider(PROVIDER)).thenReturn(pspProvider);
 
-        final PaymentProviderEntity result = service.update(TENANT_ID, PROVIDER, target -> {
+        final PaymentProviderEntity result = service.update(TENANT_ID, PAYMENT_PROVIDER_ID, target -> {
             target.setActive(false);
             target.getConfig().put("webhookSecret", "raw-secret");
         });
@@ -177,15 +170,15 @@ class PaymentProviderServiceImplTest {
     void createThrowsWhenProviderDoesNotAcceptConfig() {
         final PaymentProviderEntity input = PaymentProviderEntity.builder()
                 .active(true)
+                .provider(PROVIDER)
                 .config(Map.of("apiKey", "raw"))
                 .build();
 
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition(PROVIDER)));
-        when(repository.existsByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(false);
         when(paymentProviders.getProvider(PROVIDER)).thenReturn(new NonConfigurableProvider());
         when(msg.configNotSupported(PROVIDER)).thenReturn("config not supported");
 
-        assertThatThrownBy(() -> service.create(TENANT_ID, PROVIDER, input))
+        assertThatThrownBy(() -> service.create(TENANT_ID, input))
                 .isInstanceOf(ValidationException.class);
     }
 
@@ -193,60 +186,61 @@ class PaymentProviderServiceImplTest {
     void createThrowsWhenRequiredConfigFieldIsMissing() {
         final PaymentProviderEntity input = PaymentProviderEntity.builder()
                 .active(true)
+                .provider(PROVIDER)
                 .config(Map.of("extra", "trash"))
                 .build();
 
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition(PROVIDER)));
-        when(repository.existsByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(false);
         when(paymentProviders.getProvider(PROVIDER)).thenReturn(pspProvider);
         when(msg.configFieldRequired(PROVIDER, "apiKey")).thenReturn("apiKey required");
 
-        assertThatThrownBy(() -> service.create(TENANT_ID, PROVIDER, input))
+        assertThatThrownBy(() -> service.create(TENANT_ID, input))
                 .isInstanceOf(ValidationException.class);
     }
 
     @Test
     void deleteThrowsWhenPaymentProviderIsLinkedToPayments() {
         final PaymentProviderEntity entity = entity(PROVIDER);
-        entity.setId(UUID.randomUUID());
-        when(repository.findByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(Optional.of(entity));
+        entity.setId(PAYMENT_PROVIDER_ID);
+        when(repository.findByTenantIdAndId(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(Optional.of(entity));
         when(paymentRepository.existsByTenantIdAndPaymentProviderId(TENANT_ID, entity.getId())).thenReturn(true);
         when(msg.cannotDeleteWithPayments(PROVIDER)).thenReturn("linked");
 
-        assertThatThrownBy(() -> service.delete(TENANT_ID, PROVIDER))
+        assertThatThrownBy(() -> service.delete(TENANT_ID, PAYMENT_PROVIDER_ID))
                 .isInstanceOf(ConflictException.class);
     }
 
     @Test
     void deleteReturnsFalseWhenPaymentProviderDoesNotExist() {
-        when(repository.findByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(Optional.empty());
+        when(repository.findByTenantIdAndId(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(Optional.empty());
 
-        assertThat(service.delete(TENANT_ID, PROVIDER)).isFalse();
+        assertThat(service.delete(TENANT_ID, PAYMENT_PROVIDER_ID)).isFalse();
     }
 
     @Test
     void deleteReturnsTrueWhenRepositoryDeletesRecord() {
         final PaymentProviderEntity entity = entity(PROVIDER);
-        entity.setId(UUID.randomUUID());
-        when(repository.findByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(Optional.of(entity));
+        entity.setId(PAYMENT_PROVIDER_ID);
+        when(repository.findByTenantIdAndId(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(Optional.of(entity));
         when(paymentRepository.existsByTenantIdAndPaymentProviderId(TENANT_ID, entity.getId())).thenReturn(false);
-        when(repository.deleteByTenantIdAndProvider(TENANT_ID, PROVIDER)).thenReturn(1);
+        when(repository.deleteByTenantIdAndId(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(1);
 
-        assertThat(service.delete(TENANT_ID, PROVIDER)).isTrue();
+        assertThat(service.delete(TENANT_ID, PAYMENT_PROVIDER_ID)).isTrue();
     }
 
     @Test
     void getThrowsWhenPaymentProviderIsNotFound() {
-        when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.empty());
-        when(msg.notFound(PROVIDER)).thenReturn("not found");
+        when(repository.findByTenantIdAndId(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(Optional.empty());
+        when(msg.notFound(PAYMENT_PROVIDER_ID.toString())).thenReturn("not found");
 
-        assertThatThrownBy(() -> service.get(TENANT_ID, PROVIDER))
+        assertThatThrownBy(() -> service.get(TENANT_ID, PAYMENT_PROVIDER_ID))
                 .isInstanceOf(NotFoundException.class);
     }
 
     private static PaymentProviderEntity entity(final String provider) {
         return PaymentProviderEntity.builder()
                 .tenantId(TENANT_ID)
+                .id(PAYMENT_PROVIDER_ID)
                 .provider(provider)
                 .active(true)
                 .name("Stripe")

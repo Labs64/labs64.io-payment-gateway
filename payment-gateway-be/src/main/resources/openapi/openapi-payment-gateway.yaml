@@ -127,13 +127,15 @@ paths:
                 $ref: '#/components/schemas/PaymentProviderListResponse'
               example:
                 items:
-                  - id: stripe
+                  - id: "550e8400-e29b-41d4-a716-446655440010"
+                    provider: stripe
                     name: Stripe
                     description: Credit/Debit Card via Stripe
                     icon: null
                     recurring: true
                     active: true
-                  - id: paypal
+                  - id: "550e8400-e29b-41d4-a716-446655440011"
+                    provider: paypal
                     name: PayPal
                     description: PayPal Checkout
                     icon: null
@@ -148,50 +150,11 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /payment-providers/{provider}:
-    get:
-      summary: Get a single payment provider
-      description: >-
-        Retrieve details of a tenant payment provider by provider, including
-        tenant PSP configuration. This endpoint requires payment-provider:write
-        scope because it exposes sensitive provider configuration.
-      operationId: getPaymentProvider
-      tags:
-        - PaymentProviders
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/ProviderPath'
-      responses:
-        '200':
-          description: Payment method details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaymentProvider'
-              example:
-                id: stripe
-                name: Stripe
-                description: Credit/Debit Card via Stripe
-                icon: null
-                recurring: true
-                active: true
-                config:
-                  apiKey: sk_test_***
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
     post:
       summary: Create tenant payment provider
       description: >-
-        Create the tenant payment provider for the given
-        globally supported provider. This does not modify the YAML payment
+        Create a tenant payment provider for the globally supported provider
+        specified in the request body. This does not modify the YAML payment
         provider definition. The request must include a complete, valid PSP
         configuration.
       operationId: createPaymentProvider
@@ -199,8 +162,6 @@ paths:
         - PaymentProviders
       security:
         - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/ProviderPath'
       requestBody:
         required: true
         content:
@@ -208,6 +169,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PaymentProviderCreateRequest'
             example:
+              provider: stripe
               active: true
               config:
                 apiKey: sk_test_abc123
@@ -221,7 +183,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaymentProvider'
               example:
-                id: stripe
+                id: "550e8400-e29b-41d4-a716-446655440010"
+                provider: stripe
                 name: Stripe
                 description: Credit/Debit Card via Stripe
                 icon: null
@@ -242,6 +205,46 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /payment-providers/{paymentProviderId}:
+    get:
+      summary: Get a single payment provider
+      description: >-
+        Retrieve details of a tenant payment provider by id, including tenant
+        PSP configuration. This endpoint requires payment-provider:write scope
+        because it exposes sensitive provider configuration.
+      operationId: getPaymentProvider
+      tags:
+        - PaymentProviders
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PaymentProviderIdPath'
+      responses:
+        '200':
+          description: Payment provider details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentProvider'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440010"
+                provider: stripe
+                name: Stripe
+                description: Credit/Debit Card via Stripe
+                icon: null
+                recurring: true
+                active: true
+                config:
+                  apiKey: sk_test_***
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
     patch:
       summary: Partially update tenant payment provider
       description: >-
@@ -254,7 +257,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/ProviderPath'
+        - $ref: '#/components/parameters/PaymentProviderIdPath'
       requestBody:
         required: true
         content:
@@ -271,7 +274,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaymentProvider'
               example:
-                id: stripe
+                id: "550e8400-e29b-41d4-a716-446655440010"
+                provider: stripe
                 name: Stripe
                 description: Credit/Debit Card via Stripe
                 icon: null
@@ -306,7 +310,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/ProviderPath'
+        - $ref: '#/components/parameters/PaymentProviderIdPath'
       responses:
         '204':
           description: Tenant payment provider deleted successfully.
@@ -373,7 +377,7 @@ paths:
             schema:
               $ref: '#/components/schemas/CreatePaymentRequest'
             example:
-              provider: stripe
+              paymentProviderId: "550e8400-e29b-41d4-a716-446655440010"
               purchaseOrder:
                 currency: USD
                 items:
@@ -808,6 +812,16 @@ components:
         type: string
         example: stripe
 
+    PaymentProviderIdPath:
+      name: paymentProviderId
+      in: path
+      required: true
+      description: Unique identifier for the tenant payment provider.
+      schema:
+        type: string
+        format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440010"
+
     PaymentIdPath:
       name: paymentId
       in: path
@@ -1029,13 +1043,20 @@ components:
       additionalProperties: false
       required:
         - id
+        - provider
         - name
         - description
         - recurring
       properties:
         id:
           type: string
-          description: Unique identifier for the payment provider.
+          format: uuid
+          description: Unique tenant payment provider identifier.
+          readOnly: true
+          example: "550e8400-e29b-41d4-a716-446655440010"
+        provider:
+          type: string
+          description: Globally supported payment provider identifier.
           example: stripe
         name:
           type: string
@@ -1103,8 +1124,13 @@ components:
       type: object
       additionalProperties: false
       required:
+        - provider
         - active
       properties:
+        provider:
+          type: string
+          description: Globally supported payment provider identifier.
+          example: stripe
         active:
           type: boolean
           description: Whether this tenant payment provider is active.
@@ -1159,14 +1185,15 @@ components:
       type: object
       additionalProperties: false
       required:
-        - provider
+        - paymentProviderId
         - purchaseOrder
         - billingInfo
       properties:
-        provider:
+        paymentProviderId:
           type: string
-          description: Selected payment provider.
-          example: stripe
+          format: uuid
+          description: Tenant payment provider identifier selected for this payment.
+          example: "550e8400-e29b-41d4-a716-446655440010"
         purchaseOrder:
           $ref: '#/components/schemas/PurchaseOrder'
         billingInfo:
@@ -1440,6 +1467,7 @@ components:
       additionalProperties: false
       required:
         - id
+        - paymentProviderId
         - provider
         - status
         - type
@@ -1452,9 +1480,15 @@ components:
           description: Unique payment identifier.
           readOnly: true
           example: "550e8400-e29b-41d4-a716-446655440000"
+        paymentProviderId:
+          type: string
+          format: uuid
+          description: Tenant payment provider instance used by this payment.
+          readOnly: true
+          example: "550e8400-e29b-41d4-a716-446655440010"
         provider:
           type: string
-          description: Payment provider used.
+          description: Globally supported payment provider identifier used by the tenant payment provider.
           example: stripe
         status:
           allOf:
