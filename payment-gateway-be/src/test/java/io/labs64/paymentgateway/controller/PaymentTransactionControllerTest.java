@@ -23,8 +23,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import io.labs64.authcontext.UserContext;
-import io.labs64.authcontext.UserContextHolder;
+import io.labs64.authcontext.core.AuthContext;
+import io.labs64.authcontext.core.AuthContextHolder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -53,7 +53,7 @@ class PaymentTransactionControllerTest {
 
     @AfterEach
     void tearDown() {
-        UserContextHolder.clear();
+        AuthContextHolder.clear();
     }
 
     @Test
@@ -97,8 +97,8 @@ class PaymentTransactionControllerTest {
     }
 
     private static void authenticate() {
-        UserContextHolder.set(
-                new UserContext("test-user", TENANT_ID, Set.of("ecommerce-role"), "test-request-id"));
+        AuthContextHolder.set(
+                new AuthContext("test-user", TENANT_ID, Set.of("payment-transaction:read"), "test-request-id"));
     }
 
     private static PaymentTransactionEntity transaction() {

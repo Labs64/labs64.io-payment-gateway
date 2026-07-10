@@ -13,8 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import io.labs64.authcontext.UserContext;
-import io.labs64.authcontext.UserContextHolder;
+import io.labs64.authcontext.core.AuthContext;
+import io.labs64.authcontext.core.AuthContextHolder;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerMapping;
 
@@ -32,7 +32,7 @@ class IdempotencyInterceptorTest {
 
     @AfterEach
     void tearDown() {
-        UserContextHolder.clear();
+        AuthContextHolder.clear();
     }
 
     @Test
@@ -76,8 +76,10 @@ class IdempotencyInterceptorTest {
                 new MockHttpServletResponse(),
                 new HandlerMethod(new Handler(), "idempotent"));
 
+        final Object requestContextAttribute = request.getAttribute(IdempotencyInterceptor.REQUEST_CONTEXT_ATTRIBUTE);
+
         assertThat(result).isTrue();
-        assertThat(request.getAttribute(IdempotencyInterceptor.REQUEST_CONTEXT_ATTRIBUTE))
+        assertThat(requestContextAttribute)
                 .isInstanceOf(IdempotencyContext.class)
                 .extracting("tenantId", "idempotencyKey")
                 .containsExactly("tenant-a", "idk-1");
@@ -115,8 +117,8 @@ class IdempotencyInterceptorTest {
     }
 
     private static void authenticate() {
-        UserContextHolder.set(new UserContext("test-user", "tenant-a",
-                java.util.Set.of("ecommerce-role"), "test-request-id"));
+        AuthContextHolder.set(new AuthContext("test-user", "tenant-a",
+                java.util.Set.of("payment:read"), "test-request-id"));
     }
 
     private static ObjectMapper objectMapper() {

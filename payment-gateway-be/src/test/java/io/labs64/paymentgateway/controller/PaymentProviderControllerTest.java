@@ -6,13 +6,12 @@ import java.util.Set;
 import java.util.UUID;
 
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
-import io.labs64.paymentgateway.exception.ForbiddenException;
 import io.labs64.paymentgateway.mapper.PaymentProviderMapper;
-import io.labs64.paymentgateway.message.PaymentProviderMessages;
 import io.labs64.paymentgateway.model.PaymentProvider;
 import io.labs64.paymentgateway.model.PaymentProviderCreateRequest;
 import io.labs64.paymentgateway.model.PaymentProviderListResponse;
 import io.labs64.paymentgateway.model.PaymentProviderUpdateRequest;
+import io.labs64.paymentgateway.model.Scopes;
 import io.labs64.paymentgateway.service.PaymentProviderService;
 import io.labs64.paymentgateway.service.filter.PaymentProviderFilter;
 import org.junit.jupiter.api.AfterEach;
@@ -27,16 +26,13 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import io.labs64.authcontext.UserContext;
-import io.labs64.paymentgateway.security.Roles;
-import io.labs64.authcontext.UserContextHolder;
+import io.labs64.authcontext.core.AuthContext;
+import io.labs64.authcontext.core.AuthContextHolder;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,20 +48,17 @@ class PaymentProviderControllerTest {
     @Mock
     private PaymentProviderMapper mapper;
 
-    @Mock
-    private PaymentProviderMessages msg;
-
     @InjectMocks
     private PaymentProviderController controller;
 
     @BeforeEach
     void setUp() {
-        authenticate(Roles.PAYMENT_PROVIDER_ADMIN);
+        authenticate(Scopes.PAYMENT_PROVIDER_READ.getValue());
     }
 
     @AfterEach
     void tearDown() {
-        UserContextHolder.clear();
+        AuthContextHolder.clear();
     }
 
     @Test
@@ -81,17 +74,6 @@ class PaymentProviderControllerTest {
         assertThat(result.getBody()).isSameAs(dto);
         verify(service).get(TENANT_ID, PAYMENT_PROVIDER_ID);
         verify(mapper).toDtoWithConfig(entity);
-    }
-
-    @Test
-    void getPaymentProviderRejectsWithoutWriteScope() {
-        authenticate("ecommerce-role");
-        when(msg.configScopeRequired(Roles.PAYMENT_PROVIDER_ADMIN)).thenReturn("scope required");
-
-        assertThatThrownBy(() -> controller.getPaymentProvider(PAYMENT_PROVIDER_ID))
-                .isInstanceOf(ForbiddenException.class);
-
-        verifyNoInteractions(service, mapper);
     }
 
     @Test
@@ -166,9 +148,9 @@ class PaymentProviderControllerTest {
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     }
 
-    private static void authenticate(final String... roles) {
-        UserContextHolder.set(
-                new UserContext("test-user", TENANT_ID, Set.of(roles), "test-request-id"));
+    private static void authenticate(final String... scopes) {
+        AuthContextHolder.set(
+                new AuthContext("test-user", TENANT_ID, Set.of(scopes), "test-request-id"));
     }
 
     private static PaymentProviderEntity entity() {

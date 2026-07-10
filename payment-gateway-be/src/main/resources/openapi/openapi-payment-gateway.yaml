@@ -94,6 +94,10 @@ paths:
         - PaymentProviders
       security:
         - bearerAuth: []
+      x-labs64-auth:
+        tenant: true
+        scopes:
+          - payment-provider:read
       parameters:
         - name: currency
           in: query
@@ -162,6 +166,10 @@ paths:
         - PaymentProviders
       security:
         - bearerAuth: []
+      x-labs64-auth:
+        tenant: true
+        scopes:
+          - payment-provider:write
       requestBody:
         required: true
         content:
@@ -217,6 +225,10 @@ paths:
         - PaymentProviders
       security:
         - bearerAuth: []
+      x-labs64-auth:
+        tenant: true
+        scopes:
+          - payment-provider:write
       parameters:
         - $ref: '#/components/parameters/PaymentProviderIdPath'
       responses:
@@ -256,6 +268,10 @@ paths:
         - PaymentProviders
       security:
         - bearerAuth: []
+      x-labs64-auth:
+        tenant: true
+        scopes:
+          - payment-provider:write
       parameters:
         - $ref: '#/components/parameters/PaymentProviderIdPath'
       requestBody:
@@ -309,6 +325,10 @@ paths:
         - PaymentProviders
       security:
         - bearerAuth: []
+      x-labs64-auth:
+        tenant: true
+        scopes:
+          - payment-provider:write
       parameters:
         - $ref: '#/components/parameters/PaymentProviderIdPath'
       responses:
@@ -336,6 +356,10 @@ paths:
       x-spring-paginated: true
       security:
         - bearerAuth: []
+      x-labs64-auth:
+        tenant: true
+        scopes:
+          - payment:read
       parameters:
         - name: status
           in: query
@@ -370,6 +394,10 @@ paths:
         - Payments
       security:
         - bearerAuth: []
+      x-labs64-auth:
+        tenant: true
+        scopes:
+          - payment:write
       requestBody:
         required: true
         content:
@@ -430,6 +458,10 @@ paths:
         - Payments
       security:
         - bearerAuth: []
+      x-labs64-auth:
+        tenant: true
+        scopes:
+          - payment:read
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
       responses:
@@ -466,6 +498,10 @@ paths:
         - Payments
       security:
         - bearerAuth: []
+      x-labs64-auth:
+        tenant: true
+        scopes:
+          - payment:pay
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
       requestBody:
@@ -544,6 +580,10 @@ paths:
         - Payments
       security:
         - bearerAuth: []
+      x-labs64-auth:
+        tenant: true
+        scopes:
+          - payment:write
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
       responses:
@@ -589,6 +629,10 @@ paths:
       x-spring-paginated: true
       security:
         - bearerAuth: []
+      x-labs64-auth:
+        tenant: true
+        scopes:
+          - payment-transaction:read
       parameters:
         - name: paymentId
           in: query
@@ -628,6 +672,10 @@ paths:
         - PaymentTransactions
       security:
         - bearerAuth: []
+      x-labs64-auth:
+        tenant: true
+        scopes:
+          - payment-transaction:read
       parameters:
         - $ref: '#/components/parameters/PaymentTransactionIdPath'
       responses:
@@ -797,9 +845,9 @@ components:
       bearerFormat: JWT
       description: >-
         JWT token containing tenantId claim. Access is controlled by
-        gateway-verified roles supplied via the X-Auth-Roles header:
-        PAYMENT_PROVIDER_READ, PAYMENT_PROVIDER_ADMIN, PAYMENT_READ,
-        PAYMENT_WRITE, PAYMENT_PAY, PAYMENT_TRANSACTION_READ.
+        gateway-verified scopes supplied via the X-Auth-Scopes header:
+        payment-provider:read, payment-provider:write, payment:read,
+        payment:write, payment:pay, payment-transaction:read.
 
   # ─── Reusable Parameters ────────────────────────────────────────────
   parameters:
@@ -928,6 +976,24 @@ components:
 
   # ─── Schemas ─────────────────────────────────────────────────────────
   schemas:
+    Scopes:
+      type: string
+      description: Authorization scopes supported by the Payment Gateway API.
+      enum:
+        - payment-provider:read
+        - payment-provider:write
+        - payment:read
+        - payment:write
+        - payment:pay
+        - payment-transaction:read
+      x-enum-varnames:
+        - PAYMENT_PROVIDER_READ
+        - PAYMENT_PROVIDER_WRITE
+        - PAYMENT_READ
+        - PAYMENT_WRITE
+        - PAYMENT_PAY
+        - PAYMENT_TRANSACTION_READ
+
     # ── Error ───────────────────────────────────────────────────────────
     ErrorCode:
       type: string

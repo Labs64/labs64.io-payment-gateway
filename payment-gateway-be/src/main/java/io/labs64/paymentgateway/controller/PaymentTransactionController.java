@@ -2,11 +2,11 @@ package io.labs64.paymentgateway.controller;
 
 import java.util.UUID;
 
+import io.labs64.authcontext.core.AuthContextHolder;
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
 import io.labs64.paymentgateway.mapper.PaymentTransactionMapper;
 import io.labs64.paymentgateway.model.PaymentTransaction;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
-import io.labs64.paymentgateway.security.AuthContextHolder;
 import io.labs64.paymentgateway.service.PaymentTransactionService;
 import io.labs64.paymentgateway.service.filter.PaymentTransactionFilter;
 import lombok.RequiredArgsConstructor;
