@@ -3,17 +3,12 @@ info:
   title: Labs64 Payment Gateway API
   version: 1.0.0
   description: >-
-    API for payment processing and management, allowing clients to integrate
-    with the Labs64 Payment Gateway for secure and efficient payment handling.
-    Supports multiple PSPs (Stripe, PayPal, NoOp) via a standardized adapter
-    interface with full transaction traceability and multi-tenant support.
+    Unified payment gateway for the Labs64.IO ecosystem — consolidates
+    multiple Payment Service Providers into a single, cohesive API with
+    idempotency, webhook processing, PSP routing, and multi-tenant support.
   contact:
-    name: Labs64
+    name: Labs64.IO
     url: https://labs64.io
-    email: info@labs64.com
-  license:
-    name: Apache 2.0
-    url: https://www.apache.org/licenses/LICENSE-2.0
 
 servers:
   - url: /api/v1
