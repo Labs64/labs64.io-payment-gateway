@@ -2,6 +2,7 @@ package io.labs64.paymentgateway.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.labs64.authcontext.core.AuthContextHolder;
 import io.labs64.paymentgateway.entity.PaymentEntity;
 import io.labs64.paymentgateway.idempotency.IdempotentOperation;
 import io.labs64.paymentgateway.mapper.PaymentMapper;
@@ -16,7 +17,6 @@ import io.labs64.paymentgateway.model.PaymentStatus;
 import io.labs64.paymentgateway.model.PaymentTransaction;
 import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
 import io.labs64.paymentgateway.psp.spi.PaymentNextAction;
-import io.labs64.paymentgateway.security.AuthContextHolder;
 import io.labs64.paymentgateway.service.PayPaymentResponse;
 import io.labs64.paymentgateway.service.PaymentService;
 import io.labs64.paymentgateway.service.filter.PaymentFilter;

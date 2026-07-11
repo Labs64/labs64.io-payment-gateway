@@ -8,7 +8,9 @@ import java.util.HexFormat;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.labs64.paymentgateway.exception.TenantRequiredException;
 import io.labs64.paymentgateway.service.IdempotencyService;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +20,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
 
-import io.labs64.paymentgateway.security.AuthContextHolder;
+import io.labs64.authcontext.core.AuthContextHolder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -51,7 +53,7 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
         }
 
         final IdempotencyContext context = new IdempotencyContext(
-                AuthContextHolder.requireTenantId(),
+                requireTenantId(),
                 idempotencyKey,
                 requestHash(request),
                 new IdempotencyOperation(request.getMethod(), pathPattern(request)));
@@ -90,7 +92,7 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
 
     private String requestHash(final HttpServletRequest request) {
         final MessageDigest digest = sha256();
-        update(digest, AuthContextHolder.requireTenantId());
+        update(digest, requireTenantId());
         update(digest, request.getMethod());
         update(digest, request.getRequestURI());
         update(digest, request.getQueryString());
@@ -118,5 +120,15 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
             return cachedRequest.getCachedBody();
         }
         return new byte[0];
+    }
+
+    private String requireTenantId() {
+        final String tenantId = AuthContextHolder.require().tenantId();
+
+        if (StringUtils.isBlank(tenantId)) {
+            throw new TenantRequiredException();
+        }
+
+        return tenantId;
     }
 }

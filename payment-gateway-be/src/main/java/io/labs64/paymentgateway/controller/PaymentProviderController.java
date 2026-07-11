@@ -4,14 +4,12 @@ import java.util.Set;
 import java.util.UUID;
 
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
-import io.labs64.paymentgateway.exception.ForbiddenException;
 import io.labs64.paymentgateway.exception.NotFoundException;
 import io.labs64.paymentgateway.mapper.PaymentProviderMapper;
 import io.labs64.paymentgateway.message.PaymentProviderMessages;
 import io.labs64.paymentgateway.model.PaymentProviderCreateRequest;
 import io.labs64.paymentgateway.model.PaymentProviderUpdateRequest;
-import io.labs64.paymentgateway.security.AuthContextHolder;
-import io.labs64.paymentgateway.security.Roles;
+import io.labs64.authcontext.core.AuthContextHolder;
 import io.labs64.paymentgateway.service.filter.PaymentProviderFilter;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
@@ -39,8 +37,6 @@ public class PaymentProviderController implements PaymentProvidersApi {
         final String tenantId = AuthContextHolder.require().tenantId();
 
         log.info("Payment provider get requested | tenantId={}, paymentProviderId={}", tenantId, paymentProviderId);
-
-        requireWriteScopeForConfig();
 
         final PaymentProviderEntity entity = service.get(tenantId, paymentProviderId);
         final PaymentProvider response = mapper.toDtoWithConfig(entity);
@@ -108,14 +104,5 @@ public class PaymentProviderController implements PaymentProvidersApi {
         }
 
         return ResponseEntity.noContent().build();
-    }
-
-    private void requireWriteScopeForConfig() {
-        final var ctx = AuthContextHolder.require();
-        if (!ctx.hasRole(Roles.PAYMENT_PROVIDER_ADMIN)) {
-            log.warn("Authorization rejected — missing role {} | tenantId={}, roles={}",
-                    Roles.PAYMENT_PROVIDER_ADMIN, ctx.tenantId(), ctx.roles());
-            throw new ForbiddenException(msg.configScopeRequired(Roles.PAYMENT_PROVIDER_ADMIN));
-        }
     }
 }
