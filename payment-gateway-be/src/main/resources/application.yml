@@ -97,6 +97,11 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+    distribution:
+      # Publish an le=0.5s histogram bucket so the latency SLO rule
+      # (slo:latency:ratio_rate5m) has a bucket to divide on.
+      slo:
+        http.server.requests: 500ms
   prometheus:
     metrics:
       export:
