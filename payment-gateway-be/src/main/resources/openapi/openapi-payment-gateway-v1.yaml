@@ -41,6 +41,7 @@ paths:
       operationId: listPaymentDefinitions
       tags:
         - PaymentDefinitions
+      security: []
       responses:
         '200':
           description: List of available payment definitions
