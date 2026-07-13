@@ -47,7 +47,7 @@ public class PaymentController implements PaymentsApi {
     private final ObjectMapper objectMapper;
 
     @Override
-    @Authorize(action = "readPayment", resource = "#paymentId", resourceType = "Payment")
+    @Authorize(action = "getPayment", resource = "#paymentId", resourceType = "Payment")
     public ResponseEntity<Payment> getPayment(final UUID paymentId) {
         final String tenantId = AuthContextHolder.require().tenantId();
 

@@ -42,10 +42,12 @@ public class PaymentCedarEntityResolver implements CedarEntityResolver {
         final UUID paymentId = UUID.fromString(String.valueOf(resourceRef));
         final PaymentEntity payment = paymentService.find(context.tenantId(), paymentId)
                 .orElseThrow(() -> new NotFoundException(messages.notFound(paymentId)));
+        // Tenant-only: the Cedar domain policy is the generated OpenAPI contract
+        // (scope/tenant + the cross-tenant guard). Workflow-state rules (e.g.
+        // payable-only-when-READY) stay in the service layer, not in Cedar.
         final CedarEntity tenant = CedarEntity.ref("Tenant", payment.getTenantId());
         return CedarEntity.builder("Payment", payment.getId().toString())
                 .attribute("tenant", tenant)
-                .attribute("status", payment.getStatus().name())
                 .parent(tenant)
                 .build();
     }

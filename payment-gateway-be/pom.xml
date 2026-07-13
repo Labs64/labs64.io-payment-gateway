@@ -40,9 +40,11 @@
         <openapi.source>${project.basedir}/src/main/resources/openapi/openapi-payment-gateway-v1.yaml</openapi.source>
         <openapi.generated>${project.build.directory}/generated-openapi/openapi-payment-gateway-v1.yaml</openapi.generated>
         <auth-policy.generated>${project.build.directory}/generated-resources/auth-policy.json</auth-policy.generated>
-        <!-- Tier-1 edge Cedar policies (RFC-05 P2), generated alongside auth-policy.json.
-             auth-policy.module must equal the module's gateway prefix (= bundle-sources.yaml name). -->
+        <!-- Cedar policies generated from x-labs64-auth (RFC-05 P2/P3/P4), alongside
+             auth-policy.json. auth-policy.module must equal the module's gateway prefix
+             (= bundle-sources.yaml name). edge → traefik; domain → @Authorize PEP. -->
         <auth-policy-cedar.generated>${project.build.directory}/generated-resources/auth-policy.cedar</auth-policy-cedar.generated>
+        <auth-policy-cedar-domain.generated>${project.build.directory}/generated-resources/auth-policy-domain.cedar</auth-policy-cedar-domain.generated>
         <auth-policy.module>payment-gateway</auth-policy.module>
     </properties>
 
@@ -90,7 +92,7 @@
         <dependency>
             <groupId>io.labs64</groupId>
             <artifactId>auth-context-spring-boot-starter</artifactId>
-            <version>0.3.1</version>
+            <version>0.3.2</version>
         </dependency>
         <!-- Cedar domain PDP (RFC-05 P3 pilot): optional in the starter - the
              adopting module supplies the engine (uber = bundled natives). -->
@@ -307,6 +309,8 @@
                                 <argument>${auth-policy.generated}</argument>
                                 <argument>--cedar-output</argument>
                                 <argument>${auth-policy-cedar.generated}</argument>
+                                <argument>--cedar-domain-output</argument>
+                                <argument>${auth-policy-cedar-domain.generated}</argument>
                                 <argument>--module</argument>
                                 <argument>${auth-policy.module}</argument>
                             </arguments>

@@ -124,9 +124,22 @@ jobs:
           key: cedar-cli-4.11.2
       - name: Install cedar CLI
         run: command -v cedar || cargo install cedar-policy-cli --version 4.11.2 --locked
-      - name: Validate domain policies against the shared schema
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - name: Build commons (shared preprocessor + schema)
+        run: mvn -q -B -f labs64.io-commons/auth-context-java/pom.xml install -DskipTests
+      - name: Generate edge + domain Cedar from OpenAPI
+        run: mvn -q -B -f payment-gateway-be/pom.xml generate-sources
+      - name: Validate generated edge + domain policies against the shared schema
         run: |
-          cedar validate \
-            --schema labs64.io-commons/auth-policy-cedar/schema.cedarschema \
-            --schema-format cedar \
-            --policies payment-gateway-be/src/main/resources/cedar/domain.cedar
+          for f in auth-policy.cedar auth-policy-domain.cedar; do
+            echo "validating $f"
+            cedar validate \
+              --schema labs64.io-commons/auth-policy-cedar/schema.cedarschema \
+              --schema-format cedar \
+              --policies "payment-gateway-be/target/generated-resources/$f"
+          done

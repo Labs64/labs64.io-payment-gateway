@@ -458,6 +458,7 @@ paths:
         tenant: true
         scopes:
           - payment:read
+        resource: Payment
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
       responses:
@@ -498,6 +499,7 @@ paths:
         tenant: true
         scopes:
           - payment:pay
+        resource: Payment
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
       requestBody:
@@ -580,6 +582,7 @@ paths:
         tenant: true
         scopes:
           - payment:write
+        resource: Payment
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
       responses:

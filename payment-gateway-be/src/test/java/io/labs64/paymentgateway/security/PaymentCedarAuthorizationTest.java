@@ -43,8 +43,11 @@ import io.labs64.paymentgateway.service.PaymentService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 /**
- * RFC-05 P3 pilot: the REAL domain policy set (src/main/resources/cedar/
- * domain.cedar) + the real resolver + the @Authorize PEP, in both modes.
+ * RFC-05 P3/P4: the REAL domain policy set — now GENERATED from the OpenAPI
+ * {@code x-labs64-auth} ({@code classpath:auth-policy-domain.cedar}) — plus the
+ * real resolver and the {@code @Authorize} PEP, in both modes. Cedar enforces
+ * scope + cross-tenant isolation; workflow-state rules (payable-only-when-READY)
+ * are the SERVICE layer's job now, not Cedar's.
  */
 @ExtendWith(MockitoExtension.class)
 class PaymentCedarAuthorizationTest {
@@ -77,7 +80,7 @@ class PaymentCedarAuthorizationTest {
         properties.setEnabled(true);
         properties.setMode(mode);
         CedarAuthorizationService service = new CedarAuthorizationService(properties,
-                new ClassPathResource("cedar/domain.cedar"));
+                new ClassPathResource("auth-policy-domain.cedar"));
         CedarDecisionAuditPublisher metrics = new CedarDecisionAuditPublisher(meterRegistry);
         return new AuthorizeInterceptor(service,
                 List.of(new PaymentCedarEntityResolver(paymentService, messages)),
@@ -114,11 +117,16 @@ class PaymentCedarAuthorizationTest {
     }
 
     @Test
-    void enforceDeniesPayingClosedPayment() throws Exception {
+    void cedarIsStatusAgnostic_workflowEnforcementIsServiceLayer() throws Exception {
+        // Aligned model (OpenAPI single source of truth): the generated domain
+        // policy checks scope + tenant only — NOT workflow status. A CLOSED
+        // payment with the pay scope in-tenant is ALLOWED by Cedar; refusing to
+        // pay a non-READY payment is the service layer's responsibility
+        // (PaymentServiceImpl.ensurePayable), no longer Cedar's.
         authenticate("payment:pay");
         stubPayment(TENANT, PaymentStatus.CLOSED);
-        assertThat(invoke(interceptor(CedarProperties.Mode.ENFORCE), "payPayment")).isFalse();
-        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(invoke(interceptor(CedarProperties.Mode.ENFORCE), "payPayment")).isTrue();
+        assertThat(decisions.get(0).allowed()).isTrue();
     }
 
     @Test

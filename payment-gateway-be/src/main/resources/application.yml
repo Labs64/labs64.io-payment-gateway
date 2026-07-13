@@ -171,7 +171,8 @@ labs64:
     cedar:
       enabled: ${LABS64_CEDAR_ENABLED:true}
       mode: ${LABS64_CEDAR_MODE:SHADOW}
-      policy-location: classpath:cedar/domain.cedar
+      # Build-generated from OpenAPI x-labs64-auth (--cedar-domain-output).
+      policy-location: classpath:auth-policy-domain.cedar
 
 # Logging Configuration
 logging:
