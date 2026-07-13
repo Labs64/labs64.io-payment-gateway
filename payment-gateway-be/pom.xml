@@ -86,7 +86,15 @@
         <dependency>
             <groupId>io.labs64</groupId>
             <artifactId>auth-context-spring-boot-starter</artifactId>
-            <version>0.2.0</version>
+            <version>0.3.0</version>
+        </dependency>
+        <!-- Cedar domain PDP (RFC-05 P3 pilot): optional in the starter - the
+             adopting module supplies the engine (uber = bundled natives). -->
+        <dependency>
+            <groupId>com.cedarpolicy</groupId>
+            <artifactId>cedar-java</artifactId>
+            <version>4.10.0</version>
+            <classifier>uber</classifier>
         </dependency>
         <dependency>
             <groupId>io.projectreactor.netty</groupId>

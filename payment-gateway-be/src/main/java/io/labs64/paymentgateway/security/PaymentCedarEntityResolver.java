@@ -1,0 +1,52 @@
+package io.labs64.paymentgateway.security;
+
+import java.util.UUID;
+
+import org.jspecify.annotations.Nullable;
+import org.springframework.stereotype.Component;
+
+import io.labs64.authcontext.cedar.CedarEntity;
+import io.labs64.authcontext.cedar.CedarEntityResolver;
+import io.labs64.authcontext.core.AuthContext;
+import io.labs64.paymentgateway.entity.PaymentEntity;
+import io.labs64.paymentgateway.exception.NotFoundException;
+import io.labs64.paymentgateway.message.PaymentMessages;
+import io.labs64.paymentgateway.service.PaymentService;
+
+/**
+ * Supplies the Cedar {@code Payment} resource for {@code @Authorize} checks
+ * (RFC-05 P3: the module owns the resource context). The lookup is
+ * tenant-scoped, so a cross-tenant id surfaces as the module's regular 404 —
+ * never a 403 that would leak existence; the Cedar tenant guard stays the
+ * structural backstop for any path that bypasses scoping.
+ */
+@Component
+public class PaymentCedarEntityResolver implements CedarEntityResolver {
+
+    private final PaymentService paymentService;
+    private final PaymentMessages messages;
+
+    public PaymentCedarEntityResolver(final PaymentService paymentService, final PaymentMessages messages) {
+        this.paymentService = paymentService;
+        this.messages = messages;
+    }
+
+    @Override
+    public boolean supports(final String resourceType) {
+        return "Payment".equals(resourceType);
+    }
+
+    @Override
+    public CedarEntity resolve(final String resourceType, @Nullable final Object resourceRef,
+            final AuthContext context) {
+        final UUID paymentId = UUID.fromString(String.valueOf(resourceRef));
+        final PaymentEntity payment = paymentService.find(context.tenantId(), paymentId)
+                .orElseThrow(() -> new NotFoundException(messages.notFound(paymentId)));
+        final CedarEntity tenant = CedarEntity.ref("Tenant", payment.getTenantId());
+        return CedarEntity.builder("Payment", payment.getId().toString())
+                .attribute("tenant", tenant)
+                .attribute("status", payment.getStatus().name())
+                .parent(tenant)
+                .build();
+    }
+}

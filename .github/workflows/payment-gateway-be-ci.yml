@@ -104,3 +104,29 @@ jobs:
         uses: advanced-security/maven-dependency-submission-action@v4
         with:
           directory: payment-gateway-be
+
+  # RFC-05 one-schema gate: the module's domain Cedar policy set must validate
+  # against the shared commons schema — drift is a build failure, not a review miss.
+  cedar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout commons (shared Cedar schema)
+        uses: actions/checkout@v4
+        with:
+          repository: Labs64/labs64.io-commons
+          path: labs64.io-commons
+      - name: Cache cedar CLI
+        id: cache-cedar
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cedar
+          key: cedar-cli-4.11.2
+      - name: Install cedar CLI
+        run: command -v cedar || cargo install cedar-policy-cli --version 4.11.2 --locked
+      - name: Validate domain policies against the shared schema
+        run: |
+          cedar validate \
+            --schema labs64.io-commons/auth-policy-cedar/schema.cedarschema \
+            --schema-format cedar \
+            --policies payment-gateway-be/src/main/resources/cedar/domain.cedar
