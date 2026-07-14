@@ -39,6 +39,8 @@ paths:
         Returns globally supported payment provider definitions that tenants can
         use to create their own payment providers.
       operationId: listPaymentDefinitions
+      x-labs64-auth:
+        public: true
       tags:
         - PaymentDefinitions
       security: []
@@ -703,6 +705,8 @@ paths:
         PSP data, billing data, shipping data, extra metadata, and the full
         purchase order.
       operationId: getCheckoutSessionConfirmation
+      x-labs64-auth:
+        public: true
       tags:
         - CheckoutSessions
       security: []
@@ -747,6 +751,8 @@ paths:
         result, updates payment transaction state, and redirects the browser to
         the tenant return URL stored in the checkout session when available.
       operationId: returnProviderCheckoutSession
+      x-labs64-auth:
+        public: true
       tags:
         - ProviderCheckout
       security: []
@@ -777,6 +783,8 @@ paths:
         redirects the browser to the tenant cancel URL stored in the checkout session
         when available.
       operationId: cancelProviderCheckoutSession
+      x-labs64-auth:
+        public: true
       tags:
         - ProviderCheckout
       security: []
@@ -808,6 +816,8 @@ paths:
         This endpoint is intentionally unauthenticated — PSPs call it directly
         using their own signature verification mechanism.
       operationId: handleProviderWebhook
+      x-labs64-auth:
+        public: true
       tags:
         - ProviderWebhooks
       security: []
