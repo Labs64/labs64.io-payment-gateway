@@ -9,11 +9,11 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 
 /**
- * Publishes every Cedar domain decision (RFC-05 F9): structured log line
+ * Publishes every Cedar domain decision: structured log line
  * (via the commons logging listener format) + Prometheus counter
  * {@code labs64_authz_decisions_total{action,decision,mode}}.
  *
- * <p>TODO(RFC-05 P4 follow-up): route decisions to AuditFlow through the
+ * <p>TODO( P4 follow-up): route decisions to AuditFlow through the
  * payment event stream once the module's business audit events are wired
  * (tracked with the existing unwired-audit-events finding).
  */

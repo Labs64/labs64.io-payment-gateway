@@ -40,7 +40,7 @@
         <openapi.source>${project.basedir}/src/main/resources/openapi/openapi-payment-gateway-v1.yaml</openapi.source>
         <openapi.generated>${project.build.directory}/generated-openapi/openapi-payment-gateway-v1.yaml</openapi.generated>
         <auth-policy.generated>${project.build.directory}/generated-resources/auth-policy.json</auth-policy.generated>
-        <!-- Cedar policies generated from x-labs64-auth (RFC-05 P2/P3/P4), alongside
+        <!-- Cedar policies generated from x-labs64-auth, alongside
              auth-policy.json. auth-policy.module must equal the module's gateway prefix
              (= bundle-sources.yaml name). edge → traefik; domain → @Authorize PEP. -->
         <auth-policy-cedar.generated>${project.build.directory}/generated-resources/auth-policy.cedar</auth-policy-cedar.generated>
@@ -94,7 +94,7 @@
             <artifactId>auth-context-spring-boot-starter</artifactId>
             <version>0.3.2</version>
         </dependency>
-        <!-- Cedar domain PDP (RFC-05 P3 pilot): optional in the starter - the
+        <!-- Cedar domain PDP: optional in the starter - the
              adopting module supplies the engine (uber = bundled natives). -->
         <dependency>
             <groupId>com.cedarpolicy</groupId>

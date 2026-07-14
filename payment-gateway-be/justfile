@@ -21,8 +21,7 @@ unit-test:
     mvn test -f pom.xml
 
 # validate the build-generated edge + domain Cedar policy sets against the
-# shared commons schema (RFC-05 one-schema gate; both are generated from
-# OpenAPI x-labs64-auth — run a maven build first. requires: cargo install cedar-policy-cli)
+# shared commons schema
 cedar-validate:
     @if [ -f target/generated-resources/auth-policy.cedar ]; then \
       for f in auth-policy.cedar auth-policy-domain.cedar; do \

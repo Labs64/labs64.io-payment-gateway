@@ -165,12 +165,12 @@ labs64:
   tenant:
     default: ${LABS64_TENANT_DEFAULT:}
   auth:
-    # Cedar domain authorization (RFC-05 P3 pilot). SHADOW evaluates + audits
+    # Cedar domain authorization. SHADOW evaluates + audits
     # every decision without blocking; flip to ENFORCE only after the shadow
     # diff is clean (deploy-time override via LABS64_CEDAR_MODE).
     cedar:
       enabled: ${LABS64_CEDAR_ENABLED:true}
-      mode: ${LABS64_CEDAR_MODE:SHADOW}
+      mode: ${LABS64_CEDAR_MODE:ENFORCE}
       # Build-generated from OpenAPI x-labs64-auth (--cedar-domain-output).
       policy-location: classpath:auth-policy-domain.cedar
 

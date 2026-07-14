@@ -15,7 +15,7 @@ import io.labs64.paymentgateway.service.PaymentService;
 
 /**
  * Supplies the Cedar {@code Payment} resource for {@code @Authorize} checks
- * (RFC-05 P3: the module owns the resource context). The lookup is
+ *. The lookup is
  * tenant-scoped, so a cross-tenant id surfaces as the module's regular 404 —
  * never a 403 that would leak existence; the Cedar tenant guard stays the
  * structural backstop for any path that bypasses scoping.

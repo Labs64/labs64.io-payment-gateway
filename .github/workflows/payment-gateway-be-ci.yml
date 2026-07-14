@@ -105,7 +105,7 @@ jobs:
         with:
           directory: payment-gateway-be
 
-  # RFC-05 one-schema gate: the module's domain Cedar policy set must validate
+  # the module's domain Cedar policy set must validate
   # against the shared commons schema — drift is a build failure, not a review miss.
   cedar:
     runs-on: ubuntu-latest

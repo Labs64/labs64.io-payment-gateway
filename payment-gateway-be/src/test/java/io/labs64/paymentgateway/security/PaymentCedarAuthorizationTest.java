@@ -43,7 +43,7 @@ import io.labs64.paymentgateway.service.PaymentService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 /**
- * RFC-05 P3/P4: the REAL domain policy set — now GENERATED from the OpenAPI
+ *  P3/P4: the REAL domain policy set — now GENERATED from the OpenAPI
  * {@code x-labs64-auth} ({@code classpath:auth-policy-domain.cedar}) — plus the
  * real resolver and the {@code @Authorize} PEP, in both modes. Cedar enforces
  * scope + cross-tenant isolation; workflow-state rules (payable-only-when-READY)
