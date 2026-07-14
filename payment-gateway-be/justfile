@@ -10,15 +10,15 @@ default:
 
 # compile and package (skip tests)
 build:
-    mvn clean package -DskipTests -f pom.xml
+    mvn -f ../pom.xml -pl payment-gateway-be -am clean package -DskipTests
 
 # compile, run tests, and package
 test:
-    mvn clean verify -f pom.xml
+    mvn -f ../pom.xml -pl payment-gateway-be -am clean verify
 
 # run only unit tests (no integration tests)
 unit-test:
-    mvn test -f pom.xml
+    mvn -f ../pom.xml -pl payment-gateway-be -am test
 
 # ── Docker ───────────────────────────────────────────────────────────
 
@@ -53,8 +53,9 @@ infra-logs:
 
 # ── Run ──────────────────────────────────────────────────────────────
 
-# build and run application with local profile
-run: build
+# build reactor artifacts and run application with local profile
+run:
+    mvn -f ../pom.xml -pl payment-gateway-be -am install -DskipTests
     mvn spring-boot:run -Dspring-boot.run.profiles=local -f pom.xml
 
 # ── Dev Tools ────────────────────────────────────────────────────────
@@ -69,7 +70,7 @@ rabbitmq-ui:
 
 # clean build artifacts
 clean:
-    mvn clean -f pom.xml
+    mvn -f ../pom.xml -pl payment-gateway-be -am clean
 
 # check for dependency, plugin, and property version updates
 check-updates:

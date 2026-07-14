@@ -11,7 +11,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.labs64.paymentgateway.exception.TenantRequiredException;
 import io.labs64.paymentgateway.service.IdempotencyService;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -39,9 +38,9 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(
-            @NotNull final HttpServletRequest request,
-            @NotNull final HttpServletResponse response,
-            @NotNull final Object handler) throws IOException {
+            final HttpServletRequest request,
+            final HttpServletResponse response,
+            final Object handler) throws IOException {
         if (!(handler instanceof HandlerMethod handlerMethod)
                 || !handlerMethod.hasMethodAnnotation(IdempotentOperation.class)) {
             return true;

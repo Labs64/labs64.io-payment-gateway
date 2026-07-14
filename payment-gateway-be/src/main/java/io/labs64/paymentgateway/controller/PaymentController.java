@@ -106,7 +106,7 @@ public class PaymentController implements PaymentsApi {
         final PaymentNextAction paymentNextAction = paymentResponse.nextAction();
 
         if (paymentNextAction != null) {
-            final NextAction nextAction = new NextAction(paymentNextAction.type());
+            final NextAction nextAction = new NextAction(NextAction.TypeEnum.valueOf(paymentNextAction.type().name()));
             nextAction.setDetails(paymentNextAction.details());
             response.setNextAction(nextAction);
         }

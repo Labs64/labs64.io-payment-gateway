@@ -24,7 +24,7 @@ jobs:
           cache: maven
 
       - name: Build with Maven
-        run: mvn -B package --file ./payment-gateway-be/pom.xml
+        run: mvn -B -pl payment-gateway-be -am package
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

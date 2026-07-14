@@ -14,6 +14,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>4.1.0</version>
+        <relativePath />
     </parent>
 
     <properties>
@@ -29,8 +30,7 @@
         <jackson-datatype-jsr310.version>2.21.2</jackson-datatype-jsr310.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <lombok.version>1.18.44</lombok.version>
-        <stripe.version>32.0.0</stripe.version>
-        <paypal.version>2.3.0</paypal.version>
+        <payment-provider.version>0.0.1-SNAPSHOT</payment-provider.version>
         <!-- PLUGINS -->
         <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
         <openapi-generator-maven-plugin.version>7.21.0</openapi-generator-maven-plugin.version>
@@ -170,16 +170,23 @@
             <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
         </dependency>
 
-        <!-- Payment Gateway SDKs -->
+        <!-- Payment provider SPI and runtime implementations -->
         <dependency>
-            <groupId>com.stripe</groupId>
-            <artifactId>stripe-java</artifactId>
-            <version>${stripe.version}</version>
+            <groupId>io.labs64</groupId>
+            <artifactId>payment-provider-spi</artifactId>
+            <version>${payment-provider.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.paypal.sdk</groupId>
-            <artifactId>paypal-server-sdk</artifactId>
-            <version>${paypal.version}</version>
+            <groupId>io.labs64</groupId>
+            <artifactId>payment-provider-noop</artifactId>
+            <version>${payment-provider.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.labs64</groupId>
+            <artifactId>payment-provider-paypal</artifactId>
+            <version>${payment-provider.version}</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- Micrometer Prometheus registry: serves /actuator/prometheus for the

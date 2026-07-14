@@ -72,16 +72,17 @@ public class WebhookServiceImpl implements WebhookService {
                 paymentContextMapper.toProviderConfig(payment.getPaymentProvider()),
                 request);
         final PaymentWebhookResult result = webhookSupport.handleWebhook(context);
+        final PaymentTransactionStatus resultStatus = PaymentContextMapper.toModelTransactionStatus(result.status());
 
         if (isTerminal(transaction.getStatus())) {
-            return handleAlreadyTerminalTransaction(transaction, result);
+            return handleAlreadyTerminalTransaction(transaction, result, resultStatus);
         }
 
-        transaction.setStatus(result.status());
+        transaction.setStatus(resultStatus);
         transaction.setStatusDetails(toStatusDetails(result.statusDetails()));
         transaction.setPspData(result.pspData());
 
-        if (PaymentTransactionStatus.SUCCESS.equals(result.status())) {
+        if (PaymentTransactionStatus.SUCCESS.equals(resultStatus)) {
             if (PaymentType.ONE_TIME.equals(payment.getType())) {
                 payment.setStatus(PaymentStatus.CLOSED);
             } else {
@@ -90,11 +91,11 @@ public class WebhookServiceImpl implements WebhookService {
             paymentRepository.save(payment);
         }
 
-        if (isTerminal(result.status())) {
+        if (isTerminal(resultStatus)) {
             paymentEventPublisher.publishFinalized(payment, transaction);
         }
 
-        if (PaymentTransactionStatus.SUCCESS.equals(result.status()) && PaymentType.ONE_TIME.equals(payment.getType())) {
+        if (PaymentTransactionStatus.SUCCESS.equals(resultStatus) && PaymentType.ONE_TIME.equals(payment.getType())) {
             paymentEventPublisher.publishClosed(payment, transaction);
         }
 
@@ -106,8 +107,9 @@ public class WebhookServiceImpl implements WebhookService {
 
     private PaymentWebhookResult handleAlreadyTerminalTransaction(
             final PaymentTransactionEntity transaction,
-            final PaymentWebhookResult result) {
-        if (transaction.getStatus().equals(result.status())) {
+            final PaymentWebhookResult result,
+            final PaymentTransactionStatus resultStatus) {
+        if (transaction.getStatus().equals(resultStatus)) {
             log.info("Ignoring duplicate terminal webhook: paymentTransactionId={}, status={}",
                     transaction.getId(), transaction.getStatus());
             return result;

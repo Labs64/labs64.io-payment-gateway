@@ -2,7 +2,6 @@ package io.labs64.paymentgateway.idempotency;
 
 import java.io.IOException;
 
-import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -24,7 +23,7 @@ public class IdempotencyRequestBodyCachingFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(
             final HttpServletRequest request,
-            @NotNull final HttpServletResponse response,
+            final HttpServletResponse response,
             final FilterChain filterChain) throws ServletException, IOException {
         final byte[] body = StreamUtils.copyToByteArray(request.getInputStream());
         filterChain.doFilter(new CachedBodyHttpServletRequest(request, body), response);

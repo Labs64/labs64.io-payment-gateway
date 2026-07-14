@@ -9,7 +9,6 @@ import io.labs64.paymentgateway.entity.CheckoutSessionEntity;
 import io.labs64.paymentgateway.entity.PaymentEntity;
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
 import io.labs64.paymentgateway.exception.NotFoundException;
-import io.labs64.paymentgateway.exception.PspException;
 import io.labs64.paymentgateway.exception.ValidationException;
 import io.labs64.paymentgateway.mapper.PaymentContextMapper;
 import io.labs64.paymentgateway.model.PaymentStatus;
@@ -20,6 +19,7 @@ import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
 import io.labs64.paymentgateway.psp.spi.PaymentNextAction;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
+import io.labs64.paymentgateway.psp.spi.ProviderException;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutContext;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
 import io.labs64.paymentgateway.repository.CheckoutSessionRepository;
@@ -61,8 +61,8 @@ public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
             final PaymentResult result;
             try {
                 result = checkoutSupport(provider).completeCheckout(toContext(session, queryParams));
-            } catch (PspException ex) {
-                log.warn("PSP checkout completion failed: sessionId={}, paymentTransactionId={}, provider={}, message={}",
+            } catch (ProviderException ex) {
+                log.warn("Payment provider checkout completion failed: sessionId={}, paymentTransactionId={}, provider={}, message={}",
                         sessionId, transaction.getId(), provider, ex.getMessage(), ex);
                 failTransaction(payment, transaction, ex);
                 return FALLBACK_REDIRECT;
@@ -91,8 +91,8 @@ public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
             final PaymentResult result;
             try {
                 result = checkoutSupport(provider).cancelCheckout(toContext(session, queryParams));
-            } catch (PspException ex) {
-                log.warn("PSP checkout cancellation failed: sessionId={}, paymentTransactionId={}, provider={}, message={}",
+            } catch (ProviderException ex) {
+                log.warn("Payment provider checkout cancellation failed: sessionId={}, paymentTransactionId={}, provider={}, message={}",
                         sessionId, transaction.getId(), provider, ex.getMessage(), ex);
                 failTransaction(payment, transaction, ex);
                 return FALLBACK_REDIRECT;
@@ -107,7 +107,7 @@ public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
     private void failTransaction(
             final PaymentEntity payment,
             final PaymentTransactionEntity transaction,
-            final PspException exception) {
+            final ProviderException exception) {
         final PaymentTransactionEntity failedTransaction = transactionService.update(
                 transaction.getTenantId(),
                 transaction.getId(),
@@ -147,23 +147,24 @@ public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
             final PaymentEntity payment,
             final PaymentTransactionEntity transaction,
             final PaymentResult result) {
+        final PaymentTransactionStatus resultStatus = PaymentContextMapper.toModelTransactionStatus(result.status());
         final PaymentTransactionEntity updatedTransaction = transactionService.update(
                 transaction.getTenantId(),
                 transaction.getId(),
                 (pt) -> {
-                    pt.setStatus(result.status());
+                    pt.setStatus(resultStatus);
                     pt.setStatusDetails(toStatusDetails(result.statusDetails()));
                     pt.setPspData(result.pspData());
                 });
 
-        final boolean closesPayment = PaymentTransactionStatus.SUCCESS.equals(result.status())
+        final boolean closesPayment = PaymentTransactionStatus.SUCCESS.equals(resultStatus)
                 && PaymentType.ONE_TIME.equals(payment.getType());
         if (closesPayment) {
             payment.setStatus(PaymentStatus.CLOSED);
             paymentRepository.save(payment);
         }
 
-        if (isTerminal(result.status())) {
+        if (isTerminal(resultStatus)) {
             paymentEventPublisher.publishFinalized(payment, updatedTransaction);
         }
         if (closesPayment) {

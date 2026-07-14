@@ -144,7 +144,7 @@ class WebhookServiceImplTest {
         stubMapper(payment, transaction);
         when(paymentProvider.handleWebhook(any())).thenReturn(new PaymentWebhookResult(
                 PROVIDER,
-                PaymentTransactionStatus.FAILED,
+                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.FAILED,
                 Map.of(),
                 new io.labs64.paymentgateway.psp.spi.StatusDetails("FAILED", "Failed")));
 
@@ -166,7 +166,7 @@ class WebhookServiceImplTest {
     private void stubMapper(final PaymentEntity payment, final PaymentTransactionEntity transaction) {
         when(paymentContextMapper.toPayment(payment)).thenReturn(new Payment(
                 payment.getId(),
-                PaymentType.ONE_TIME,
+                io.labs64.paymentgateway.psp.spi.PaymentType.ONE_TIME,
                 payment.getDescription(),
                 null,
                 payment.getPurchaseOrder(),
@@ -175,7 +175,7 @@ class WebhookServiceImplTest {
                 null));
         when(paymentContextMapper.toPaymentTransaction(transaction)).thenReturn(new PaymentTransaction(
                 transaction.getId(),
-                transaction.getStatus()));
+                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.valueOf(transaction.getStatus().name())));
         when(paymentContextMapper.toProviderConfig(payment.getPaymentProvider())).thenReturn(new ProviderConfig(
                 PROVIDER,
                 Map.of(),
@@ -186,7 +186,7 @@ class WebhookServiceImplTest {
     private static PaymentWebhookResult successfulResult() {
         return new PaymentWebhookResult(
                 PROVIDER,
-                PaymentTransactionStatus.SUCCESS,
+                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.SUCCESS,
                 Map.of("providerReference", "noop-1"),
                 new io.labs64.paymentgateway.psp.spi.StatusDetails("SUCCESS", "Success"));
     }
