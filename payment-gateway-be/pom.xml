@@ -45,6 +45,9 @@
              (= bundle-sources.yaml name). edge → traefik; domain → @Authorize PEP. -->
         <auth-policy-cedar.generated>${project.build.directory}/generated-resources/auth-policy.cedar</auth-policy-cedar.generated>
         <auth-policy-cedar-domain.generated>${project.build.directory}/generated-resources/auth-policy-domain.cedar</auth-policy-cedar-domain.generated>
+        <!-- Public OpenAPI operations (x-labs64-auth.public), consumed by the
+             backend AuthContextFilter so public paths are never hand-maintained. -->
+        <auth-public-paths.generated>${project.build.directory}/generated-resources/auth-public-paths</auth-public-paths.generated>
         <auth-policy.module>payment-gateway</auth-policy.module>
     </properties>
 
@@ -311,6 +314,8 @@
                                 <argument>${auth-policy-cedar.generated}</argument>
                                 <argument>--cedar-domain-output</argument>
                                 <argument>${auth-policy-cedar-domain.generated}</argument>
+                                <argument>--public-paths-output</argument>
+                                <argument>${auth-public-paths.generated}</argument>
                                 <argument>--module</argument>
                                 <argument>${auth-policy.module}</argument>
                             </arguments>

@@ -147,9 +147,11 @@ payment-gateway:
 
 # Trusted gateway auth-context (auth-context-spring-boot-starter).
 # Fail-closed: non-public paths 401 without valid X-Auth-* headers from the
-# gateway. Public prefixes cover PSP webhooks, browser redirect returns and the
-# payment-definitions listing (no JWT possible on those flows; webhook
-# authenticity is verified by PSP signature checks in WebhookService).
+# gateway. public-paths here are ONLY non-OpenAPI framework surfaces. Public API
+# operations (PSP webhooks, browser redirect returns, payment-definitions —
+# no JWT possible; webhook authenticity is PSP-signature-checked in WebhookService)
+# come from the build-generated auth-public-paths resource, derived from the
+# OpenAPI x-labs64-auth.public annotations — OpenAPI is the single source of truth.
 # tenant.default is a dev-only fallback for gateway-less runs.
 labs64:
   auth-context:
@@ -159,9 +161,6 @@ labs64:
       - /v3/api-docs
       - /swagger-ui
       - /error
-      - /providers/
-      - /checkout-sessions/
-      - /payment-definitions
   tenant:
     default: ${LABS64_TENANT_DEFAULT:}
   auth:
