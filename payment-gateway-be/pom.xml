@@ -39,10 +39,9 @@
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
         <openapi.source>${project.basedir}/src/main/resources/openapi/openapi-payment-gateway-v1.yaml</openapi.source>
         <openapi.generated>${project.build.directory}/generated-openapi/openapi-payment-gateway-v1.yaml</openapi.generated>
-        <auth-policy.generated>${project.build.directory}/generated-resources/auth-policy.json</auth-policy.generated>
-        <!-- Cedar policies generated from x-labs64-auth, alongside
-             auth-policy.json. auth-policy.module must equal the module's gateway prefix
-             (= bundle-sources.yaml name). edge → traefik; domain → @Authorize PEP. -->
+        <!-- Cedar policies generated from x-labs64-auth. auth-policy.module must
+             equal the module's gateway prefix (= bundle-sources.yaml name).
+             edge → traefik; domain → @Authorize PEP. -->
         <auth-policy-cedar.generated>${project.build.directory}/generated-resources/auth-policy.cedar</auth-policy-cedar.generated>
         <auth-policy-cedar-domain.generated>${project.build.directory}/generated-resources/auth-policy-domain.cedar</auth-policy-cedar-domain.generated>
         <!-- Public OpenAPI operations (x-labs64-auth.public), consumed by the
@@ -308,8 +307,6 @@
                                 <argument>${openapi.source}</argument>
                                 <argument>--openapi-output</argument>
                                 <argument>${openapi.generated}</argument>
-                                <argument>--policy-output</argument>
-                                <argument>${auth-policy.generated}</argument>
                                 <argument>--cedar-output</argument>
                                 <argument>${auth-policy-cedar.generated}</argument>
                                 <argument>--cedar-domain-output</argument>
