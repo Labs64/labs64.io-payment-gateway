@@ -10,7 +10,7 @@ services:
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
-      - payment_gateway_pg:/var/lib/postgresql/data
+      - payment_gateway_pg:/var/lib/postgresql
       - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: pg_isready -h 127.0.0.1 -p ${DB_PORT:-5432} -U ${DB_USERNAME} -d ${DB_NAME} || exit 1

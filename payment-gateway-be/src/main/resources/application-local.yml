@@ -2,7 +2,7 @@
 # disable the fail-closed auth-context filter and use a fixed dev tenant.
 labs64:
   auth-context:
-    enabled: false
+    enabled: true
   tenant:
     default: t_dev
 

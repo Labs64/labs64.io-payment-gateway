@@ -18,7 +18,28 @@ public interface PaymentContextMapper {
 
     Payment toPayment(PaymentEntity entity);
 
+    default io.labs64.paymentgateway.psp.spi.PaymentType toProviderPaymentType(
+            final io.labs64.paymentgateway.model.PaymentType type) {
+        return type == null
+                ? null
+                : io.labs64.paymentgateway.psp.spi.PaymentType.valueOf(type.name());
+    }
+
     PaymentTransaction toPaymentTransaction(PaymentTransactionEntity entity);
+
+    default io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus toProviderTransactionStatus(
+            final io.labs64.paymentgateway.model.PaymentTransactionStatus status) {
+        return status == null
+                ? null
+                : io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.valueOf(status.name());
+    }
+
+    static io.labs64.paymentgateway.model.PaymentTransactionStatus toModelTransactionStatus(
+            final io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus status) {
+        return status == null
+                ? null
+                : io.labs64.paymentgateway.model.PaymentTransactionStatus.valueOf(status.name());
+    }
 
     ProviderConfig toProviderConfig(PaymentProviderEntity entity);
 

@@ -12,7 +12,6 @@ import io.labs64.paymentgateway.entity.CheckoutSessionEntity;
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
 import io.labs64.paymentgateway.exception.ConflictException;
 import io.labs64.paymentgateway.exception.PaymentNotPayableException;
-import io.labs64.paymentgateway.exception.PspException;
 import io.labs64.paymentgateway.mapper.PaymentContextMapper;
 import io.labs64.paymentgateway.message.PaymentMessages;
 import io.labs64.paymentgateway.model.PaymentStatus;
@@ -22,8 +21,10 @@ import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
 import io.labs64.paymentgateway.psp.spi.PaymentContext;
 import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
 import io.labs64.paymentgateway.psp.spi.PaymentNextAction;
+import io.labs64.paymentgateway.psp.spi.PaymentNextActionType;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
+import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
 import io.labs64.paymentgateway.psp.spi.CheckoutSessionDraft;
 import io.labs64.paymentgateway.psp.spi.CheckoutPreparationContext;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
@@ -153,7 +154,7 @@ class PaymentServiceImplTest {
         final PaymentContext context = new PaymentContext(null, null, null);
         final PaymentResult result = new PaymentResult(
                 PROVIDER,
-                PaymentTransactionStatus.SUCCESS,
+                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.SUCCESS,
                 Map.of("pspReference", "ok"),
                 new io.labs64.paymentgateway.psp.spi.StatusDetails("SUCCESS", "Success"),
                 null);
@@ -205,7 +206,7 @@ class PaymentServiceImplTest {
                 PaymentExecutionRequest.empty())).thenReturn(context);
         when(pspProvider.execute(context)).thenReturn(new PaymentResult(
                 PROVIDER,
-                PaymentTransactionStatus.SUCCESS,
+                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.SUCCESS,
                 Map.of(),
                 null,
                 null));
@@ -237,7 +238,7 @@ class PaymentServiceImplTest {
                 .build();
         final PaymentContext context = new PaymentContext(null, null, null);
         final PaymentNextAction nextAction = new PaymentNextAction(
-                io.labs64.paymentgateway.model.NextAction.TypeEnum.REDIRECT,
+                PaymentNextActionType.REDIRECT,
                 Map.of("redirectUrl", "https://paypal.example/approve"));
 
         when(paymentRepository.findByIdAndTenantId(payment.getId(), TENANT_ID)).thenReturn(Optional.of(payment));
@@ -252,7 +253,7 @@ class PaymentServiceImplTest {
                 .thenReturn(context);
         when(checkoutCapableProvider.execute(context)).thenReturn(new PaymentResult(
                 PROVIDER,
-                PaymentTransactionStatus.PENDING,
+                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.PENDING,
                 Map.of("orderId", "paypal-order"),
                 null,
                 nextAction));
@@ -311,7 +312,7 @@ class PaymentServiceImplTest {
                 payment.getPaymentProvider(),
                 null,
                 PaymentExecutionRequest.empty())).thenReturn(context);
-        when(pspProvider.execute(context)).thenThrow(new PspException("PayPal order creation failed."));
+        when(pspProvider.execute(context)).thenThrow(new ProviderExecutionException("PayPal order creation failed."));
         when(transactionService.update(any(), any(), any())).thenAnswer(invocation -> {
             final java.util.function.Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
             updater.accept(transaction);

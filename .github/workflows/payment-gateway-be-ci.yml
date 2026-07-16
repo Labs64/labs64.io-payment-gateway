@@ -8,12 +8,16 @@ on:
     branches: [ "master" ]
     paths:
       - "payment-gateway-be/**"
+      - "payment-gateway-providers/**"
+      - "pom.xml"
       - ".github/workflows/payment-gateway-be-ci.yml"
       - ".github/actions/payment-gateway-deps/**"
       - ".github/compose/**"
   pull_request:
     paths:
       - "payment-gateway-be/**"
+      - "payment-gateway-providers/**"
+      - "pom.xml"
       - ".github/workflows/payment-gateway-be-ci.yml"
       - ".github/actions/payment-gateway-deps/**"
       - ".github/compose/**"
@@ -26,10 +30,6 @@ concurrency:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: payment-gateway-be
 
     env:
       DB_HOST: localhost
@@ -65,7 +65,7 @@ jobs:
           action: up
 
       - name: Maven verify
-        run: mvn -B verify
+        run: mvn -B -pl payment-gateway-be -am verify
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

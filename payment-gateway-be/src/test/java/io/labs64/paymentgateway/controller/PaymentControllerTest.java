@@ -25,6 +25,7 @@ import io.labs64.paymentgateway.model.PaymentTransactionStatus;
 import io.labs64.paymentgateway.model.PurchaseOrder;
 import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
 import io.labs64.paymentgateway.psp.spi.PaymentNextAction;
+import io.labs64.paymentgateway.psp.spi.PaymentNextActionType;
 import io.labs64.paymentgateway.service.PayPaymentResponse;
 import io.labs64.paymentgateway.service.PaymentService;
 import io.labs64.paymentgateway.service.filter.PaymentFilter;
@@ -120,7 +121,7 @@ class PaymentControllerTest {
         final Payment paymentDto = new Payment();
         final PaymentTransaction transactionDto = new PaymentTransaction();
         final PaymentNextAction nextAction = new PaymentNextAction(
-                NextAction.TypeEnum.REDIRECT,
+                PaymentNextActionType.REDIRECT,
                 Map.of("url", "https://psp.example/redirect"));
 
         when(service.pay(TENANT_ID, paymentId, PaymentExecutionRequest.empty()))

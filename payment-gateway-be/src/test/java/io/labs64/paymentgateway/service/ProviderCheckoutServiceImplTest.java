@@ -11,9 +11,7 @@ import io.labs64.paymentgateway.entity.CheckoutSessionEntity;
 import io.labs64.paymentgateway.entity.PaymentEntity;
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
-import io.labs64.paymentgateway.exception.PspException;
 import io.labs64.paymentgateway.mapper.PaymentContextMapper;
-import io.labs64.paymentgateway.model.NextAction;
 import io.labs64.paymentgateway.model.PaymentStatus;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
 import io.labs64.paymentgateway.model.StatusDetails;
@@ -21,8 +19,10 @@ import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
 import io.labs64.paymentgateway.psp.spi.CheckoutSession;
 import io.labs64.paymentgateway.psp.spi.Payment;
 import io.labs64.paymentgateway.psp.spi.PaymentNextAction;
+import io.labs64.paymentgateway.psp.spi.PaymentNextActionType;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
+import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
 import io.labs64.paymentgateway.psp.spi.PaymentTransaction;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutContext;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
@@ -78,7 +78,7 @@ class ProviderCheckoutServiceImplTest {
         final ProviderCheckoutContext context = context(session);
         final PaymentResult result = new PaymentResult(
                 PROVIDER,
-                PaymentTransactionStatus.SUCCESS,
+                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.SUCCESS,
                 Map.of("orderId", "paypal-order"),
                 new io.labs64.paymentgateway.psp.spi.StatusDetails("SUCCESS", "Captured"),
                 redirect("https://checkout.example/return"));
@@ -110,7 +110,7 @@ class ProviderCheckoutServiceImplTest {
         final ProviderCheckoutContext context = context(session);
         final PaymentResult result = new PaymentResult(
                 PROVIDER,
-                PaymentTransactionStatus.FAILED,
+                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.FAILED,
                 Map.of("orderId", "paypal-order"),
                 new io.labs64.paymentgateway.psp.spi.StatusDetails("CANCELLED", "Cancelled"),
                 redirect("https://checkout.example/cancel"));
@@ -142,7 +142,8 @@ class ProviderCheckoutServiceImplTest {
         when(checkoutSessionRepository.findById(session.getId())).thenReturn(Optional.of(session));
         when(providerRegistry.getProvider(PROVIDER)).thenReturn(provider);
         mapContext(session, context);
-        when(provider.completeCheckout(context)).thenThrow(new PspException("PayPal order capture failed."));
+        when(provider.completeCheckout(context))
+                .thenThrow(new ProviderExecutionException("PayPal order capture failed."));
         when(transactionService.update(eq(TENANT_ID), eq(session.getPaymentTransactionId()), any()))
                 .thenAnswer(invocation -> {
                     final Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
@@ -185,21 +186,25 @@ class ProviderCheckoutServiceImplTest {
         return new ProviderCheckoutContext(
                 new Payment(
                         session.getPaymentId(),
-                        session.getPayment().getType(),
+                        io.labs64.paymentgateway.psp.spi.PaymentType.valueOf(
+                                session.getPayment().getType().name()),
                         session.getPayment().getDescription(),
                         null,
                         session.getPayment().getPurchaseOrder(),
                         null,
                         null,
                         null),
-                new PaymentTransaction(session.getPaymentTransactionId(), session.getPaymentTransaction().getStatus()),
+                new PaymentTransaction(
+                        session.getPaymentTransactionId(),
+                        io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.valueOf(
+                                session.getPaymentTransaction().getStatus().name())),
                 new ProviderConfig(PROVIDER, Map.of("clientId", "client-id"), "PayPal", null),
                 new CheckoutSession(session.getId(), session.getPayload(), null, null),
                 Map.of("token", List.of("paypal-order")));
     }
 
     private static PaymentNextAction redirect(final String url) {
-        return new PaymentNextAction(NextAction.TypeEnum.REDIRECT, Map.of("url", url));
+        return new PaymentNextAction(PaymentNextActionType.REDIRECT, Map.of("url", url));
     }
 
     private static URI expectedRedirect(final CheckoutSessionEntity session, final String url) {

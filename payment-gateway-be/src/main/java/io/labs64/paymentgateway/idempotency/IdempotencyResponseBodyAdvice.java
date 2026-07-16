@@ -2,7 +2,6 @@ package io.labs64.paymentgateway.idempotency;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.labs64.paymentgateway.service.IdempotencyService;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -26,19 +25,19 @@ public class IdempotencyResponseBodyAdvice implements ResponseBodyAdvice<Object>
 
     @Override
     public boolean supports(
-            @NotNull final MethodParameter returnType,
-            @NotNull final Class<? extends HttpMessageConverter<?>> converterType) {
+            final MethodParameter returnType,
+            final Class<? extends HttpMessageConverter<?>> converterType) {
         return true;
     }
 
     @Override
     public Object beforeBodyWrite(
             final Object body,
-            @NotNull final MethodParameter returnType,
-            @NotNull final MediaType selectedContentType,
-            @NotNull final Class<? extends HttpMessageConverter<?>> selectedConverterType,
-            @NotNull final ServerHttpRequest serverHttpRequest,
-            @NotNull final ServerHttpResponse serverHttpResponse) {
+            final MethodParameter returnType,
+            final MediaType selectedContentType,
+            final Class<? extends HttpMessageConverter<?>> selectedConverterType,
+            final ServerHttpRequest serverHttpRequest,
+            final ServerHttpResponse serverHttpResponse) {
         final Object context = request.getAttribute(IdempotencyInterceptor.REQUEST_CONTEXT_ATTRIBUTE);
         if (context instanceof IdempotencyContext idempotencyContext) {
             idempotencyService.complete(idempotencyContext, new IdempotencyResponse(
