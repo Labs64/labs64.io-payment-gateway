@@ -154,6 +154,10 @@ payment-gateway:
 # OpenAPI x-labs64-auth.public annotations — OpenAPI is the single source of truth.
 # tenant.default is a dev-only fallback for gateway-less runs.
 labs64:
+  openapi:
+    spec-location: classpath:openapi/openapi-payment-gateway-v1.yaml
+    gateway-path: /payment-gateway/api/v1
+    local-path: /
   auth-context:
     enabled: ${LABS64_AUTHCONTEXT_ENABLED:true}
     public-paths:
