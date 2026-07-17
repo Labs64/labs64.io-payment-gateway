@@ -7,25 +7,16 @@ hs_err_pid*
 replay_pid*
 target/
 
-# --- Python (if any scripts) ---
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-env/
-
-# --- Node (if any frontend) ---
-node_modules/
+# --- Environment ---
+.env
 
 # --- IDE / OS ---
 .idea/
 .vscode/
 *.iml
 .DS_Store
-
-# --- Environment ---
-.env
-!/.env.example
+*.swp
+*~
 
 # --- Logs ---
 *.log
