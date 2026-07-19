@@ -21,16 +21,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerMapping;
 
-import io.labs64.authcontext.cedar.AuthorizationDecision;
-import io.labs64.authcontext.cedar.AuthorizeInterceptor;
-import io.labs64.authcontext.cedar.CedarAuthorizationService;
-import io.labs64.authcontext.cedar.CedarProperties;
+import io.labs64.authcontext.authorization.AuthorizationDecision;
+import io.labs64.authcontext.authorization.AuthorizationProperties;
+import io.labs64.authcontext.authorization.AuthorizationService;
+import io.labs64.authcontext.authorization.AuthorizeInterceptor;
+import io.labs64.authcontext.authorization.ResourceEntity;
 import io.labs64.authcontext.core.AuthContext;
 import io.labs64.authcontext.core.AuthContextHolder;
 import io.labs64.paymentgateway.controller.PaymentController;
@@ -43,14 +43,17 @@ import io.labs64.paymentgateway.service.PaymentService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 /**
- *  P3/P4: the REAL domain policy set — now GENERATED from the OpenAPI
- * {@code x-labs64-auth} ({@code classpath:auth-policy-domain.cedar}) — plus the
- * real resolver and the {@code @Authorize} PEP, in both modes. Cedar enforces
- * scope + cross-tenant isolation; workflow-state rules (payable-only-when-READY)
- * are the SERVICE layer's job now, not Cedar's.
+ * rename migration: the real {@link PaymentResourceResolver} + the
+ * {@code @Authorize} PEP, exercised in both modes against a stub
+ * {@link AuthorizationService} that mirrors the generated Cerbos domain policy
+ * (scope-per-action + cross-tenant guard, status-agnostic). The real Cerbos
+ * client lives in the commons {@code CerbosAuthorizationServiceTest}; whole-
+ * policy decision equivalence is proven by the commons {@code auth-policy-cerbos}
+ * truth-table gate. Workflow-state rules (payable-only-when-READY) are the
+ * SERVICE layer's job, never authz's.
  */
 @ExtendWith(MockitoExtension.class)
-class PaymentCedarAuthorizationTest {
+class PaymentAuthorizationTest {
 
     private static final String TENANT = "t_100";
     private static final UUID PAYMENT_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440042");
@@ -75,15 +78,47 @@ class PaymentCedarAuthorizationTest {
         AuthContextHolder.clear();
     }
 
-    private AuthorizeInterceptor interceptor(final CedarProperties.Mode mode) {
-        CedarProperties properties = new CedarProperties();
-        properties.setEnabled(true);
-        properties.setMode(mode);
-        CedarAuthorizationService service = new CedarAuthorizationService(properties,
-                new ClassPathResource("auth-policy-domain.cedar"));
-        CedarDecisionAuditPublisher metrics = new CedarDecisionAuditPublisher(meterRegistry);
-        return new AuthorizeInterceptor(service,
-                List.of(new PaymentCedarEntityResolver(paymentService, messages)),
+    /**
+     * Stub PDP mirroring the generated payment-gateway domain policy: each
+     * action needs its scope, and the tenant guard denies whenever the resource
+     * carries a tenant that differs from (or is absent on) the principal. It is
+     * deliberately status-agnostic — workflow state is the service layer's job.
+     */
+    private static final class StubAuthorizationService implements AuthorizationService {
+
+        private static final Map<String, String> REQUIRED_SCOPE = Map.of(
+                "payPayment", "payment:pay",
+                "getPayment", "payment:read",
+                "closePayment", "payment:write");
+
+        private final AuthorizationProperties.Mode mode;
+
+        StubAuthorizationService(final AuthorizationProperties.Mode mode) {
+            this.mode = mode;
+        }
+
+        @Override
+        public boolean isEnforcing() {
+            return mode == AuthorizationProperties.Mode.ENFORCE;
+        }
+
+        @Override
+        public AuthorizationDecision decide(final AuthContext ctx, final String action, final ResourceEntity resource) {
+            Object tenant = resource.attributes().get("tenant");
+            boolean tenantGuard = tenant == null || tenant.equals(ctx.tenantId());
+            String required = REQUIRED_SCOPE.get(action);
+            boolean scopeOk = required == null || ctx.hasScope(required);
+            boolean allowed = tenantGuard && scopeOk;
+            return new AuthorizationDecision(action, resource.type(), resource.id(),
+                    allowed, isEnforcing(), allowed ? List.of("policy0") : List.of(), null,
+                    ctx.userId(), ctx.tenantId(), ctx.requestId());
+        }
+    }
+
+    private AuthorizeInterceptor interceptor(final AuthorizationProperties.Mode mode) {
+        AuthorizationDecisionAuditPublisher metrics = new AuthorizationDecisionAuditPublisher(meterRegistry);
+        return new AuthorizeInterceptor(new StubAuthorizationService(mode),
+                List.of(new PaymentResourceResolver(paymentService, messages)),
                 List.of(decisions::add, metrics));
     }
 
@@ -112,20 +147,20 @@ class PaymentCedarAuthorizationTest {
     void enforceAllowsPayingReadyPaymentWithScope() throws Exception {
         authenticate("payment:pay");
         stubPayment(TENANT, PaymentStatus.READY);
-        assertThat(invoke(interceptor(CedarProperties.Mode.ENFORCE), "payPayment")).isTrue();
+        assertThat(invoke(interceptor(AuthorizationProperties.Mode.ENFORCE), "payPayment")).isTrue();
         assertThat(decisions.get(0).allowed()).isTrue();
     }
 
     @Test
-    void cedarIsStatusAgnostic_workflowEnforcementIsServiceLayer() throws Exception {
+    void authzIsStatusAgnostic_workflowEnforcementIsServiceLayer() throws Exception {
         // Aligned model (OpenAPI single source of truth): the generated domain
         // policy checks scope + tenant only — NOT workflow status. A CLOSED
-        // payment with the pay scope in-tenant is ALLOWED by Cedar; refusing to
+        // payment with the pay scope in-tenant is ALLOWED by authz; refusing to
         // pay a non-READY payment is the service layer's responsibility
-        // (PaymentServiceImpl.ensurePayable), no longer Cedar's.
+        // (PaymentServiceImpl.ensurePayable), no longer the policy's.
         authenticate("payment:pay");
         stubPayment(TENANT, PaymentStatus.CLOSED);
-        assertThat(invoke(interceptor(CedarProperties.Mode.ENFORCE), "payPayment")).isTrue();
+        assertThat(invoke(interceptor(AuthorizationProperties.Mode.ENFORCE), "payPayment")).isTrue();
         assertThat(decisions.get(0).allowed()).isTrue();
     }
 
@@ -133,16 +168,16 @@ class PaymentCedarAuthorizationTest {
     void enforceDeniesWithoutPayScope() throws Exception {
         authenticate("payment:read");
         stubPayment(TENANT, PaymentStatus.READY);
-        assertThat(invoke(interceptor(CedarProperties.Mode.ENFORCE), "payPayment")).isFalse();
+        assertThat(invoke(interceptor(AuthorizationProperties.Mode.ENFORCE), "payPayment")).isFalse();
     }
 
     @Test
     void tenantGuardBlocksScopingBug() throws Exception {
         // Simulate a data-scoping bug: the lookup returns another tenant's
-        // payment. The structural Cedar guard must still deny (F4 backstop).
+        // payment. The structural tenant guard must still deny (F4 backstop).
         authenticate("payment:pay");
         stubPayment("t_999", PaymentStatus.READY);
-        assertThat(invoke(interceptor(CedarProperties.Mode.ENFORCE), "payPayment")).isFalse();
+        assertThat(invoke(interceptor(AuthorizationProperties.Mode.ENFORCE), "payPayment")).isFalse();
         assertThat(response.getStatus()).isEqualTo(403);
     }
 
@@ -150,7 +185,7 @@ class PaymentCedarAuthorizationTest {
     void shadowModeAuditsButNeverBlocks() throws Exception {
         authenticate("payment:read"); // pay would be denied
         stubPayment(TENANT, PaymentStatus.CLOSED);
-        assertThat(invoke(interceptor(CedarProperties.Mode.SHADOW), "payPayment")).isTrue();
+        assertThat(invoke(interceptor(AuthorizationProperties.Mode.SHADOW), "payPayment")).isTrue();
         assertThat(decisions.get(0).allowed()).isFalse();
         assertThat(decisions.get(0).enforced()).isFalse();
         assertThat(meterRegistry.get("labs64_authz_decisions_total")
@@ -161,14 +196,14 @@ class PaymentCedarAuthorizationTest {
     void closeAllowsNonClosedWithWriteScope() throws Exception {
         authenticate("payment:write");
         stubPayment(TENANT, PaymentStatus.READY);
-        assertThat(invoke(interceptor(CedarProperties.Mode.ENFORCE), "closePayment")).isTrue();
+        assertThat(invoke(interceptor(AuthorizationProperties.Mode.ENFORCE), "closePayment")).isTrue();
     }
 
     @Test
     void readRequiresReadScope() throws Exception {
         authenticate("payment:read");
         stubPayment(TENANT, PaymentStatus.READY);
-        assertThat(invoke(interceptor(CedarProperties.Mode.ENFORCE), "getPayment")).isTrue();
+        assertThat(invoke(interceptor(AuthorizationProperties.Mode.ENFORCE), "getPayment")).isTrue();
     }
 
     @Test
@@ -176,7 +211,7 @@ class PaymentCedarAuthorizationTest {
         authenticate("payment:pay");
         when(paymentService.find(eq(TENANT), any(UUID.class))).thenReturn(Optional.empty());
         when(messages.notFound(any(UUID.class))).thenReturn("not found");
-        assertThatThrownBy(() -> invoke(interceptor(CedarProperties.Mode.ENFORCE), "payPayment"))
+        assertThatThrownBy(() -> invoke(interceptor(AuthorizationProperties.Mode.ENFORCE), "payPayment"))
                 .isInstanceOf(NotFoundException.class);
     }
 }

@@ -2,7 +2,7 @@ package io.labs64.paymentgateway.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.labs64.authcontext.cedar.Authorize;
+import io.labs64.authcontext.authorization.Authorize;
 import io.labs64.authcontext.core.AuthContextHolder;
 import io.labs64.paymentgateway.entity.PaymentEntity;
 import io.labs64.paymentgateway.idempotency.IdempotentOperation;

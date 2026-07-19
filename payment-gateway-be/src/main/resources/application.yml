@@ -168,14 +168,15 @@ labs64:
   tenant:
     default: ${LABS64_TENANT_DEFAULT:}
   auth:
-    # Cedar domain authorization. SHADOW evaluates + audits
+    # Domain authorization via the central Cerbos PDP. SHADOW evaluates + audits
     # every decision without blocking; flip to ENFORCE only after the shadow
-    # diff is clean (deploy-time override via LABS64_CEDAR_MODE).
-    cedar:
-      enabled: ${LABS64_CEDAR_ENABLED:true}
-      mode: ${LABS64_CEDAR_MODE:ENFORCE}
-      # Build-generated from OpenAPI x-labs64-auth (--cedar-domain-output).
-      policy-location: classpath:auth-policy-domain.cedar
+    # diff is clean (deploy-time override via LABS64_AUTH_AUTHZ_MODE).
+    authz:
+      enabled: ${LABS64_AUTH_AUTHZ_ENABLED:true}
+      mode: ${LABS64_AUTH_AUTHZ_MODE:ENFORCE}
+      # Cerbos PDP gRPC address (host:port). In-cluster:
+      # cerbos.<ns>.svc.cluster.local:3593.
+      pdp-address: ${LABS64_AUTH_AUTHZ_PDPADDRESS:localhost:3593}
 
 # Logging Configuration
 logging:

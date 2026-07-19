@@ -56,6 +56,24 @@ services:
       retries: 10
       start_period: 20s
 
+  # Central authorization PDP. Serves the module's own generated
+  # policy set from target/cerbos (produced by `mvn package`). HTTP :3592,
+  # gRPC :3593 (the Java SDK talks gRPC).
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:0.51.0
+    command: ["server"]
+    hostname: cerbos
+    volumes:
+      - ./target/cerbos/policies:/policies:ro
+    ports:
+      - "3592:3592"
+      - "3593:3593"
+    healthcheck:
+      test: ["CMD", "/cerbos", "healthcheck", "--kind=grpc"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
   app:
     image: payment-gateway:latest
     build:
@@ -76,6 +94,7 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       RABBITMQ_VHOST: ${RABBITMQ_VHOST}
+      LABS64_AUTH_AUTHZ_PDPADDRESS: cerbos:3593
     ports:
       - "8080:8080"
     depends_on:
@@ -84,6 +103,8 @@ services:
       redis:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      cerbos:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/liveness || exit 1"]

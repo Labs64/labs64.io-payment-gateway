@@ -20,21 +20,6 @@ test:
 unit-test:
     mvn -f ../pom.xml -pl payment-gateway-be -am test
 
-# validate the build-generated edge + domain Cedar policy sets against the
-# shared commons schema
-cedar-validate:
-    @if [ -f target/generated-resources/auth-policy.cedar ]; then \
-      for f in auth-policy.cedar auth-policy-domain.cedar; do \
-        echo "validating $f"; \
-        cedar validate \
-          --schema ../../labs64.io-commons/auth-policy-cedar/schema.cedarschema \
-          --schema-format cedar \
-          --policies "target/generated-resources/$f"; \
-      done; \
-    else \
-      echo "cedar not generated yet (run a maven build first)"; exit 1; \
-    fi
-
 # ── Docker ───────────────────────────────────────────────────────────
 
 # build docker image
