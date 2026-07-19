@@ -2,14 +2,14 @@ package io.labs64.paymentgateway.security;
 
 import org.springframework.stereotype.Component;
 
-import io.labs64.authcontext.cedar.AuthorizationDecision;
-import io.labs64.authcontext.cedar.AuthorizationDecisionListener;
-import io.labs64.authcontext.cedar.LoggingDecisionListener;
+import io.labs64.authcontext.authorization.AuthorizationDecision;
+import io.labs64.authcontext.authorization.AuthorizationDecisionListener;
+import io.labs64.authcontext.authorization.LoggingDecisionListener;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 
 /**
- * Publishes every Cedar domain decision: structured log line
+ * Publishes every authorization decision: structured log line
  * (via the commons logging listener format) + Prometheus counter
  * {@code labs64_authz_decisions_total{action,decision,mode}}.
  *
@@ -18,12 +18,12 @@ import io.micrometer.core.instrument.MeterRegistry;
  * (tracked with the existing unwired-audit-events finding).
  */
 @Component
-public class CedarDecisionAuditPublisher implements AuthorizationDecisionListener {
+public class AuthorizationDecisionAuditPublisher implements AuthorizationDecisionListener {
 
     private final LoggingDecisionListener log = new LoggingDecisionListener();
     private final MeterRegistry meterRegistry;
 
-    public CedarDecisionAuditPublisher(final MeterRegistry meterRegistry) {
+    public AuthorizationDecisionAuditPublisher(final MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
     }
 
@@ -31,7 +31,7 @@ public class CedarDecisionAuditPublisher implements AuthorizationDecisionListene
     public void onDecision(final AuthorizationDecision decision) {
         log.onDecision(decision);
         Counter.builder("labs64_authz_decisions_total")
-                .description("Cedar domain authorization decisions")
+                .description("authorization decisions")
                 .tag("action", decision.action())
                 .tag("decision", decision.allowed() ? "allow" : "deny")
                 .tag("mode", decision.enforced() ? "enforce" : "shadow")
