@@ -43,7 +43,7 @@ import io.labs64.paymentgateway.service.PaymentService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 /**
- * RFC-07 rename migration: the real {@link PaymentResourceResolver} + the
+ * rename migration: the real {@link PaymentResourceResolver} + the
  * {@code @Authorize} PEP, exercised in both modes against a stub
  * {@link AuthorizationService} that mirrors the generated Cerbos domain policy
  * (scope-per-action + cross-tenant guard, status-agnostic). The real Cerbos
