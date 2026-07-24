@@ -46,6 +46,6 @@ Future Enhancements:
 - Loyalty, coupon, and promotional engine
 - Blockchain-based settlement and transparency layer
 
-## Star History
+## License
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Labs64/labs64.io-payment-gateway&type=Date)](https://www.star-history.com/#Labs64/labs64.io-payment-gateway&Date)
+The core of the *Labs64.IO Ecosystem* is entirely open source and free forever. Community modules are licensed under [Apache License 2.0](LICENSE).
