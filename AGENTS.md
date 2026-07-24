@@ -17,8 +17,10 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 
 | Path | Service | Stack | Port | Role |
 |------|---------|-------|------|------|
-| `payment-gateway-be/` | Backend | Java 25, Spring Boot 4.0.5, Maven | 8080 | REST API, PSP integration, idempotency, webhooks |
+| `payment-gateway-be/` | Backend | Java 25, Spring Boot 4.1.0, Maven | 8080 | REST API, idempotency, webhooks, provider registry |
+| `payment-gateway-providers/` | PSP modules | Java 25, Maven | — | `providers-spi/` (the SPI) + one module per PSP (`noop/`, `paypal/`) |
 | `payment-gateway-fe/` | Frontend | (stub — just a justfile) | — | Placeholder |
+| `tests/` | Tests | Robot Framework | — | Module-level e2e/integration tests |
 | `examples/` | Examples | — | — | Integration examples |
 
 ## Critical guardrails
@@ -35,9 +37,9 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 - **Package**: `io.labs64.paymentgateway`
 - **Key services**: `PaymentService`, `PaymentTransactionService`, `PaymentProviderService`, `PaymentDefinitionService`, `PaymentNextActionService`, `WebhookService`, `IdempotencyService`
 - **Key controllers**: `PaymentController`, `PaymentTransactionController`, `PaymentProviderController`, `PaymentDefinitionController`, `WebhookController`
-- **PSP integration**: SPI-based plugin system under `psp/spi/` (`PaymentProvider`, `Payment`, `PaymentContext`, `PaymentResult`, `PaymentTransaction`, `PaymentNextAction`, `WebhookRequest`, `PaymentWebhookResult`).
-- **Current providers**: `NoopPaymentProvider` (stub at `psp/providers/noop/`). Add new providers under `psp/providers/<name>/`.
-- **Provider registry**: `PaymentProviderRegistry` in `psp/internal/` manages provider lookup.
+- **PSP integration**: SPI-based plugin system. The SPI lives in its own module `payment-gateway-providers/providers-spi/` (package `io.labs64.paymentgateway.psp.spi`: `PaymentProvider`, `Payment`, `PaymentContext`, `PaymentResult`, `PaymentTransaction`, `ProviderCheckoutSupport`, `ProviderWebhookSupport`, `PaymentWebhookResult`, …).
+- **Current providers**: `NoopPaymentProvider` (`payment-gateway-providers/noop/`) and `PaypalPaymentProvider` (`payment-gateway-providers/paypal/`). Add new providers as a new module under `payment-gateway-providers/<name>/`.
+- **Provider registry**: `PaymentProviderRegistry` in `payment-gateway-be` `psp/internal/` manages provider lookup.
 - **Idempotency**: Redis-backed idempotency with `IdempotencyInterceptor`, `IdempotencyService`, `IdempotencyCleanupScheduler`.
 - **Correlation**: `CorrelationTraceService` + `CorrelationContextHolder` for request tracing.
 - **Multi-tenancy & security**: trusted gateway auth-context (`X-Auth-*`, `auth-context-spring-boot-starter`); `AuthContextHolder` supplies tenant + roles (dev fallback: `labs64.tenant.default` in the `local` profile). Path-level RBAC is enforced at the Traefik gateway; PSP webhooks / redirect returns / payment-definitions are public paths (webhook authenticity = PSP signature checks).
@@ -72,7 +74,7 @@ Local URLs: backend Swagger `http://localhost:8080/swagger-ui/index.html`, Rabbi
 ## Conventions
 
 - **Java 25** and **Maven 3.6.3+** enforced by `maven-enforcer-plugin`.
-- **Spring Boot 4.0.5** with Spring Cloud 2025.x. Use reactive WebClient for HTTP calls.
+- **Spring Boot 4.1.0** with Spring Cloud 2025.x. Use reactive WebClient for HTTP calls.
 - **Credentials from environment variables only** — never hardcode, never commit defaults.
 - Backend tests: JUnit 5 + Spring Boot Test alongside source in `src/test/java/`.
 - All Dockerfiles run as non-root user `l64user` (uid/gid 1064).
@@ -83,8 +85,8 @@ Local URLs: backend Swagger `http://localhost:8080/swagger-ui/index.html`, Rabbi
 | Goal | Where |
 |------|-------|
 | Change the API contract | `payment-gateway-be/src/main/resources/openapi/openapi-payment-gateway.yaml` |
-| Add a PSP provider | `payment-gateway-be/src/main/java/io/labs64/paymentgateway/psp/providers/<name>/` |
-| Modify PSP SPI | `payment-gateway-be/src/main/java/io/labs64/paymentgateway/psp/spi/` |
+| Add a PSP provider | New Maven module under `payment-gateway-providers/<name>/` (see `noop/` / `paypal/`) |
+| Modify PSP SPI | `payment-gateway-providers/providers-spi/src/main/java/io/labs64/paymentgateway/psp/spi/` |
 | Add a backend service | `payment-gateway-be/src/main/java/io/labs64/paymentgateway/service/` |
 | Add a REST controller | `payment-gateway-be/src/main/java/io/labs64/paymentgateway/controller/` |
 | Modify idempotency logic | `payment-gateway-be/src/main/java/io/labs64/paymentgateway/idempotency/` |
