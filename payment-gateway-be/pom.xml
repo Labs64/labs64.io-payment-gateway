@@ -24,7 +24,7 @@
         <java.version>25</java.version>
         <spring-cloud.version>2025.1.1</spring-cloud.version>
         <logstash.version>9.0</logstash.version>
-        <labs64-openapi.version>0.1.0</labs64-openapi.version>
+        <labs64-openapi.version>0.1.0-SNAPSHOT</labs64-openapi.version>
         <openapitools.version>0.2.10</openapitools.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <jackson-datatype-jsr310.version>2.21.2</jackson-datatype-jsr310.version>
