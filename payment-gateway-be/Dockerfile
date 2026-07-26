@@ -1,5 +1,15 @@
 FROM eclipse-temurin:25-jre
 
+ARG GIT_REVISION=unknown
+
+LABEL org.opencontainers.image.title="Labs64.IO :: Payment Gateway" \
+      org.opencontainers.image.description="Unified payment gateway backend for the Labs64.IO Ecosystem" \
+      org.opencontainers.image.url="https://labs64.io" \
+      org.opencontainers.image.source="https://github.com/Labs64/labs64.io-payment-gateway" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.revision="${GIT_REVISION}" \
+      io.labs64.edition="ce"
+
 # Build arguments
 ARG USER_ID=1064
 ARG GROUP_ID=1064

@@ -48,8 +48,19 @@ jobs:
           context: ./payment-gateway-be
           push: true
           platforms: linux/amd64,linux/arm64/v8
+          build-args: |
+            GIT_REVISION=${{ github.sha }}
           tags: |
             labs64/payment-gateway:latest
             labs64/payment-gateway:${{ steps.get_release_tag.outputs.RELEASE_TAG }}
           cache-from: type=gha,scope=${{ github.workflow }}
           cache-to: type=gha,mode=max,scope=${{ github.workflow }}
+
+      - name: Verify required OCI labels
+        run: |
+          docker pull labs64/payment-gateway:latest
+          LABELS="$(docker inspect --format '{{json .Config.Labels}}' labs64/payment-gateway:latest)"
+          for key in org.opencontainers.image.licenses org.opencontainers.image.revision org.opencontainers.image.source io.labs64.edition; do
+            echo "$LABELS" | jq -e --arg k "$key" 'has($k) and (.[$k] | length > 0)' >/dev/null \
+              || { echo "::error::missing or empty OCI label '$key' on labs64/payment-gateway:latest"; exit 1; }
+          done
