@@ -1,0 +1,27 @@
+name: Labs64.IO - Payment Gateway - SAST
+
+# Item 16: SAST as a named release input, distinct from the functional CI in
+# payment-gateway-be-ci.yml. Every run writes a sast-manifest artifact naming
+# the scanner + exact version, so a release can state which scanners ran.
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: payment-gateway-sast-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sast:
+    permissions:
+      contents: read
+      security-events: write
+    uses: Labs64/labs64.io-workspace/.github/workflows/sast.yml@master
+    with:
+      manifest-name: payment-gateway-sast-manifest
