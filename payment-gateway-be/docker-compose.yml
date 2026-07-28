@@ -61,10 +61,14 @@ services:
   # gRPC :3593 (the Java SDK talks gRPC).
   cerbos:
     image: ghcr.io/cerbos/cerbos:0.51.0
-    command: ["server"]
+    command:
+      - server
+      - --set=storage.disk.directory=/workspace/target/cerbos/policies
+      - --set=storage.disk.watchForChanges=true
     hostname: cerbos
+    restart: unless-stopped
     volumes:
-      - ./target/cerbos/policies:/policies:ro
+      - .:/workspace:ro
     ports:
       - "3592:3592"
       - "3593:3593"
