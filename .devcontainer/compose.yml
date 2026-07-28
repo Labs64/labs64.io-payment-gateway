@@ -6,6 +6,7 @@ services:
     command: sleep infinity
     environment:
       SPRING_PROFILES_ACTIVE: local
+      CLAUDE_CONFIG_DIR: /home/l64user/.claude
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: paymentgateway
@@ -21,7 +22,12 @@ services:
       LABS64_AUTH_AUTHZ_PDPADDRESS: cerbos:3593
     volumes:
       - ..:/workspaces/labs64.io-payment-gateway
-      - maven-repository:/home/l64user/.m2
+      - maven-repository:/home/l64user/.m2/repository
+      - vscode-extensions:/home/l64user/.vscode-server/extensions
+      - vscode-server-data:/home/l64user/.vscode-server/data
+      - codex-data:/home/l64user/.codex
+      - claude-data:/home/l64user/.claude
+      - copilot-data:/home/l64user/.copilot
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,6 +95,13 @@ services:
 
 volumes:
   maven-repository:
+    name: labs64io-maven-repository
+  vscode-extensions:
+    name: labs64io-vscode-extensions
+  vscode-server-data:
+  codex-data:
+  claude-data:
+  copilot-data:
   postgres-data:
   redis-data:
   rabbitmq-data:

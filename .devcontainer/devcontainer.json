@@ -5,6 +5,17 @@
   "workspaceFolder": "/workspaces/labs64.io-payment-gateway",
   "shutdownAction": "stopCompose",
   "remoteUser": "l64user",
+  "updateRemoteUserUID": false,
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vmware.vscode-boot-dev-pack",
+        "redhat.vscode-yaml",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
   "forwardPorts": [8080, 5005, 15672, 3592],
   "portsAttributes": {
     "8080": { "label": "Payment Gateway API" },

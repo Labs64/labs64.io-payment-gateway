@@ -6,6 +6,7 @@ ARG USER_NAME=l64user
 ARG GROUP_NAME=l64group
 ARG JUST_VERSION=1.42.4
 ARG TARGETARCH
+ENV HOME=/home/${USER_NAME} MAVEN_CONFIG=/home/${USER_NAME}/.m2
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -13,7 +14,14 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid "${GROUP_ID}" "${GROUP_NAME}" \
     && useradd --uid "${USER_ID}" --gid "${GROUP_ID}" --create-home --shell /bin/bash "${USER_NAME}" \
-    && mkdir -p "/home/${USER_NAME}/.m2" /workspaces \
+    && mkdir -p \
+        "/home/${USER_NAME}/.m2/repository" \
+        "/home/${USER_NAME}/.vscode-server/extensions" \
+        "/home/${USER_NAME}/.vscode-server/data" \
+        "/home/${USER_NAME}/.codex" \
+        "/home/${USER_NAME}/.claude" \
+        "/home/${USER_NAME}/.copilot" \
+        /workspaces \
     && chown -R "${USER_ID}:${GROUP_ID}" "/home/${USER_NAME}" /workspaces \
     && case "${TARGETARCH}" in \
          amd64) just_arch=x86_64 ;; \
