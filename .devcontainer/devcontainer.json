@@ -1,0 +1,16 @@
+{
+  "name": "Labs64.IO Payment Gateway",
+  "dockerComposeFile": "compose.yml",
+  "service": "devcontainer",
+  "workspaceFolder": "/workspaces/labs64.io-payment-gateway",
+  "shutdownAction": "stopCompose",
+  "remoteUser": "l64user",
+  "forwardPorts": [8080, 5005, 15672, 3592],
+  "portsAttributes": {
+    "8080": { "label": "Payment Gateway API" },
+    "5005": { "label": "Java debugger" },
+    "15672": { "label": "RabbitMQ management" },
+    "3592": { "label": "Cerbos HTTP API" }
+  },
+  "postCreateCommand": "just doctor"
+}
