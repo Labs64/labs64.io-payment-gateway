@@ -15,13 +15,14 @@ import io.labs64.authcontext.test.ModulePepHarness;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
 /**
- * Item 2 (roadmap): every operation that declares {@code x-labs64-auth} in the
- * canonical spec is called without credentials and must be refused.
+ * Item 2 (roadmap): every operation protected by effective OpenAPI
+ * {@code security} or {@code x-labs64.auth} in the canonical spec is called
+ * without credentials and must be refused.
  *
  * <p>Payment Gateway is the two-module-rule check on this pattern: it has the
  * larger protected surface, and — unlike AuditFlow — it also has genuinely
  * public operations (provider webhooks, provider checkout return URLs). Those
- * come out of the same {@code x-labs64-auth} via the generated
+ * come out of the same OpenAPI auth contract via the generated
  * {@code auth-public-paths}, so this suite proves the split is enforced in both
  * directions: protected operations are refused, and the public ones are not
  * accidentally dragged in with them.

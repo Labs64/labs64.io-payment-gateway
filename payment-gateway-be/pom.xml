@@ -39,14 +39,16 @@
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
         <openapi.source>${project.basedir}/src/main/resources/openapi/openapi-payment-gateway-v1.yaml</openapi.source>
         <openapi.generated>${project.build.directory}/generated-openapi/openapi-payment-gateway-v1.yaml</openapi.generated>
-        <!-- Cerbos policies + routes manifest generated from x-labs64-auth.
+        <!-- Cerbos policies + routes manifest generated from OpenAPI security
+             and x-labs64.auth.
              auth-policy.module must equal the module's gateway prefix
              (= policy-sources.yaml name); it is baked into the Cerbos resource
              kind (payment-gateway -> payment_gateway_api). Generated output is a
              build artifact only — the central Cerbos PDP owns the live set. -->
         <auth-policy-cerbos.output>${project.build.directory}/cerbos</auth-policy-cerbos.output>
-        <!-- Public OpenAPI operations (x-labs64-auth.public), consumed by the
-             backend AuthContextFilter so public paths are never hand-maintained. -->
+        <!-- Public OpenAPI operations inferred from effective security and
+             x-labs64.auth, consumed by the backend AuthContextFilter so public
+             paths are never hand-maintained. -->
         <auth-public-paths.generated>${project.build.directory}/generated-resources/auth-public-paths</auth-public-paths.generated>
         <auth-policy.module>payment-gateway</auth-policy.module>
     </properties>
