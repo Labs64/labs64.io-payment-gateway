@@ -2,7 +2,6 @@ package io.labs64.paymentgateway.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.labs64.authcontext.authorization.Authorize;
 import io.labs64.authcontext.core.AuthContextHolder;
 import io.labs64.paymentgateway.entity.PaymentEntity;
 import io.labs64.paymentgateway.idempotency.IdempotentOperation;
@@ -47,7 +46,6 @@ public class PaymentController implements PaymentsApi {
     private final ObjectMapper objectMapper;
 
     @Override
-    @Authorize(action = "getPayment", resource = "#paymentId", resourceType = "Payment")
     public ResponseEntity<Payment> getPayment(final UUID paymentId) {
         final String tenantId = AuthContextHolder.require().tenantId();
 
@@ -92,7 +90,6 @@ public class PaymentController implements PaymentsApi {
 
     @Override
     @IdempotentOperation
-    @Authorize(action = "payPayment", resource = "#paymentId", resourceType = "Payment")
     public ResponseEntity<ExecutePaymentResponse> payPayment(final UUID paymentId, final PayPaymentRequest request) {
         final String tenantId = AuthContextHolder.require().tenantId();
 
@@ -125,7 +122,6 @@ public class PaymentController implements PaymentsApi {
     }
 
     @Override
-    @Authorize(action = "closePayment", resource = "#paymentId", resourceType = "Payment")
     public ResponseEntity<Payment> closePayment(final UUID paymentId) {
         final String tenantId = AuthContextHolder.require().tenantId();
 

@@ -14,6 +14,9 @@ servers:
   - url: /api/v1
     description: Via API Gateway (Traefik strips the module prefix)
 
+security:
+  - oauth: []
+
 tags:
   - name: PaymentDefinitions
     description: Operations to retrieve globally supported payment provider definitions.
@@ -39,8 +42,6 @@ paths:
         Returns globally supported payment provider definitions that tenants can
         use to create their own payment providers.
       operationId: listPaymentDefinitions
-      x-labs64-auth:
-        public: true
       tags:
         - PaymentDefinitions
       security: []
@@ -91,11 +92,11 @@ paths:
       tags:
         - PaymentProviders
       security:
-        - bearerAuth: []
-      x-labs64-auth:
-        tenant: true
-        scopes:
-          - payment-provider:read
+        - oauth:
+            - payment-provider:read
+      x-labs64:
+        auth:
+          tenant: true
       parameters:
         - name: currency
           in: query
@@ -163,11 +164,11 @@ paths:
       tags:
         - PaymentProviders
       security:
-        - bearerAuth: []
-      x-labs64-auth:
-        tenant: true
-        scopes:
-          - payment-provider:write
+        - oauth:
+            - payment-provider:write
+      x-labs64:
+        auth:
+          tenant: true
       requestBody:
         required: true
         content:
@@ -222,11 +223,11 @@ paths:
       tags:
         - PaymentProviders
       security:
-        - bearerAuth: []
-      x-labs64-auth:
-        tenant: true
-        scopes:
-          - payment-provider:write
+        - oauth:
+            - payment-provider:write
+      x-labs64:
+        auth:
+          tenant: true
       parameters:
         - $ref: '#/components/parameters/PaymentProviderIdPath'
       responses:
@@ -265,11 +266,11 @@ paths:
       tags:
         - PaymentProviders
       security:
-        - bearerAuth: []
-      x-labs64-auth:
-        tenant: true
-        scopes:
-          - payment-provider:write
+        - oauth:
+            - payment-provider:write
+      x-labs64:
+        auth:
+          tenant: true
       parameters:
         - $ref: '#/components/parameters/PaymentProviderIdPath'
       requestBody:
@@ -322,11 +323,11 @@ paths:
       tags:
         - PaymentProviders
       security:
-        - bearerAuth: []
-      x-labs64-auth:
-        tenant: true
-        scopes:
-          - payment-provider:write
+        - oauth:
+            - payment-provider:write
+      x-labs64:
+        auth:
+          tenant: true
       parameters:
         - $ref: '#/components/parameters/PaymentProviderIdPath'
       responses:
@@ -353,11 +354,11 @@ paths:
         - Payments
       x-spring-paginated: true
       security:
-        - bearerAuth: []
-      x-labs64-auth:
-        tenant: true
-        scopes:
-          - payment:read
+        - oauth:
+            - payment:read
+      x-labs64:
+        auth:
+          tenant: true
       parameters:
         - name: status
           in: query
@@ -391,11 +392,11 @@ paths:
       tags:
         - Payments
       security:
-        - bearerAuth: []
-      x-labs64-auth:
-        tenant: true
-        scopes:
-          - payment:write
+        - oauth:
+            - payment:write
+      x-labs64:
+        auth:
+          tenant: true
       requestBody:
         required: true
         content:
@@ -455,12 +456,12 @@ paths:
       tags:
         - Payments
       security:
-        - bearerAuth: []
-      x-labs64-auth:
-        tenant: true
-        scopes:
-          - payment:read
-        resource: Payment
+        - oauth:
+            - payment:read
+      x-labs64:
+        auth:
+          tenant: true
+          resource: Payment
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
       responses:
@@ -496,12 +497,12 @@ paths:
       tags:
         - Payments
       security:
-        - bearerAuth: []
-      x-labs64-auth:
-        tenant: true
-        scopes:
-          - payment:pay
-        resource: Payment
+        - oauth:
+            - payment:pay
+      x-labs64:
+        auth:
+          tenant: true
+          resource: Payment
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
       requestBody:
@@ -579,12 +580,12 @@ paths:
       tags:
         - Payments
       security:
-        - bearerAuth: []
-      x-labs64-auth:
-        tenant: true
-        scopes:
-          - payment:write
-        resource: Payment
+        - oauth:
+            - payment:write
+      x-labs64:
+        auth:
+          tenant: true
+          resource: Payment
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
       responses:
@@ -629,11 +630,11 @@ paths:
         - PaymentTransactions
       x-spring-paginated: true
       security:
-        - bearerAuth: []
-      x-labs64-auth:
-        tenant: true
-        scopes:
-          - payment-transaction:read
+        - oauth:
+            - payment-transaction:read
+      x-labs64:
+        auth:
+          tenant: true
       parameters:
         - name: paymentId
           in: query
@@ -672,11 +673,11 @@ paths:
       tags:
         - PaymentTransactions
       security:
-        - bearerAuth: []
-      x-labs64-auth:
-        tenant: true
-        scopes:
-          - payment-transaction:read
+        - oauth:
+            - payment-transaction:read
+      x-labs64:
+        auth:
+          tenant: true
       parameters:
         - $ref: '#/components/parameters/PaymentTransactionIdPath'
       responses:
@@ -705,8 +706,6 @@ paths:
         PSP data, billing data, shipping data, extra metadata, and the full
         purchase order.
       operationId: getCheckoutSessionConfirmation
-      x-labs64-auth:
-        public: true
       tags:
         - CheckoutSessions
       security: []
@@ -751,8 +750,6 @@ paths:
         result, updates payment transaction state, and redirects the browser to
         the tenant return URL stored in the checkout session when available.
       operationId: returnProviderCheckoutSession
-      x-labs64-auth:
-        public: true
       tags:
         - ProviderCheckout
       security: []
@@ -783,8 +780,6 @@ paths:
         redirects the browser to the tenant cancel URL stored in the checkout session
         when available.
       operationId: cancelProviderCheckoutSession
-      x-labs64-auth:
-        public: true
       tags:
         - ProviderCheckout
       security: []
@@ -816,8 +811,6 @@ paths:
         This endpoint is intentionally unauthenticated — PSPs call it directly
         using their own signature verification mechanism.
       operationId: handleProviderWebhook
-      x-labs64-auth:
-        public: true
       tags:
         - ProviderWebhooks
       security: []
@@ -848,15 +841,24 @@ paths:
 # ═══════════════════════════════════════════════════════════════════════
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    oauth:
+      type: oauth2
       description: >-
-        JWT token containing tenantId claim. Access is controlled by
-        gateway-verified scopes supplied via the X-Auth-Scopes header:
-        payment-provider:read, payment-provider:write, payment:read,
-        payment:write, payment:pay, payment-transaction:read.
+        OAuth2 client-credentials authentication. The token URL currently
+        points to the local development Mock OIDC provider and must be replaced
+        with the canonical public identity provider URL before production use.
+      flows:
+        clientCredentials:
+          # LOCAL DEVELOPMENT ONLY. Replace with the canonical public IdP token
+          # endpoint before production use.
+          tokenUrl: http://mock-oidc.localhost/labs64io/token
+          scopes:
+            payment-provider:read: Read tenant payment providers.
+            payment-provider:write: Create and manage tenant payment providers.
+            payment:read: Read payments.
+            payment:write: Create and manage payments.
+            payment:pay: Execute payments.
+            payment-transaction:read: Read payment transactions.
 
   # ─── Reusable Parameters ────────────────────────────────────────────
   parameters:
