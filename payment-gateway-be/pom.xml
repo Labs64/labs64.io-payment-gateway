@@ -65,8 +65,6 @@
         </dependencies>
     </dependencyManagement>
 
-
-
     <dependencies>
         <!-- No in-app OpenTelemetry SDK on the classpath (guardrail #4). Tracing and
              log-trace correlation are infrastructure-owned: the bundled OTel Java Agent
