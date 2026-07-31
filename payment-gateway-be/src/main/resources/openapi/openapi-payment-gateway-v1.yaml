@@ -14,9 +14,6 @@ servers:
   - url: /api/v1
     description: Via API Gateway (Traefik strips the module prefix)
 
-security:
-  - oauth: []
-
 tags:
   - name: PaymentDefinitions
     description: Operations to retrieve globally supported payment provider definitions.
@@ -44,7 +41,6 @@ paths:
       operationId: listPaymentDefinitions
       tags:
         - PaymentDefinitions
-      security: []
       responses:
         '200':
           description: List of available payment definitions
@@ -91,12 +87,11 @@ paths:
       operationId: listPaymentProviders
       tags:
         - PaymentProviders
-      security:
-        - oauth:
-            - payment-provider:read
       x-labs64:
         auth:
           tenant: true
+          scopes:
+            - payment-provider:read
       parameters:
         - name: currency
           in: query
@@ -163,12 +158,11 @@ paths:
       operationId: createPaymentProvider
       tags:
         - PaymentProviders
-      security:
-        - oauth:
-            - payment-provider:write
       x-labs64:
         auth:
           tenant: true
+          scopes:
+            - payment-provider:write
       requestBody:
         required: true
         content:
@@ -222,12 +216,11 @@ paths:
       operationId: getPaymentProvider
       tags:
         - PaymentProviders
-      security:
-        - oauth:
-            - payment-provider:write
       x-labs64:
         auth:
           tenant: true
+          scopes:
+            - payment-provider:write
       parameters:
         - $ref: '#/components/parameters/PaymentProviderIdPath'
       responses:
@@ -265,12 +258,11 @@ paths:
       operationId: updatePaymentProvider
       tags:
         - PaymentProviders
-      security:
-        - oauth:
-            - payment-provider:write
       x-labs64:
         auth:
           tenant: true
+          scopes:
+            - payment-provider:write
       parameters:
         - $ref: '#/components/parameters/PaymentProviderIdPath'
       requestBody:
@@ -322,12 +314,11 @@ paths:
       operationId: deletePaymentProvider
       tags:
         - PaymentProviders
-      security:
-        - oauth:
-            - payment-provider:write
       x-labs64:
         auth:
           tenant: true
+          scopes:
+            - payment-provider:write
       parameters:
         - $ref: '#/components/parameters/PaymentProviderIdPath'
       responses:
@@ -353,12 +344,11 @@ paths:
       tags:
         - Payments
       x-spring-paginated: true
-      security:
-        - oauth:
-            - payment:read
       x-labs64:
         auth:
           tenant: true
+          scopes:
+            - payment:read
       parameters:
         - name: status
           in: query
@@ -391,12 +381,11 @@ paths:
       operationId: createPayment
       tags:
         - Payments
-      security:
-        - oauth:
-            - payment:write
       x-labs64:
         auth:
           tenant: true
+          scopes:
+            - payment:write
       requestBody:
         required: true
         content:
@@ -455,12 +444,11 @@ paths:
       operationId: getPayment
       tags:
         - Payments
-      security:
-        - oauth:
-            - payment:read
       x-labs64:
         auth:
           tenant: true
+          scopes:
+            - payment:read
           resource: Payment
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
@@ -496,12 +484,11 @@ paths:
       operationId: payPayment
       tags:
         - Payments
-      security:
-        - oauth:
-            - payment:pay
       x-labs64:
         auth:
           tenant: true
+          scopes:
+            - payment:pay
           resource: Payment
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
@@ -579,12 +566,11 @@ paths:
       operationId: closePayment
       tags:
         - Payments
-      security:
-        - oauth:
-            - payment:write
       x-labs64:
         auth:
           tenant: true
+          scopes:
+            - payment:write
           resource: Payment
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
@@ -629,12 +615,11 @@ paths:
       tags:
         - PaymentTransactions
       x-spring-paginated: true
-      security:
-        - oauth:
-            - payment-transaction:read
       x-labs64:
         auth:
           tenant: true
+          scopes:
+            - payment-transaction:read
       parameters:
         - name: paymentId
           in: query
@@ -672,12 +657,11 @@ paths:
       operationId: getPaymentTransaction
       tags:
         - PaymentTransactions
-      security:
-        - oauth:
-            - payment-transaction:read
       x-labs64:
         auth:
           tenant: true
+          scopes:
+            - payment-transaction:read
       parameters:
         - $ref: '#/components/parameters/PaymentTransactionIdPath'
       responses:
@@ -708,7 +692,6 @@ paths:
       operationId: getCheckoutSessionConfirmation
       tags:
         - CheckoutSessions
-      security: []
       parameters:
         - $ref: '#/components/parameters/CheckoutSessionIdPath'
       responses:
@@ -752,7 +735,6 @@ paths:
       operationId: returnProviderCheckoutSession
       tags:
         - ProviderCheckout
-      security: []
       parameters:
         - $ref: '#/components/parameters/ProviderPath'
         - $ref: '#/components/parameters/CheckoutSessionIdPath'
@@ -782,7 +764,6 @@ paths:
       operationId: cancelProviderCheckoutSession
       tags:
         - ProviderCheckout
-      security: []
       parameters:
         - $ref: '#/components/parameters/ProviderPath'
         - $ref: '#/components/parameters/CheckoutSessionIdPath'
@@ -813,7 +794,6 @@ paths:
       operationId: handleProviderWebhook
       tags:
         - ProviderWebhooks
-      security: []
       parameters:
         - $ref: '#/components/parameters/ProviderPath'
       requestBody:
@@ -840,26 +820,6 @@ paths:
 # Components
 # ═══════════════════════════════════════════════════════════════════════
 components:
-  securitySchemes:
-    oauth:
-      type: oauth2
-      description: >-
-        OAuth2 client-credentials authentication. The token URL currently
-        points to the local development Mock OIDC provider and must be replaced
-        with the canonical public identity provider URL before production use.
-      flows:
-        clientCredentials:
-          # LOCAL DEVELOPMENT ONLY. Replace with the canonical public IdP token
-          # endpoint before production use.
-          tokenUrl: http://mock-oidc.localhost/labs64io/token
-          scopes:
-            payment-provider:read: Read tenant payment providers.
-            payment-provider:write: Create and manage tenant payment providers.
-            payment:read: Read payments.
-            payment:write: Create and manage payments.
-            payment:pay: Execute payments.
-            payment-transaction:read: Read payment transactions.
-
   # ─── Reusable Parameters ────────────────────────────────────────────
   parameters:
     ProviderPath:
