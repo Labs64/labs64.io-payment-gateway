@@ -62,10 +62,13 @@ cd payment-gateway-be
 just build              # mvn clean package -DskipTests
 just test               # mvn clean verify
 just unit-test          # mvn test (unit tests only)
-just infra-up           # docker compose up (PostgreSQL + Redis + RabbitMQ)
+just infra-up           # start PostgreSQL + Redis + RabbitMQ + Cerbos
 just run                # build + mvn spring-boot:run -Dspring-boot.run.profiles=local
 just infra-down         # stop infrastructure
-just infra-reset        # stop + remove volumes
+just infra-reset        # stop infrastructure + remove volumes
+just dev-up             # start infrastructure + debug application
+just dev-watch          # restart debug application when the JAR changes
+just dev-down           # stop the debug Compose stack
 just docu               # open Swagger UI
 ```
 

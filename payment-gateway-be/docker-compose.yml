@@ -1,5 +1,4 @@
 services:
-
   postgres:
     image: postgres:18-alpine
     env_file: ./.env
@@ -10,9 +9,12 @@ services:
       POSTGRES_DB: ${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql
-      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+      - type: bind
+        source: ${HOST_PROJECT_DIR:-.}/docker/initdb
+        target: /docker-entrypoint-initdb.d
+        read_only: true
     healthcheck:
-      test: pg_isready -h 127.0.0.1 -p ${DB_PORT:-5432} -U ${DB_USERNAME} -d ${DB_NAME} || exit 1
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U ${DB_USERNAME} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,12 +65,15 @@ services:
     image: ghcr.io/cerbos/cerbos:0.51.0
     command:
       - server
-      - --set=storage.disk.directory=/workspace/target/cerbos/policies
+      - --set=storage.disk.directory=/policies
       - --set=storage.disk.watchForChanges=true
     hostname: cerbos
     restart: unless-stopped
     volumes:
-      - .:/workspace:ro
+      - type: bind
+        source: ${HOST_PROJECT_DIR:-.}/target/cerbos/policies
+        target: /policies
+        read_only: true
     ports:
       - "3592:3592"
       - "3593:3593"
@@ -77,47 +82,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
-
-  app:
-    image: payment-gateway:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
-    env_file: ./.env
-    environment:
-      SPRING_PROFILES_ACTIVE: local
-      DB_HOST: postgres
-      DB_PORT: ${DB_PORT:-5432}
-      DB_NAME: ${DB_NAME}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      REDIS_HOST: redis
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
-      RABBITMQ_VHOST: ${RABBITMQ_VHOST}
-      LABS64_AUTH_AUTHZ_PDPADDRESS: cerbos:3593
-    ports:
-      - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      cerbos:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/liveness || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    profiles:
-      - full
 
 volumes:
   postgres_data:

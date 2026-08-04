@@ -2,6 +2,11 @@ APP_NAME := "payment-gateway"
 REGISTRY  := env_var_or_default("REGISTRY", "localhost:5005")
 TAG       := env_var_or_default("TAG", "latest")
 
+COMPOSE      := "bash ./docker/compose.sh"
+COMPOSE_BASE := "-f docker-compose.yml"
+COMPOSE_APP  := "-f docker-compose.yml -f docker-compose.app.yml"
+COMPOSE_DEV  := "-f docker-compose.yml -f docker-compose.dev.yml"
+
 # show available recipes
 default:
     @just --list
@@ -32,24 +37,54 @@ docker-push: docker-build
     docker tag {{APP_NAME}}:{{TAG}} {{REGISTRY}}/{{APP_NAME}}:{{TAG}}
     docker push {{REGISTRY}}/{{APP_NAME}}:{{TAG}}
 
-# ── Infrastructure ───────────────────────────────────────────────────
+# ── Docker Compose ───────────────────────────────────────────────────
 
-# start local dev infrastructure (PostgreSQL + Redis + RabbitMQ)
+# start shared local infrastructure only
 infra-up:
-    docker compose up -d
-    docker compose ps
+    {{COMPOSE}} {{COMPOSE_BASE}} up -d
+    {{COMPOSE}} {{COMPOSE_BASE}} ps
 
-# stop local dev infrastructure
+# stop local infrastructure (keeps volumes)
 infra-down:
-    docker compose down
+    {{COMPOSE}} {{COMPOSE_BASE}} down
 
-# stop and remove all volumes (full reset)
-infra-reset:
-    docker compose down -v
-
-# tail logs from all infra services
+# tail logs from local infrastructure
 infra-logs:
-    docker compose logs -f
+    {{COMPOSE}} {{COMPOSE_BASE}} logs -f
+
+# stop the Compose project and remove its volumes (destructive)
+infra-reset:
+    {{COMPOSE}} {{COMPOSE_BASE}} down -v --remove-orphans
+
+# build and start the production-like application image with infrastructure
+smoke-up: build
+    {{COMPOSE}} {{COMPOSE_APP}} up -d --build --remove-orphans
+    {{COMPOSE}} {{COMPOSE_APP}} ps
+
+# stop the production-like application stack (keeps volumes)
+smoke-down:
+    {{COMPOSE}} {{COMPOSE_APP}} down --remove-orphans
+
+# tail logs from the production-like application stack
+smoke-logs:
+    {{COMPOSE}} {{COMPOSE_APP}} logs -f
+
+# start the debug application container with infrastructure
+dev-up: build
+    {{COMPOSE}} {{COMPOSE_DEV}} up -d --remove-orphans
+    {{COMPOSE}} {{COMPOSE_DEV}} ps
+
+# watch the packaged JAR and restart the debug application when it changes
+dev-watch: build
+    {{COMPOSE}} {{COMPOSE_DEV}} watch
+
+# stop the debug application stack (keeps volumes)
+dev-down:
+    {{COMPOSE}} {{COMPOSE_DEV}} down --remove-orphans
+
+# tail logs from the debug application stack
+dev-logs:
+    {{COMPOSE}} {{COMPOSE_DEV}} logs -f
 
 # ── Run ──────────────────────────────────────────────────────────────
 

@@ -1,14 +1,11 @@
 services:
   app:
-    image: eclipse-temurin:25-jdk-alpine
-    working_dir: /app
+    image: payment-gateway:${TAG:-latest}
+    build:
+      context: ${HOST_PROJECT_DIR:-.}
+      dockerfile: Dockerfile
     env_file: ./.env
     environment:
-      JAR_FILE: payment-gateway-0.0.1-SNAPSHOT.jar
-      LABS64_AUTH_AUTHZ_PDPADDRESS: cerbos:3593
-      JAVA_TOOL_OPTIONS: >-
-        -Duser.timezone=UTC
-        -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
       SPRING_PROFILES_ACTIVE: local
       DB_HOST: postgres
       DB_PORT: 5432
@@ -22,9 +19,9 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       RABBITMQ_VHOST: ${RABBITMQ_VHOST}
+      LABS64_AUTH_AUTHZ_PDPADDRESS: cerbos:3593
     ports:
       - "${APP_PORT:-8080}:8080"
-      - "${DEBUG_PORT:-5005}:5005"
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,14 +31,9 @@ services:
         condition: service_healthy
       cerbos:
         condition: service_healthy
-    volumes:
-      - type: bind
-        source: ${HOST_PROJECT_DIR:-.}/target
-        target: /app/target
-        read_only: true
-    command: ["sh", "-c", "java -jar /app/target/$$JAR_FILE"]
-    develop:
-      watch:
-        - action: restart
-          path: ./target/payment-gateway-0.0.1-SNAPSHOT.jar
-          target: /app/target/payment-gateway-0.0.1-SNAPSHOT.jar
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/liveness || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
