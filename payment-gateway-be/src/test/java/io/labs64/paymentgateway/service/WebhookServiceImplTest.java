@@ -12,12 +12,12 @@ import io.labs64.paymentgateway.exception.ValidationException;
 import io.labs64.paymentgateway.mapper.PaymentContextMapper;
 import io.labs64.paymentgateway.model.PaymentStatus;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
-import io.labs64.paymentgateway.model.PaymentType;
 import io.labs64.paymentgateway.model.StatusDetails;
 import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
 import io.labs64.paymentgateway.psp.spi.Payment;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.PaymentTransaction;
+import io.labs64.paymentgateway.psp.spi.PaymentType;
 import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
 import io.labs64.paymentgateway.psp.spi.ProviderConfig;
 import io.labs64.paymentgateway.psp.spi.ProviderWebhookSupport;
@@ -166,7 +166,7 @@ class WebhookServiceImplTest {
     private void stubMapper(final PaymentEntity payment, final PaymentTransactionEntity transaction) {
         when(paymentContextMapper.toPayment(payment)).thenReturn(new Payment(
                 payment.getId(),
-                io.labs64.paymentgateway.psp.spi.PaymentType.ONE_TIME,
+                PaymentType.ONE_TIME,
                 payment.getDescription(),
                 null,
                 payment.getPurchaseOrder(),
