@@ -4,7 +4,7 @@ services:
     working_dir: /app
     env_file: ./.env
     environment:
-      JAR_FILE: payment-gateway-0.0.1-SNAPSHOT.jar
+      JAR_FILE: payment-gateway.jar
       LABS64_AUTH_AUTHZ_PDPADDRESS: cerbos:3593
       JAVA_TOOL_OPTIONS: >-
         -Duser.timezone=UTC
@@ -40,8 +40,3 @@ services:
         target: /app/target
         read_only: true
     command: ["sh", "-c", "java -jar /app/target/$$JAR_FILE"]
-    develop:
-      watch:
-        - action: restart
-          path: ./target/payment-gateway-0.0.1-SNAPSHOT.jar
-          target: /app/target/payment-gateway-0.0.1-SNAPSHOT.jar

@@ -74,9 +74,10 @@ dev-up: build
     {{COMPOSE}} {{COMPOSE_DEV}} up -d --remove-orphans
     {{COMPOSE}} {{COMPOSE_DEV}} ps
 
-# watch the packaged JAR and restart the debug application when it changes
+# watch for a completed executable JAR and then restart the debug application
 dev-watch: build
-    {{COMPOSE}} {{COMPOSE_DEV}} watch
+    {{COMPOSE}} {{COMPOSE_DEV}} up -d --remove-orphans --force-recreate app
+    bash ./docker/watch-jar.sh
 
 # stop the debug application stack (keeps volumes)
 dev-down:

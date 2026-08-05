@@ -2,7 +2,7 @@ services:
   app:
     image: payment-gateway:${TAG:-latest}
     build:
-      context: .
+      context: ${HOST_PROJECT_DIR:-.}
       dockerfile: Dockerfile
     env_file: ./.env
     environment:
