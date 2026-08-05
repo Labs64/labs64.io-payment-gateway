@@ -7,14 +7,12 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import io.labs64.paymentgateway.entity.CheckoutSessionEntity;
 
 /**
  * Repository for user-facing checkout sessions.
  */
-@Repository
 public interface CheckoutSessionRepository extends JpaRepository<CheckoutSessionEntity, UUID> {
 
     @EntityGraph(attributePaths = {"payment", "payment.paymentProvider", "paymentTransaction"})

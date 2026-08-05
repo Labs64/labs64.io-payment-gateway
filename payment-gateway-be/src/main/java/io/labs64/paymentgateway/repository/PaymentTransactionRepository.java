@@ -8,7 +8,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
@@ -17,7 +16,6 @@ import io.labs64.paymentgateway.model.PaymentTransactionStatus;
  * Repository for {@link PaymentTransactionEntity}.
  * All queries are scoped by tenantId for multi-tenancy.
  */
-@Repository
 public interface PaymentTransactionRepository extends JpaRepository<PaymentTransactionEntity, UUID> {
 
     Optional<PaymentTransactionEntity> findByIdAndTenantId(UUID id, String tenantId);

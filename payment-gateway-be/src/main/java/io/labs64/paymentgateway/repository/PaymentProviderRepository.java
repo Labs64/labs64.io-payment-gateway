@@ -9,14 +9,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 
 /**
  * Repository for tenant-owned payment provider state and PSP configuration.
  */
-@Repository
 public interface PaymentProviderRepository extends JpaRepository<PaymentProviderEntity, UUID> {
 
     Optional<PaymentProviderEntity> findByTenantIdAndId(String tenantId, UUID id);

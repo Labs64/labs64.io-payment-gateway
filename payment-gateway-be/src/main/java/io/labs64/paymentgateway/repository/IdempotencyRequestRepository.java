@@ -8,12 +8,10 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import io.labs64.paymentgateway.entity.IdempotencyRequestEntity;
 import jakarta.persistence.LockModeType;
 
-@Repository
 public interface IdempotencyRequestRepository extends JpaRepository<IdempotencyRequestEntity, UUID> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
