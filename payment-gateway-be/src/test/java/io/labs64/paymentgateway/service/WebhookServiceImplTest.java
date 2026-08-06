@@ -84,7 +84,7 @@ class WebhookServiceImplTest {
 
         assertThat(response).isSameAs(result);
         assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionStatus.SUCCESS);
-        assertThat(transaction.getStatusDetails()).isEqualTo(new StatusDetails("SUCCESS", "Success"));
+        assertThat(transaction.getStatusDetails()).isEqualTo(new StatusDetails().code("SUCCESS").message("Success"));
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CLOSED);
         verify(paymentRepository).save(payment);
         verify(paymentEventPublisher).publishFinalized(payment, transaction);

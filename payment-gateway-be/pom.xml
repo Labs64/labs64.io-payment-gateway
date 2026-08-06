@@ -20,6 +20,7 @@
     <properties>
         <!-- API VERSIONS -->
         <payment-gateway.version>v1</payment-gateway.version>
+        <payment-gateway-api.version>0.0.1-SNAPSHOT</payment-gateway-api.version>
         <!-- DEPENDENCIES -->
         <java.version>25</java.version>
         <spring-cloud.version>2025.1.1</spring-cloud.version>
@@ -35,9 +36,11 @@
         <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
         <openapi-generator-maven-plugin.version>7.21.0</openapi-generator-maven-plugin.version>
         <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
+        <maven-dependency-plugin.version>3.9.0</maven-dependency-plugin.version>
         <exec-maven-plugin.version>3.6.2</exec-maven-plugin.version>
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
-        <openapi.source>${project.basedir}/src/main/resources/openapi/openapi-payment-gateway-v1.yaml</openapi.source>
+        <openapi.contract.directory>${project.build.directory}/payment-gateway-api</openapi.contract.directory>
+        <openapi.source>${openapi.contract.directory}/openapi/openapi-payment-gateway-${payment-gateway.version}.yaml</openapi.source>
         <openapi.generated>${project.build.directory}/generated-openapi/openapi-payment-gateway-v1.yaml</openapi.generated>
         <!-- Cerbos policies + routes manifest generated from x-labs64.auth.
              auth-policy.module must equal the module's gateway prefix
@@ -65,6 +68,15 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- Canonical Payment Gateway API contract models. The backend generates
+             only Spring server interfaces and implements them against these
+             shared, consumer-facing DTOs. -->
+        <dependency>
+            <groupId>io.labs64</groupId>
+            <artifactId>payment-gateway-api</artifactId>
+            <version>${payment-gateway-api.version}</version>
+        </dependency>
+
         <!-- No in-app OpenTelemetry SDK on the classpath (guardrail #4). Tracing and
              log-trace correlation are infrastructure-owned: the bundled OTel Java Agent
              (activated via JAVA_TOOL_OPTIONS when observability.enabled) auto-instruments
@@ -288,6 +300,34 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <!-- Resolve the canonical spec from the same Maven artifact that
+                 supplies the shared models; no sibling checkout is required. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>${maven-dependency-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>extract-payment-gateway-openapi</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>io.labs64</groupId>
+                                    <artifactId>payment-gateway-api</artifactId>
+                                    <version>${payment-gateway-api.version}</version>
+                                    <type>jar</type>
+                                    <includes>openapi/openapi-payment-gateway-${payment-gateway.version}.yaml</includes>
+                                    <outputDirectory>${openapi.contract.directory}</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -335,6 +375,7 @@
                             <output>${project.build.directory}/generated-sources</output>
                             <apiPackage>io.labs64.paymentgateway.api</apiPackage>
                             <modelPackage>io.labs64.paymentgateway.model</modelPackage>
+                            <generateModels>false</generateModels>
                             <generateSupportingFiles>true</generateSupportingFiles>
                             <configOptions>
                                 <useTags>true</useTags>

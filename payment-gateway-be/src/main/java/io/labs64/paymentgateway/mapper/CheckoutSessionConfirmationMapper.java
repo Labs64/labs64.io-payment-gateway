@@ -21,33 +21,33 @@ public class CheckoutSessionConfirmationMapper {
     private static final String GROSS_AMOUNT = "grossAmount";
 
     public CheckoutSessionConfirmation toDto(final CheckoutSessionEntity entity) {
-        final CheckoutSessionConfirmation response = new CheckoutSessionConfirmation();
-        response.setSessionId(entity.getId());
-        response.setPayment(toPayment(entity.getPayment()));
-        response.setPaymentTransaction(toPaymentTransaction(entity.getPaymentTransaction()));
-        return response;
+        return CheckoutSessionConfirmation.builder()
+                .sessionId(entity.getId())
+                .payment(toPayment(entity.getPayment()))
+                .paymentTransaction(toPaymentTransaction(entity.getPaymentTransaction()))
+                .build();
     }
 
     private ConfirmationPayment toPayment(final PaymentEntity entity) {
-        final ConfirmationPayment payment = new ConfirmationPayment();
-        payment.setId(entity.getId());
-        payment.setProvider(provider(entity.getPaymentProvider()));
-        payment.setStatus(entity.getStatus());
-        payment.setType(entity.getType());
-        payment.setDescription(entity.getDescription());
-        payment.setAmount(amount(entity.getPurchaseOrder()));
-        payment.setCurrency(currency(entity.getPurchaseOrder()));
-        payment.setCreatedAt(entity.getCreatedAt());
-        return payment;
+        return ConfirmationPayment.builder()
+                .id(entity.getId())
+                .provider(provider(entity.getPaymentProvider()))
+                .status(entity.getStatus())
+                .type(entity.getType())
+                .description(entity.getDescription())
+                .amount(amount(entity.getPurchaseOrder()))
+                .currency(currency(entity.getPurchaseOrder()))
+                .createdAt(entity.getCreatedAt())
+                .build();
     }
 
     private ConfirmationPaymentTransaction toPaymentTransaction(final PaymentTransactionEntity entity) {
-        final ConfirmationPaymentTransaction transaction = new ConfirmationPaymentTransaction();
-        transaction.setId(entity.getId());
-        transaction.setStatus(entity.getStatus());
-        transaction.setStatusDetails(entity.getStatusDetails());
-        transaction.setCreatedAt(entity.getCreatedAt());
-        return transaction;
+        return ConfirmationPaymentTransaction.builder()
+                .id(entity.getId())
+                .status(entity.getStatus())
+                .statusDetails(entity.getStatusDetails())
+                .createdAt(entity.getCreatedAt())
+                .build();
     }
 
     private static String provider(final PaymentProviderEntity entity) {

@@ -13,7 +13,7 @@ import org.springframework.data.domain.Page;
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.model.PaymentProvider;
 import io.labs64.paymentgateway.model.PaymentProviderCreateRequest;
-import io.labs64.paymentgateway.model.PaymentProviderListResponse;
+import io.labs64.paymentgateway.model.PaymentProvidersResponse;
 import io.labs64.paymentgateway.model.PaymentProviderUpdateRequest;
 
 @Mapper(config = MapperConfigBase.class)
@@ -39,10 +39,10 @@ public interface PaymentProviderMapper {
 
     default PaymentProvider toDtoWithConfig(final PaymentProviderEntity entity) {
         final PaymentProvider dto = toDto(entity);
-        if (dto != null) {
-            dto.setConfig(entity.getConfig());
+        if (dto == null) {
+            return null;
         }
-        return dto;
+        return dto.toBuilder().config(entity.getConfig()).build();
     }
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -64,11 +64,17 @@ public interface PaymentProviderMapper {
         }
     }
 
-    default PaymentProviderListResponse toPage(final Page<PaymentProviderEntity> source) {
-        final PaymentProviderListResponse response = new PaymentProviderListResponse();
+    default PaymentProvidersResponse toPage(final Page<PaymentProviderEntity> source) {
+        final PaymentProvidersResponse response = new PaymentProvidersResponse();
         response.setItems(source.getContent().stream()
                 .map(this::toDto)
                 .toList());
+        response.setPage(source.getNumber());
+        response.setPageSize(source.getSize());
+        response.setTotalItems(source.getTotalElements());
+        response.setTotalPages(source.getTotalPages());
+        response.setHasPrev(source.hasPrevious());
+        response.setHasNext(source.hasNext());
         return response;
     }
 }

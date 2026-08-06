@@ -17,6 +17,7 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 
 | Path | Service | Stack | Port | Role |
 |------|---------|-------|------|------|
+| `payment-gateway-api/` | Shared API contract | Java 17, Maven | — | Canonical OpenAPI spec + validated shared models |
 | `payment-gateway-be/` | Backend | Java 25, Spring Boot 4.1.0, Maven | 8080 | REST API, idempotency, webhooks, provider registry |
 | `payment-gateway-providers/` | PSP modules | Java 25, Maven | — | `providers-spi/` (the SPI) + one module per PSP (`noop/`, `paypal/`) |
 | `payment-gateway-fe/` | Frontend | (stub — just a justfile) | — | Placeholder |
@@ -28,12 +29,14 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 1. **Never edit OpenAPI-generated Java** under `target/`. Change the YAML spec and rebuild.
 2. **Never hardcode credentials.** Use environment variables or Kubernetes Secrets.
 3. **Preserve non-root user `l64user`** (uid/gid 1064) in all Dockerfiles.
-4. **OpenAPI-first**: the canonical spec is at `payment-gateway-be/src/main/resources/openapi/openapi-payment-gateway.yaml`.
+4. **OpenAPI-first**: the canonical spec is at `payment-gateway-api/src/main/resources/openapi/openapi-payment-gateway-v1.yaml`.
 5. **Each repo has its own git history** — do not cross-commit between repositories.
 
 ## Backend (`payment-gateway-be`) details
 
 - **Build is OpenAPI-first.** Models and API interfaces are generated from `openapi-payment-gateway.yaml` by `openapi-generator-maven-plugin`. Generated sources live under `target/generated-sources` and are git-ignored.
+- **Shared contract.** `payment-gateway-api` owns the canonical OpenAPI document and generates Java 17-compatible validated models in `io.labs64.paymentgateway.model`. It intentionally does not provide an HTTP client yet.
+- **Backend generation.** `payment-gateway-be` depends on `payment-gateway-api` for models and generates only Spring server interfaces from the same contract (`generateModels=false`).
 - **Package**: `io.labs64.paymentgateway`
 - **Key services**: `PaymentService`, `PaymentTransactionService`, `PaymentProviderService`, `PaymentDefinitionService`, `PaymentNextActionService`, `WebhookService`, `IdempotencyService`
 - **Key controllers**: `PaymentController`, `PaymentTransactionController`, `PaymentProviderController`, `PaymentDefinitionController`, `WebhookController`
@@ -87,7 +90,7 @@ Local URLs: backend Swagger `http://localhost:8080/swagger-ui/index.html`, Rabbi
 
 | Goal | Where |
 |------|-------|
-| Change the API contract | `payment-gateway-be/src/main/resources/openapi/openapi-payment-gateway.yaml` |
+| Change the API contract | `payment-gateway-api/src/main/resources/openapi/openapi-payment-gateway-v1.yaml` |
 | Add a PSP provider | New Maven module under `payment-gateway-providers/<name>/` (see `noop/` / `paypal/`) |
 | Modify PSP SPI | `payment-gateway-providers/providers-spi/src/main/java/io/labs64/paymentgateway/psp/spi/` |
 | Add a backend service | `payment-gateway-be/src/main/java/io/labs64/paymentgateway/service/` |

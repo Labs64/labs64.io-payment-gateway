@@ -9,7 +9,7 @@ import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.mapper.PaymentProviderMapper;
 import io.labs64.paymentgateway.model.PaymentProvider;
 import io.labs64.paymentgateway.model.PaymentProviderCreateRequest;
-import io.labs64.paymentgateway.model.PaymentProviderListResponse;
+import io.labs64.paymentgateway.model.PaymentProvidersResponse;
 import io.labs64.paymentgateway.model.PaymentProviderUpdateRequest;
 import io.labs64.paymentgateway.model.Scopes;
 import io.labs64.paymentgateway.service.PaymentProviderService;
@@ -23,6 +23,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -78,18 +79,20 @@ class PaymentProviderControllerTest {
 
     @Test
     void listPaymentProvidersBuildsFilterAndMapsPage() {
-        final PageImpl<PaymentProviderEntity> page = new PageImpl<>(List.of(entity()));
-        final PaymentProviderListResponse response = new PaymentProviderListResponse();
-        when(service.list(eq(TENANT_ID), any(PaymentProviderFilter.class), eq(Pageable.unpaged()))).thenReturn(page);
+        final Pageable pageable = PageRequest.of(2, 5);
+        final PageImpl<PaymentProviderEntity> page = new PageImpl<>(List.of(entity()), pageable, 11);
+        final PaymentProvidersResponse response = new PaymentProvidersResponse();
+        when(service.list(eq(TENANT_ID), any(PaymentProviderFilter.class), eq(pageable))).thenReturn(page);
         when(mapper.toPage(page)).thenReturn(response);
 
-        final ResponseEntity<PaymentProviderListResponse> result = controller.listPaymentProviders(
+        final ResponseEntity<PaymentProvidersResponse> result = controller.listPaymentProviders(
                 "USD",
                 "US",
-                true);
+                true,
+                pageable);
 
         final ArgumentCaptor<PaymentProviderFilter> filterCaptor = ArgumentCaptor.forClass(PaymentProviderFilter.class);
-        verify(service).list(eq(TENANT_ID), filterCaptor.capture(), eq(Pageable.unpaged()));
+        verify(service).list(eq(TENANT_ID), filterCaptor.capture(), eq(pageable));
         assertThat(filterCaptor.getValue().currency()).isEqualTo("USD");
         assertThat(filterCaptor.getValue().country()).isEqualTo("US");
         assertThat(filterCaptor.getValue().active()).isTrue();
@@ -98,7 +101,7 @@ class PaymentProviderControllerTest {
 
     @Test
     void createPaymentProviderPassesMappedEntityWithProviderFromRequest() {
-        final PaymentProviderCreateRequest request = new PaymentProviderCreateRequest(PROVIDER, true);
+        final PaymentProviderCreateRequest request = new PaymentProviderCreateRequest().provider(PROVIDER).active(true);
         request.setConfig(Map.of("apiKey", "secret"));
         final PaymentProviderEntity mapped = PaymentProviderEntity.builder()
                 .provider(PROVIDER)
@@ -166,8 +169,9 @@ class PaymentProviderControllerTest {
     }
 
     private static PaymentProvider dto(final String id) {
-        final PaymentProvider dto = new PaymentProvider();
-        dto.setId(PAYMENT_PROVIDER_ID);
+        final PaymentProvider dto = PaymentProvider.builder()
+                .id(PAYMENT_PROVIDER_ID)
+                .build();
         dto.setProvider(id);
         return dto;
     }

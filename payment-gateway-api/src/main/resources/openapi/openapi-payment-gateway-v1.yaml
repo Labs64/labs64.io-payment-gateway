@@ -87,6 +87,7 @@ paths:
       operationId: listPaymentProviders
       tags:
         - PaymentProviders
+      x-spring-paginated: true
       x-labs64:
         auth:
           tenant: true
@@ -122,8 +123,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentProviderListResponse'
+                $ref: '#/components/schemas/PaymentProvidersResponse'
               example:
+                page: 0
+                pageSize: 20
+                totalItems: 23
+                totalPages: 2
+                hasPrev: false
+                hasNext: true
                 items:
                   - id: "550e8400-e29b-41d4-a716-446655440010"
                     provider: stripe
@@ -449,7 +456,8 @@ paths:
           tenant: true
           scopes:
             - payment:read
-          resource: Payment
+          resourceType: Payment
+          resource: "#paymentId"
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
       responses:
@@ -489,7 +497,8 @@ paths:
           tenant: true
           scopes:
             - payment:pay
-          resource: Payment
+          resourceType: Payment
+          resource: "#paymentId"
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
       requestBody:
@@ -571,7 +580,8 @@ paths:
           tenant: true
           scopes:
             - payment:write
-          resource: Payment
+          resourceType: Payment
+          resource: "#paymentId"
       parameters:
         - $ref: '#/components/parameters/PaymentIdPath'
       responses:
@@ -1145,17 +1155,19 @@ components:
           readOnly: true
           example: "2026-02-01T14:30:00Z"
 
-    PaymentProviderListResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - items
-      properties:
-        items:
-          type: array
-          description: Tenant payment providers.
-          items:
-            $ref: '#/components/schemas/PaymentProvider'
+    PaymentProvidersResponse:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedResponse'
+        - type: object
+          additionalProperties: false
+          required:
+            - items
+          properties:
+            items:
+              type: array
+              description: Tenant payment providers.
+              items:
+                $ref: '#/components/schemas/PaymentProvider'
 
     PaymentProviderCreateRequest:
       type: object

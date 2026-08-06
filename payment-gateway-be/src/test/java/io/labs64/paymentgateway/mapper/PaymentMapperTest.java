@@ -107,11 +107,11 @@ class PaymentMapperTest {
     }
 
     private static CreatePaymentRequest createPaymentRequest() {
-        return new CreatePaymentRequest(
-                PAYMENT_PROVIDER_ID,
-                purchaseOrder(),
-                new BillingInfo("customer@example.com"))
-                .recurrence(new Recurrence(Recurrence.TypeEnum.DURATION, "P1M", "Europe/Kiev"))
+        return new CreatePaymentRequest()
+                .paymentProviderId(PAYMENT_PROVIDER_ID)
+                .purchaseOrder(purchaseOrder())
+                .billingInfo(new BillingInfo().email("customer@example.com"))
+                .recurrence(new Recurrence().type(Recurrence.TypeEnum.DURATION).expression("P1M").timezone("Europe/Kiev"))
                 .extra(Map.of("source", "test"));
     }
 
@@ -137,9 +137,9 @@ class PaymentMapperTest {
     }
 
     private static PurchaseOrder purchaseOrder() {
-        return new PurchaseOrder(
-                "USD",
-                List.of(new OrderItem("Widget", 3000L, 1)),
-                3000L);
+        return new PurchaseOrder()
+                .currency("USD")
+                .items(List.of(new OrderItem().name("Widget").price(3000L).quantity(1)))
+                .grossAmount(3000L);
     }
 }

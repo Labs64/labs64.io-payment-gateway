@@ -122,7 +122,7 @@ public class WebhookServiceImpl implements WebhookService {
         if (source == null) {
             return null;
         }
-        return new StatusDetails(source.code(), source.message());
+        return StatusDetails.builder().code(source.code()).message(source.message()).build();
     }
 
     private void ensureWebhookProviderMatchesPaymentProvider(final WebhookRequest request, final PaymentEntity payment) {

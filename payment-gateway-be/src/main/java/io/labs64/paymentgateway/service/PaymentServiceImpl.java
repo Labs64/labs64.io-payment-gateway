@@ -280,7 +280,8 @@ public class PaymentServiceImpl implements PaymentService {
             final String message) {
         return transactionService.update(transaction.getTenantId(), transaction.getId(), (pt) -> {
             pt.setStatus(PaymentTransactionStatus.FAILED);
-            pt.setStatusDetails(new StatusDetails(code.name(), message));
+            pt.setStatusDetails(StatusDetails.builder()
+                    .code(code.name()).message(message).build());
             pt.setPspData(null);
         });
     }
@@ -335,7 +336,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (source == null) {
             return null;
         }
-        return new StatusDetails(source.code(), source.message());
+        return StatusDetails.builder().code(source.code()).message(source.message()).build();
     }
 
     private PaymentProviderEntity getActivePaymentProvider(final String tenantId, final UUID paymentProviderId) {

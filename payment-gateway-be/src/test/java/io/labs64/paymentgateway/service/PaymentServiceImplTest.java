@@ -180,7 +180,7 @@ class PaymentServiceImplTest {
 
         assertThat(response.payment()).isSameAs(payment);
         assertThat(response.transaction().getStatus()).isEqualTo(PaymentTransactionStatus.SUCCESS);
-        assertThat(response.transaction().getStatusDetails()).isEqualTo(new StatusDetails("SUCCESS", "Success"));
+        assertThat(response.transaction().getStatusDetails()).isEqualTo(new StatusDetails().code("SUCCESS").message("Success"));
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CLOSED);
         verify(correlationTraceService).attach(CorrelationEntityType.PAYMENT_TRANSACTION, transaction.getId());
         verify(paymentEventPublisher).publishFinalized(payment, transaction);
@@ -323,7 +323,7 @@ class PaymentServiceImplTest {
 
         assertThat(response.transaction().getStatus()).isEqualTo(PaymentTransactionStatus.FAILED);
         assertThat(response.transaction().getStatusDetails()).isEqualTo(
-                new StatusDetails("PSP_ERROR", "PayPal order creation failed."));
+                new StatusDetails().code("PSP_ERROR").message("PayPal order creation failed."));
         assertThat(response.nextAction()).isNull();
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.READY);
         verify(paymentEventPublisher).publishFinalized(payment, transaction);

@@ -97,7 +97,7 @@ class ProviderCheckoutServiceImplTest {
 
         assertThat(redirect).isEqualTo(expectedRedirect(session, "https://checkout.example/return"));
         assertThat(session.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.SUCCESS);
-        assertThat(session.getPaymentTransaction().getStatusDetails()).isEqualTo(new StatusDetails("SUCCESS", "Captured"));
+        assertThat(session.getPaymentTransaction().getStatusDetails()).isEqualTo(new StatusDetails().code("SUCCESS").message("Captured"));
         assertThat(session.getPayment().getStatus()).isEqualTo(PaymentStatus.CLOSED);
         verify(paymentRepository).save(session.getPayment());
         verify(paymentEventPublisher).publishFinalized(session.getPayment(), session.getPaymentTransaction());
@@ -156,7 +156,7 @@ class ProviderCheckoutServiceImplTest {
         assertThat(redirect).isEqualTo(URI.create("/"));
         assertThat(session.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.FAILED);
         assertThat(session.getPaymentTransaction().getStatusDetails()).isEqualTo(
-                new StatusDetails("PSP_ERROR", "PayPal order capture failed."));
+                new StatusDetails().code("PSP_ERROR").message("PayPal order capture failed."));
         assertThat(session.getPayment().getStatus()).isEqualTo(PaymentStatus.READY);
         verify(paymentRepository, never()).save(any());
         verify(paymentEventPublisher).publishFinalized(session.getPayment(), session.getPaymentTransaction());

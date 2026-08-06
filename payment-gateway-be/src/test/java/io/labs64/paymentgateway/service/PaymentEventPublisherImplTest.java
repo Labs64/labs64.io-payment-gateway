@@ -89,7 +89,7 @@ class PaymentEventPublisherImplTest {
         assertThat(message.payload().payment().purchaseOrder()).containsEntry("grossAmount", 3000L);
         assertThat(message.payload().transaction().id()).isEqualTo(transaction.getId());
         assertThat(message.payload().transaction().status()).isEqualTo(PaymentTransactionStatus.SUCCESS);
-        assertThat(message.payload().transaction().statusDetails()).isEqualTo(new StatusDetails("SUCCESS", "Success"));
+        assertThat(message.payload().transaction().statusDetails()).isEqualTo(new StatusDetails().code("SUCCESS").message("Success"));
     }
 
     @Test
@@ -154,7 +154,7 @@ class PaymentEventPublisherImplTest {
                 .tenantId(TENANT_ID)
                 .payment(payment)
                 .status(PaymentTransactionStatus.SUCCESS)
-                .statusDetails(new StatusDetails("SUCCESS", "Success"))
+                .statusDetails(new StatusDetails().code("SUCCESS").message("Success"))
                 .pspData(Map.of("providerReference", "noop-1"))
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
