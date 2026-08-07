@@ -1,6 +1,6 @@
-openapi: 3.0.0
+openapi: 3.1.0
 info:
-  title: Labs64 Payment Gateway API
+  title: Payment Gateway API
   version: 1.0.0
   description: >-
     Unified payment gateway for the Labs64.IO ecosystem — consolidates
@@ -42,12 +42,12 @@ paths:
       tags:
         - PaymentDefinitions
       responses:
-        '200':
+        "200":
           description: List of available payment definitions
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentDefinitionListResponse'
+                $ref: "#/components/schemas/PaymentDefinitionListResponse"
               example:
                 items:
                   - provider: stripe
@@ -72,8 +72,8 @@ paths:
                     supportedCountries:
                       - US
                       - DE
-        '500':
-          $ref: '#/components/responses/InternalError'
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   # Payment Providers
   /payment-providers:
@@ -100,7 +100,7 @@ paths:
           description: Filter by supported currency code (ISO-4217).
           example: USD
           schema:
-            $ref: '#/components/schemas/Currency'
+            $ref: "#/components/schemas/Currency"
         - name: country
           in: query
           required: false
@@ -109,7 +109,7 @@ paths:
           schema:
             type: string
             maxLength: 2
-            pattern: '^[A-Z]{2}$'
+            pattern: "^[A-Z]{2}$"
         - name: active
           in: query
           required: false
@@ -118,12 +118,12 @@ paths:
           schema:
             type: boolean
       responses:
-        '200':
+        "200":
           description: List of tenant payment providers
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentProvidersResponse'
+                $ref: "#/components/schemas/PaymentProvidersResponse"
               example:
                 page: 0
                 pageSize: 20
@@ -146,14 +146,14 @@ paths:
                     icon: null
                     recurring: false
                     active: false
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     post:
       summary: Create tenant payment provider
@@ -175,7 +175,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PaymentProviderCreateRequest'
+              $ref: "#/components/schemas/PaymentProviderCreateRequest"
             example:
               provider: stripe
               active: true
@@ -184,12 +184,12 @@ paths:
                 webhookSecret: whsec_xyz789
                 merchantId: acct_12345
       responses:
-        '200':
+        "200":
           description: Tenant payment provider saved successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentProvider'
+                $ref: "#/components/schemas/PaymentProvider"
               example:
                 id: "550e8400-e29b-41d4-a716-446655440010"
                 provider: stripe
@@ -204,14 +204,14 @@ paths:
                   merchantId: "acct_12345"
                 createdAt: "2026-01-15T10:00:00Z"
                 updatedAt: "2026-02-01T14:30:00Z"
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /payment-providers/{paymentProviderId}:
     get:
@@ -229,14 +229,14 @@ paths:
           scopes:
             - payment-provider:write
       parameters:
-        - $ref: '#/components/parameters/PaymentProviderIdPath'
+        - $ref: "#/components/parameters/PaymentProviderIdPath"
       responses:
-        '200':
+        "200":
           description: Payment provider details
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentProvider'
+                $ref: "#/components/schemas/PaymentProvider"
               example:
                 id: "550e8400-e29b-41d4-a716-446655440010"
                 provider: stripe
@@ -247,14 +247,14 @@ paths:
                 active: true
                 config:
                   apiKey: sk_test_***
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     patch:
       summary: Partially update tenant payment provider
@@ -271,22 +271,22 @@ paths:
           scopes:
             - payment-provider:write
       parameters:
-        - $ref: '#/components/parameters/PaymentProviderIdPath'
+        - $ref: "#/components/parameters/PaymentProviderIdPath"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PaymentProviderUpdateRequest'
+              $ref: "#/components/schemas/PaymentProviderUpdateRequest"
             example:
               active: false
       responses:
-        '200':
+        "200":
           description: Tenant payment provider updated successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentProvider'
+                $ref: "#/components/schemas/PaymentProvider"
               example:
                 id: "550e8400-e29b-41d4-a716-446655440010"
                 provider: stripe
@@ -301,16 +301,16 @@ paths:
                   merchantId: "acct_12345"
                 createdAt: "2026-01-15T10:00:00Z"
                 updatedAt: "2026-02-01T14:30:00Z"
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     delete:
       summary: Delete tenant payment provider
@@ -327,18 +327,18 @@ paths:
           scopes:
             - payment-provider:write
       parameters:
-        - $ref: '#/components/parameters/PaymentProviderIdPath'
+        - $ref: "#/components/parameters/PaymentProviderIdPath"
       responses:
-        '204':
+        "204":
           description: Tenant payment provider deleted successfully.
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   # ─── Payments ───────────────────────────────────────────────────────
   /payments:
@@ -362,22 +362,22 @@ paths:
           required: false
           description: Filter by payment status.
           schema:
-            $ref: '#/components/schemas/PaymentStatus'
+            $ref: "#/components/schemas/PaymentStatus"
       responses:
-        '200':
+        "200":
           description: List of tenant payments
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentListResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/PaymentListResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     post:
       summary: Initiate payment instance
@@ -398,7 +398,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreatePaymentRequest'
+              $ref: "#/components/schemas/CreatePaymentRequest"
             example:
               paymentProviderId: "550e8400-e29b-41d4-a716-446655440010"
               purchaseOrder:
@@ -426,20 +426,20 @@ paths:
                 postalCode: "94102"
                 country: "US"
       responses:
-        '201':
+        "201":
           description: Payment instance created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Payment'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/Payment"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /payments/{paymentId}:
     get:
@@ -459,22 +459,22 @@ paths:
           resourceType: Payment
           resource: "#paymentId"
       parameters:
-        - $ref: '#/components/parameters/PaymentIdPath'
+        - $ref: "#/components/parameters/PaymentIdPath"
       responses:
-        '200':
+        "200":
           description: Payment details
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Payment'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/Payment"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /payments/{paymentId}/pay:
     post:
@@ -500,13 +500,13 @@ paths:
           resourceType: Payment
           resource: "#paymentId"
       parameters:
-        - $ref: '#/components/parameters/PaymentIdPath'
+        - $ref: "#/components/parameters/PaymentIdPath"
       requestBody:
         required: false
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PayPaymentRequest'
+              $ref: "#/components/schemas/PayPaymentRequest"
             examples:
               checkoutReturn:
                 summary: Hosted checkout continuation URLs
@@ -515,7 +515,7 @@ paths:
                     returnUrl: "https://checkout.example.com/payment/return"
                     cancelUrl: "https://checkout.example.com/payment/cancel"
       responses:
-        '200':
+        "200":
           description: >-
             Payment paid synchronously. Payment transaction status is SUCCESS or FAILED.
             Both terminal states are returned as 200; inspect paymentTransaction.status to
@@ -523,29 +523,29 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExecutePaymentResponse'
-        '202':
+                $ref: "#/components/schemas/ExecutePaymentResponse"
+        "202":
           description: >-
             Payment accepted for async processing. Payment transaction is PENDING
             and will be updated via PSP webhook.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExecutePaymentResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '409':
+                $ref: "#/components/schemas/ExecutePaymentResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
           description: Conflict — idempotency key reused or payment not payable
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               examples:
                 idempotencyConflict:
                   summary: Idempotency key conflict
@@ -561,10 +561,10 @@ paths:
                     message: "Payment is in CLOSED state and cannot be executed."
                     timestamp: "2026-02-10T12:34:56Z"
                     traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
-        '500':
-          $ref: '#/components/responses/InternalError'
-        '502':
-          $ref: '#/components/responses/PspError'
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "502":
+          $ref: "#/components/responses/PspError"
 
   /payments/{paymentId}/close:
     post:
@@ -583,26 +583,26 @@ paths:
           resourceType: Payment
           resource: "#paymentId"
       parameters:
-        - $ref: '#/components/parameters/PaymentIdPath'
+        - $ref: "#/components/parameters/PaymentIdPath"
       responses:
-        '200':
+        "200":
           description: Payment closed successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Payment'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '409':
+                $ref: "#/components/schemas/Payment"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
           description: Payment is already closed or in a non-closable state
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               examples:
                 alreadyClosed:
                   summary: Payment already closed
@@ -611,8 +611,8 @@ paths:
                     message: "Payment is already closed."
                     timestamp: "2026-02-10T12:34:56Z"
                     traceId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
-        '500':
-          $ref: '#/components/responses/InternalError'
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   # ─── Payment Transactions ───────────────────────────────────────────
   /payment-transactions:
@@ -636,29 +636,28 @@ paths:
           required: false
           description: Filter by parent payment id.
           schema:
-            type: string
-            format: uuid
+            $ref: "#/components/schemas/UUID"
         - name: status
           in: query
           required: false
           description: Filter by payment transaction status.
           schema:
-            $ref: '#/components/schemas/PaymentTransactionStatus'
+            $ref: "#/components/schemas/PaymentTransactionStatus"
       responses:
-        '200':
+        "200":
           description: List of tenant payment transactions
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentTransactionsResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/PaymentTransactionsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /payment-transactions/{paymentTransactionId}:
     get:
@@ -673,22 +672,22 @@ paths:
           scopes:
             - payment-transaction:read
       parameters:
-        - $ref: '#/components/parameters/PaymentTransactionIdPath'
+        - $ref: "#/components/parameters/PaymentTransactionIdPath"
       responses:
-        '200':
+        "200":
           description: Payment transaction details
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentTransaction'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/PaymentTransaction"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   # Checkout Sessions
   /checkout-sessions/{sessionId}/confirmation:
@@ -703,14 +702,14 @@ paths:
       tags:
         - CheckoutSessions
       parameters:
-        - $ref: '#/components/parameters/CheckoutSessionIdPath'
+        - $ref: "#/components/parameters/CheckoutSessionIdPath"
       responses:
-        '200':
+        "200":
           description: Checkout session confirmation details.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CheckoutSessionConfirmation'
+                $ref: "#/components/schemas/CheckoutSessionConfirmation"
               example:
                 sessionId: "550e8400-e29b-41d4-a716-446655440010"
                 payment:
@@ -729,10 +728,10 @@ paths:
                     code: SUCCESS
                     message: Payment completed.
                   createdAt: "2026-02-10T12:01:00Z"
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /providers/{provider}/checkout-sessions/{sessionId}/return:
     get:
@@ -746,10 +745,10 @@ paths:
       tags:
         - ProviderCheckout
       parameters:
-        - $ref: '#/components/parameters/ProviderPath'
-        - $ref: '#/components/parameters/CheckoutSessionIdPath'
+        - $ref: "#/components/parameters/ProviderPath"
+        - $ref: "#/components/parameters/CheckoutSessionIdPath"
       responses:
-        '302':
+        "302":
           description: Browser redirected after successful external checkout return.
           headers:
             Location:
@@ -757,10 +756,10 @@ paths:
               schema:
                 type: string
                 format: uri
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /providers/{provider}/checkout-sessions/{sessionId}/cancel:
     get:
@@ -775,10 +774,10 @@ paths:
       tags:
         - ProviderCheckout
       parameters:
-        - $ref: '#/components/parameters/ProviderPath'
-        - $ref: '#/components/parameters/CheckoutSessionIdPath'
+        - $ref: "#/components/parameters/ProviderPath"
+        - $ref: "#/components/parameters/CheckoutSessionIdPath"
       responses:
-        '302':
+        "302":
           description: Browser redirected after external checkout cancellation.
           headers:
             Location:
@@ -786,10 +785,10 @@ paths:
               schema:
                 type: string
                 format: uri
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   # Provider Webhooks
   /providers/{provider}/webhooks:
@@ -805,7 +804,7 @@ paths:
       tags:
         - ProviderWebhooks
       parameters:
-        - $ref: '#/components/parameters/ProviderPath'
+        - $ref: "#/components/parameters/ProviderPath"
       requestBody:
         required: true
         content:
@@ -815,16 +814,16 @@ paths:
               description: PSP-specific webhook payload
               additionalProperties: true
       responses:
-        '200':
+        "200":
           description: Webhook processed successfully
-        '400':
+        "400":
           description: Invalid webhook payload or signature verification failed
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
 # ═══════════════════════════════════════════════════════════════════════
 # Components
@@ -847,8 +846,7 @@ components:
       required: true
       description: Unique identifier for the tenant payment provider.
       schema:
-        type: string
-        format: uuid
+        $ref: "#/components/schemas/UUID"
         example: "550e8400-e29b-41d4-a716-446655440010"
 
     PaymentIdPath:
@@ -857,8 +855,7 @@ components:
       required: true
       description: Unique identifier for the payment instance.
       schema:
-        type: string
-        format: uuid
+        $ref: "#/components/schemas/UUID"
         example: "550e8400-e29b-41d4-a716-446655440000"
 
     PaymentTransactionIdPath:
@@ -867,8 +864,7 @@ components:
       required: true
       description: Unique identifier for the payment transaction.
       schema:
-        type: string
-        format: uuid
+        $ref: "#/components/schemas/UUID"
         example: "550e8400-e29b-41d4-a716-446655440001"
 
     CheckoutSessionIdPath:
@@ -877,8 +873,7 @@ components:
       required: true
       description: Unique identifier for the browser checkout session.
       schema:
-        type: string
-        format: uuid
+        $ref: "#/components/schemas/UUID"
         example: "550e8400-e29b-41d4-a716-446655440002"
 
   # ─── Reusable Responses ─────────────────────────────────────────────
@@ -888,7 +883,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             code: UNAUTHORIZED
             message: "Invalid or missing JWT token."
@@ -900,7 +895,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             code: FORBIDDEN
             message: "Insufficient scopes for this operation."
@@ -912,7 +907,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             code: NOT_FOUND
             message: "Requested resource was not found."
@@ -924,7 +919,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             code: VALIDATION_ERROR
             message: "Request payload failed validation."
@@ -936,7 +931,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             code: INTERNAL_ERROR
             message: "An unexpected error occurred."
@@ -948,7 +943,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             code: PSP_ERROR
             message: "Upstream PSP communication failure."
@@ -957,6 +952,9 @@ components:
 
   # ─── Schemas ─────────────────────────────────────────────────────────
   schemas:
+    UUID:
+      type: string
+      format: uuid
     Scopes:
       type: string
       description: Authorization scopes supported by the Payment Gateway API.
@@ -980,16 +978,16 @@ components:
       type: string
       description: Unique error code identifying the type of error.
       enum:
-        - NOT_FOUND             # The requested resource was not found.
-        - VALIDATION_ERROR      # The request payload failed validation rules.
-        - CONFLICT              # Resource conflict (e.g., duplicate, state conflict).
-        - INTERNAL_ERROR        # An unexpected server-side error occurred.
-        - PSP_ERROR             # Upstream PSP communication failure.
-        - MISSING_TENANT_ID     # Missing tenantId in JWT.
-        - UNAUTHORIZED          # Invalid or missing JWT.
-        - FORBIDDEN             # Insufficient scopes.
-        - IDEMPOTENCY_CONFLICT  # Idempotency-Key reused with different request body.
-        - PAYMENT_NOT_PAYABLE   # Payment is in a state that does not allow /pay.
+        - NOT_FOUND # The requested resource was not found.
+        - VALIDATION_ERROR # The request payload failed validation rules.
+        - CONFLICT # Resource conflict (e.g., duplicate, state conflict).
+        - INTERNAL_ERROR # An unexpected server-side error occurred.
+        - PSP_ERROR # Upstream PSP communication failure.
+        - MISSING_TENANT_ID # Missing tenantId in JWT.
+        - UNAUTHORIZED # Invalid or missing JWT.
+        - FORBIDDEN # Insufficient scopes.
+        - IDEMPOTENCY_CONFLICT # Idempotency-Key reused with different request body.
+        - PAYMENT_NOT_PAYABLE # Payment is in a state that does not allow /pay.
       example: "NOT_FOUND"
 
     ErrorResponse:
@@ -1002,7 +1000,7 @@ components:
         - timestamp
       properties:
         code:
-          $ref: '#/components/schemas/ErrorCode'
+          $ref: "#/components/schemas/ErrorCode"
         message:
           type: string
           description: Human-readable message describing the error.
@@ -1057,7 +1055,7 @@ components:
           type: array
           description: Supported currency codes for this payment provider.
           items:
-            $ref: '#/components/schemas/Currency'
+            $ref: "#/components/schemas/Currency"
           example:
             - USD
             - EUR
@@ -1067,7 +1065,7 @@ components:
           items:
             type: string
             maxLength: 2
-            pattern: '^[A-Z]{2}$'
+            pattern: "^[A-Z]{2}$"
           example:
             - US
             - DE
@@ -1082,7 +1080,7 @@ components:
           type: array
           description: Available payment definitions.
           items:
-            $ref: '#/components/schemas/PaymentDefinition'
+            $ref: "#/components/schemas/PaymentDefinition"
 
     # ── Payment Provider ──────────────────────────────────────────────────
     PaymentProvider:
@@ -1096,8 +1094,7 @@ components:
         - recurring
       properties:
         id:
-          type: string
-          format: uuid
+          $ref: "#/components/schemas/UUID"
           description: Unique tenant payment provider identifier.
           readOnly: true
           example: "550e8400-e29b-41d4-a716-446655440010"
@@ -1157,8 +1154,9 @@ components:
 
     PaymentProvidersResponse:
       allOf:
-        - $ref: '#/components/schemas/PaginatedResponse'
-        - type: object
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - title: InlineObject
+          type: object
           additionalProperties: false
           required:
             - items
@@ -1167,7 +1165,7 @@ components:
               type: array
               description: Tenant payment providers.
               items:
-                $ref: '#/components/schemas/PaymentProvider'
+                $ref: "#/components/schemas/PaymentProvider"
 
     PaymentProviderCreateRequest:
       type: object
@@ -1239,30 +1237,25 @@ components:
         - billingInfo
       properties:
         paymentProviderId:
-          type: string
-          format: uuid
+          $ref: "#/components/schemas/UUID"
           description: Tenant payment provider identifier selected for this payment.
           example: "550e8400-e29b-41d4-a716-446655440010"
         purchaseOrder:
-          $ref: '#/components/schemas/PurchaseOrder'
+          $ref: "#/components/schemas/PurchaseOrder"
         billingInfo:
-          allOf:
-            - $ref: '#/components/schemas/BillingInfo'
+          $ref: "#/components/schemas/BillingInfo"
         shippingInfo:
-          allOf:
-            - $ref: '#/components/schemas/ShippingInfo'
+          $ref: "#/components/schemas/ShippingInfo"
         recurrence:
           nullable: true
-          allOf:
-            - $ref: '#/components/schemas/Recurrence'
+          $ref: "#/components/schemas/Recurrence"
           description: >-
             Recurring payment rule. When omitted or null, the payment is
             one-time. When present, /pay still performs the first payment
             immediately; scheduling starts only after the first successful
             payment.
         extra:
-          allOf:
-            - $ref: '#/components/schemas/Extra'
+          $ref: "#/components/schemas/Extra"
 
     Recurrence:
       type: object
@@ -1299,13 +1292,12 @@ components:
         - grossAmount
       properties:
         currency:
-          allOf:
-            - $ref: '#/components/schemas/Currency'
+          $ref: "#/components/schemas/Currency"
         items:
           type: array
           description: Purchase order line items captured as a payment snapshot.
           items:
-            $ref: '#/components/schemas/OrderItem'
+            $ref: "#/components/schemas/OrderItem"
           default: []
         netAmount:
           type: integer
@@ -1373,11 +1365,9 @@ components:
           minimum: 1
           example: 2
         tax:
-          allOf:
-            - $ref: '#/components/schemas/Tax'
+          $ref: "#/components/schemas/Tax"
         extra:
-          allOf:
-            - $ref: '#/components/schemas/Extra'
+          $ref: "#/components/schemas/Extra"
 
     Tax:
       type: object
@@ -1524,14 +1514,12 @@ components:
         - updatedAt
       properties:
         id:
-          type: string
-          format: uuid
+          $ref: "#/components/schemas/UUID"
           description: Unique payment identifier.
           readOnly: true
           example: "550e8400-e29b-41d4-a716-446655440000"
         paymentProviderId:
-          type: string
-          format: uuid
+          $ref: "#/components/schemas/UUID"
           description: Tenant payment provider instance used by this payment.
           readOnly: true
           example: "550e8400-e29b-41d4-a716-446655440010"
@@ -1540,42 +1528,35 @@ components:
           description: Globally supported payment provider identifier used by the tenant payment provider.
           example: stripe
         status:
-          allOf:
-            - $ref: '#/components/schemas/PaymentStatus'
+          $ref: "#/components/schemas/PaymentStatus"
           readOnly: true
         type:
-          allOf:
-            - $ref: '#/components/schemas/PaymentType'
+          $ref: "#/components/schemas/PaymentType"
           readOnly: true
         recurrence:
           nullable: true
-          allOf:
-            - $ref: '#/components/schemas/Recurrence'
+          $ref: "#/components/schemas/Recurrence"
           description: >-
             Recurring payment rule captured at payment creation time. Null means
             one-time payment.
           readOnly: true
         purchaseOrder:
-          allOf:
-            - $ref: '#/components/schemas/PurchaseOrder'
+          $ref: "#/components/schemas/PurchaseOrder"
           description: >-
             Full purchase order associated with this payment. Returned in
             GET /payments/{paymentId} so clients can reconstruct checkout
             state without a separate lookup.
           readOnly: true
         billingInfo:
-          allOf:
-            - $ref: '#/components/schemas/BillingInfo'
+          $ref: "#/components/schemas/BillingInfo"
           description: Billing information captured at payment creation time.
           readOnly: true
         shippingInfo:
-          allOf:
-            - $ref: '#/components/schemas/ShippingInfo'
+          $ref: "#/components/schemas/ShippingInfo"
           description: Shipping information captured at payment creation time.
           readOnly: true
         extra:
-          allOf:
-            - $ref: '#/components/schemas/Extra'
+          $ref: "#/components/schemas/Extra"
           description: Custom user-defined fields captured at payment creation time.
           readOnly: true
         lastPaymentAt:
@@ -1605,8 +1586,9 @@ components:
 
     PaymentListResponse:
       allOf:
-        - $ref: '#/components/schemas/PaginatedResponse'
-        - type: object
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - title: InlineObject
+          type: object
           additionalProperties: false
           required:
             - items
@@ -1615,7 +1597,7 @@ components:
               type: array
               description: Tenant payments.
               items:
-                $ref: '#/components/schemas/Payment'
+                $ref: "#/components/schemas/Payment"
 
     CheckoutSessionConfirmation:
       type: object
@@ -1626,14 +1608,13 @@ components:
         - paymentTransaction
       properties:
         sessionId:
-          type: string
-          format: uuid
+          $ref: "#/components/schemas/UUID"
           description: Checkout session identifier used by the public confirmation page.
           readOnly: true
         payment:
-          $ref: '#/components/schemas/ConfirmationPayment'
+          $ref: "#/components/schemas/ConfirmationPayment"
         paymentTransaction:
-          $ref: '#/components/schemas/ConfirmationPaymentTransaction'
+          $ref: "#/components/schemas/ConfirmationPaymentTransaction"
 
     ConfirmationPayment:
       type: object
@@ -1648,8 +1629,7 @@ components:
         - createdAt
       properties:
         id:
-          type: string
-          format: uuid
+          $ref: "#/components/schemas/UUID"
           description: Payment identifier.
           readOnly: true
         provider:
@@ -1657,12 +1637,10 @@ components:
           description: Payment provider used by the payment.
           example: paypal
         status:
-          allOf:
-            - $ref: '#/components/schemas/PaymentStatus'
+          $ref: "#/components/schemas/PaymentStatus"
           readOnly: true
         type:
-          allOf:
-            - $ref: '#/components/schemas/PaymentType'
+          $ref: "#/components/schemas/PaymentType"
           readOnly: true
         description:
           type: string
@@ -1676,7 +1654,7 @@ components:
           minimum: 1
           example: 3000
         currency:
-          $ref: '#/components/schemas/Currency'
+          $ref: "#/components/schemas/Currency"
         createdAt:
           type: string
           format: date-time
@@ -1691,18 +1669,15 @@ components:
         - createdAt
       properties:
         id:
-          type: string
-          format: uuid
+          $ref: "#/components/schemas/UUID"
           description: Payment transaction identifier.
           readOnly: true
         status:
-          allOf:
-            - $ref: '#/components/schemas/PaymentTransactionStatus'
+          $ref: "#/components/schemas/PaymentTransactionStatus"
           readOnly: true
         statusDetails:
           nullable: true
-          allOf:
-            - $ref: '#/components/schemas/StatusDetails'
+          $ref: "#/components/schemas/StatusDetails"
           description: Public-safe normalized transaction status details.
           readOnly: true
         createdAt:
@@ -1751,29 +1726,29 @@ components:
           description: Metadata required for the next action (PSP-specific data).
           additionalProperties: true
 
-#    CreatePaymentResponse:
-#      type: object
-#      additionalProperties: false
-#      required:
-#        - payment
-#      properties:
-#        payment:
-#          $ref: '#/components/schemas/Payment'
-#        nextAction:
-#          nullable: true
-#          $ref: '#/components/schemas/NextAction'
+    #    CreatePaymentResponse:
+    #      type: object
+    #      additionalProperties: false
+    #      required:
+    #        - payment
+    #      properties:
+    #        payment:
+    #          $ref: '#/components/schemas/Payment'
+    #        nextAction:
+    #          nullable: true
+    #          $ref: '#/components/schemas/NextAction'
 
-#    PaymentDetailResponse:
-#      type: object
-#      additionalProperties: false
-#      required:
-#        - payment
-#      properties:
-#        payment:
-#          $ref: '#/components/schemas/Payment'
-#        nextAction:
-#          nullable: true
-#          $ref: '#/components/schemas/NextAction'
+    #    PaymentDetailResponse:
+    #      type: object
+    #      additionalProperties: false
+    #      required:
+    #        - payment
+    #      properties:
+    #        payment:
+    #          $ref: '#/components/schemas/Payment'
+    #        nextAction:
+    #          nullable: true
+    #          $ref: '#/components/schemas/NextAction'
 
     # ── Payment Transaction ─────────────────────────────────────────────
     PaymentTransaction:
@@ -1787,24 +1762,20 @@ components:
         - updatedAt
       properties:
         id:
-          type: string
-          format: uuid
+          $ref: "#/components/schemas/UUID"
           description: Unique payment transaction identifier.
           readOnly: true
           example: "550e8400-e29b-41d4-a716-446655440001"
         paymentId:
-          type: string
-          format: uuid
+          $ref: "#/components/schemas/UUID"
           description: ID of the payment this payment transaction belongs to.
           readOnly: true
           example: "550e8400-e29b-41d4-a716-446655440000"
         status:
-          allOf:
-            - $ref: '#/components/schemas/PaymentTransactionStatus'
+          $ref: "#/components/schemas/PaymentTransactionStatus"
           readOnly: true
         statusDetails:
-          allOf:
-            - $ref: '#/components/schemas/StatusDetails'
+          $ref: "#/components/schemas/StatusDetails"
           description: >-
             Normalized status details exposed as part of the public API
             contract. This field is not PSP raw data; PSP-specific technical
@@ -1867,7 +1838,7 @@ components:
       additionalProperties: false
       properties:
         checkout:
-          $ref: '#/components/schemas/PaymentCheckoutRequest'
+          $ref: "#/components/schemas/PaymentCheckoutRequest"
 
     PaymentCheckoutRequest:
       type: object
@@ -1896,16 +1867,17 @@ components:
         - paymentTransaction
       properties:
         payment:
-          $ref: '#/components/schemas/Payment'
+          $ref: "#/components/schemas/Payment"
         paymentTransaction:
-          $ref: '#/components/schemas/PaymentTransaction'
+          $ref: "#/components/schemas/PaymentTransaction"
         nextAction:
-          $ref: '#/components/schemas/NextAction'
+          $ref: "#/components/schemas/NextAction"
 
     PaymentTransactionsResponse:
       allOf:
-        - $ref: '#/components/schemas/PaginatedResponse'
-        - type: object
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - title: InlineObject
+          type: object
           additionalProperties: false
           required:
             - items
@@ -1914,7 +1886,7 @@ components:
               type: array
               description: Payment transaction attempts for the payment.
               items:
-                $ref: '#/components/schemas/PaymentTransaction'
+                $ref: "#/components/schemas/PaymentTransaction"
 
     # ── Shared Types ────────────────────────────────────────────────────
     PaginatedResponse:
@@ -1960,7 +1932,7 @@ components:
     Currency:
       type: string
       description: ISO-4217 currency code (3 uppercase letters).
-      pattern: '^[A-Z]{3}$'
+      pattern: "^[A-Z]{3}$"
       example: USD
 
     Extra:
