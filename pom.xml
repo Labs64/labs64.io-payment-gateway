@@ -9,7 +9,7 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>Labs64.IO :: Payment Gateway</name>
+    <name>Labs64.IO :: Payment Gateway :: Parent</name>
 
     <modules>
         <module>payment-gateway-api</module>
