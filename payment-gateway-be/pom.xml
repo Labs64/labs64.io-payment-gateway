@@ -7,7 +7,7 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>Labs64.IO :: Payment Gateway</name>
+    <name>Labs64.IO :: Payment Gateway :: Backend</name>
     <description>Labs64.IO - Payment Gateway</description>
 
     <parent>
@@ -23,22 +23,23 @@
         <payment-gateway-api.version>0.0.1-SNAPSHOT</payment-gateway-api.version>
         <!-- DEPENDENCIES -->
         <java.version>25</java.version>
-        <spring-cloud.version>2025.1.1</spring-cloud.version>
+        <protobuf-java.version>4.35.1</protobuf-java.version>
+        <spring-cloud.version>2025.1.2</spring-cloud.version>
         <logstash.version>9.0</logstash.version>
-        <labs64-openapi.version>0.1.0-SNAPSHOT</labs64-openapi.version>
-        <openapitools.version>0.2.10</openapitools.version>
-        <mapstruct.version>1.6.3</mapstruct.version>
-        <jackson-datatype-jsr310.version>2.21.2</jackson-datatype-jsr310.version>
+        <labs64-openapi.version>0.4.0</labs64-openapi.version>
+        <openapitools.version>0.2.11</openapitools.version>
+        <mapstruct.version>1.7.0.Beta2</mapstruct.version>
+        <jackson-datatype-jsr310.version>2.22.1</jackson-datatype-jsr310.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
-        <lombok.version>1.18.44</lombok.version>
+        <lombok.version>1.18.46</lombok.version>
         <payment-provider.version>0.0.1-SNAPSHOT</payment-provider.version>
         <!-- PLUGINS -->
-        <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
-        <openapi-generator-maven-plugin.version>7.21.0</openapi-generator-maven-plugin.version>
+        <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
+        <openapi-generator-maven-plugin.version>7.24.0</openapi-generator-maven-plugin.version>
         <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
-        <maven-dependency-plugin.version>3.9.0</maven-dependency-plugin.version>
-        <exec-maven-plugin.version>3.6.2</exec-maven-plugin.version>
-        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+        <maven-dependency-plugin.version>3.11.0</maven-dependency-plugin.version>
+        <exec-maven-plugin.version>3.6.3</exec-maven-plugin.version>
+        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <openapi.contract.directory>${project.build.directory}/payment-gateway-api</openapi.contract.directory>
         <openapi.source>${openapi.contract.directory}/openapi/openapi-payment-gateway-${payment-gateway.version}.yaml</openapi.source>
         <openapi.generated>${project.build.directory}/generated-openapi/openapi-payment-gateway-v1.yaml</openapi.generated>

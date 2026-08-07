@@ -73,7 +73,7 @@ class WebhookServiceImplTest {
     void processWebhookClosesOneTimePaymentAndPublishesFinalizedAndClosedEvents() {
         final PaymentEntity payment = payment(PROVIDER, PaymentStatus.READY);
         final PaymentTransactionEntity transaction = transaction(payment, PaymentTransactionStatus.PENDING);
-        final WebhookRequest request = request(PROVIDER, transaction.getId());
+        final WebhookRequest request = request(PROVIDER);
         final PaymentWebhookResult result = successfulResult();
 
         stubTransactionLookup(request, transaction);
@@ -95,7 +95,7 @@ class WebhookServiceImplTest {
     void processWebhookRejectsProviderMismatch() {
         final PaymentEntity payment = payment("stripe", PaymentStatus.READY);
         final PaymentTransactionEntity transaction = transaction(payment, PaymentTransactionStatus.PENDING);
-        final WebhookRequest request = request(PROVIDER, transaction.getId());
+        final WebhookRequest request = request(PROVIDER);
 
         stubTransactionLookup(request, transaction);
 
@@ -108,7 +108,7 @@ class WebhookServiceImplTest {
 
     @Test
     void processWebhookRejectsProviderWithoutWebhookCapability() {
-        final WebhookRequest request = request(PROVIDER, UUID.randomUUID());
+        final WebhookRequest request = request(PROVIDER);
         when(providerRegistry.getProvider(request.provider())).thenReturn(new NonWebhookProvider());
 
         assertThatThrownBy(() -> service.processWebhook(request))
@@ -121,7 +121,7 @@ class WebhookServiceImplTest {
     void processWebhookIgnoresDuplicateTerminalWebhookWithSameStatus() {
         final PaymentEntity payment = payment(PROVIDER, PaymentStatus.CLOSED);
         final PaymentTransactionEntity transaction = transaction(payment, PaymentTransactionStatus.SUCCESS);
-        final WebhookRequest request = request(PROVIDER, transaction.getId());
+        final WebhookRequest request = request(PROVIDER);
 
         stubTransactionLookup(request, transaction);
         stubMapper(payment, transaction);
@@ -138,7 +138,7 @@ class WebhookServiceImplTest {
     void processWebhookRejectsTerminalStatusChange() {
         final PaymentEntity payment = payment(PROVIDER, PaymentStatus.CLOSED);
         final PaymentTransactionEntity transaction = transaction(payment, PaymentTransactionStatus.SUCCESS);
-        final WebhookRequest request = request(PROVIDER, transaction.getId());
+        final WebhookRequest request = request(PROVIDER);
 
         stubTransactionLookup(request, transaction);
         stubMapper(payment, transaction);
@@ -216,11 +216,10 @@ class WebhookServiceImplTest {
                 .build();
     }
 
-    private static WebhookRequest request(final String provider, final UUID transactionId) {
+    private static WebhookRequest request(final String provider) {
         return new WebhookRequest(
                 provider,
-                new byte[0],
-                Map.of("transactionId", transactionId.toString()),
+                "",
                 Map.of(),
                 Map.of());
     }

@@ -7,18 +7,17 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import io.labs64.paymentgateway.api.ProviderWebhooksApi;
 import io.labs64.paymentgateway.correlation.CorrelationContextHolder;
 import io.labs64.paymentgateway.psp.spi.WebhookRequest;
+import io.labs64.paymentgateway.service.WebhookService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
-
-import io.labs64.paymentgateway.service.WebhookService;
-import io.labs64.paymentgateway.api.ProviderWebhooksApi;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
@@ -33,23 +32,17 @@ public class ProviderWebhookController implements ProviderWebhooksApi {
     @Override
     @SecurityRequirements
     public ResponseEntity<Void> handleProviderWebhook(
-            String provider,
-            Map<String, Object> requestBody) {
-        log.info("Provider webhook received | provider={}, correlationId={}, payloadKeys={}",
-                provider, CorrelationContextHolder.get().orElse("-"),
-                requestBody != null ? requestBody.keySet() : "null");
+            final String provider,
+            final String requestBody) {
+        log.info("Provider webhook received | provider={}, correlationId={}",
+                provider, CorrelationContextHolder.get().orElse("-"));
 
         webhookService.processWebhook(toWebhookRequest(provider, requestBody));
         return ResponseEntity.ok().build();
     }
 
-    private WebhookRequest toWebhookRequest(final String provider, final Map<String, Object> requestBody) {
-        return new WebhookRequest(
-                provider,
-                new byte[0],
-                requestBody != null ? requestBody : Map.of(),
-                headers(),
-                queryParams());
+    private WebhookRequest toWebhookRequest(final String provider, final String requestBody) {
+        return new WebhookRequest(provider, requestBody, headers(), queryParams());
     }
 
     private Map<String, List<String>> headers() {

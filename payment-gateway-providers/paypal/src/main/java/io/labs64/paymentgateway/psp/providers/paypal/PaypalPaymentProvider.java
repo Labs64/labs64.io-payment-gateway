@@ -10,7 +10,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Stream;
 
 import com.paypal.sdk.Environment;
@@ -59,8 +58,6 @@ import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
 import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
 import io.labs64.paymentgateway.psp.spi.StatusDetails;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -100,12 +97,6 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
             ProviderConfigField.required(CLIENT_SECRET),
             ProviderConfigField.required(ENVIRONMENT));
 
-    private final String publicBaseUrl;
-
-    public PaypalPaymentProvider(
-            @Value("${payment-gateway.public-base-url:http://localhost:8080/api/v1}") final String publicBaseUrl) {
-        this.publicBaseUrl = publicBaseUrl;
-    }
 
     @Override
     public String provider() {
@@ -136,7 +127,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
 
     @Override
     public PaymentResult execute(final PaymentContext context) {
-        if (context.checkoutSession() == null) {
+        if (context.checkout() == null) {
             throw new ProviderValidationException("PayPal checkout session is required.");
         }
 
@@ -221,7 +212,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
                 CheckoutPaymentIntent.CAPTURE,
                 List.of(toPurchaseUnit(context)))
                 .applicationContext(toApplicationContext(
-                        context.checkoutSession().id(),
+                        context,
                         hasShippingInfo(context.payment().shippingInfo())))
                 .payer(toPayer(context.payment().billingInfo()));
         return builder.build();
@@ -401,21 +392,16 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
     }
 
     private OrderApplicationContext toApplicationContext(
-            final UUID checkoutSessionId,
+            final PaymentContext context,
             final boolean hasShippingInfo) {
         return new OrderApplicationContext.Builder()
-                .returnUrl(providerCheckoutUrl(checkoutSessionId, "return"))
-                .cancelUrl(providerCheckoutUrl(checkoutSessionId, "cancel"))
+                .returnUrl(context.checkout().urls().returnUrl())
+                .cancelUrl(context.checkout().urls().cancelUrl())
                 .shippingPreference(hasShippingInfo
                         ? OrderApplicationContextShippingPreference.SET_PROVIDED_ADDRESS
                         : OrderApplicationContextShippingPreference.NO_SHIPPING)
                 .userAction(OrderApplicationContextUserAction.PAY_NOW)
                 .build();
-    }
-
-    private String providerCheckoutUrl(final UUID checkoutSessionId, final String action) {
-        return stripTrailingSlash(publicBaseUrl)
-                + "/providers/" + PROVIDER + "/checkout-sessions/" + checkoutSessionId + "/" + action;
     }
 
     private PaypalServerSdkClient client(final Map<String, String> config) {
@@ -586,10 +572,6 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
         return values == null
                 ? Optional.empty()
                 : values.stream().filter(StringUtils::isNotBlank).findFirst();
-    }
-
-    private static String stripTrailingSlash(final String source) {
-        return Strings.CS.removeEnd(StringUtils.defaultString(source), "/");
     }
 
     private static String normalizedEnvironment(final String value) {

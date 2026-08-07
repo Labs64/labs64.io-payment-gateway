@@ -18,6 +18,8 @@ import io.labs64.paymentgateway.psp.spi.PaymentTransaction;
 import io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutContext;
 import io.labs64.paymentgateway.psp.spi.ProviderConfig;
+import io.labs64.paymentgateway.psp.spi.ProviderCheckout;
+import io.labs64.paymentgateway.psp.spi.ProviderCheckoutUrls;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigField;
 import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
 import org.junit.jupiter.api.Test;
@@ -27,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PaypalPaymentProviderTest {
 
-    private final PaypalPaymentProvider provider = new PaypalPaymentProvider("http://localhost:8080/api/v1");
+    private final PaypalPaymentProvider provider = new PaypalPaymentProvider();
 
     @Test
     void providerReturnsPaypalIdentifier() {
@@ -181,6 +183,11 @@ class PaypalPaymentProviderTest {
                         null),
                 new PaymentTransaction(UUID.randomUUID(), PaymentTransactionStatus.PENDING),
                 new ProviderConfig("paypal", config("sandbox"), "PayPal", null),
-                new CheckoutSession(UUID.randomUUID(), Map.of(), null, null));
+                PaymentExecutionRequest.empty(),
+                new ProviderCheckout(
+                        new CheckoutSession(UUID.randomUUID(), Map.of(), null, null),
+                        new ProviderCheckoutUrls(
+                                "https://gateway.example/paypal/return",
+                                "https://gateway.example/paypal/cancel")));
     }
 }

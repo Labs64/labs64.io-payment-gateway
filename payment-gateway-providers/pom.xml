@@ -16,7 +16,7 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>Labs64.IO :: Payment Gateway Providers</name>
+    <name>Labs64.IO :: Payment Gateway :: Providers</name>
     <description>Payment provider SPI and provider implementations for Labs64.IO Payment Gateway</description>
 
     <modules>
@@ -30,8 +30,8 @@
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <paypal.version>2.3.0</paypal.version>
-        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
-        <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
+        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+        <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
     </properties>
 
     <dependencyManagement>

@@ -4,21 +4,13 @@ public record PaymentContext(
         Payment payment,
         PaymentTransaction transaction,
         ProviderConfig provider,
-        CheckoutSession checkoutSession,
-        PaymentExecutionRequest request) {
+        PaymentExecutionRequest request,
+        ProviderCheckout checkout) {
 
     public PaymentContext(
             final Payment payment,
             final PaymentTransaction transaction,
             final ProviderConfig provider) {
-        this(payment, transaction, provider, null, PaymentExecutionRequest.empty());
-    }
-
-    public PaymentContext(
-            final Payment payment,
-            final PaymentTransaction transaction,
-            final ProviderConfig provider,
-            final CheckoutSession checkoutSession) {
-        this(payment, transaction, provider, checkoutSession, PaymentExecutionRequest.empty());
+        this(payment, transaction, provider, PaymentExecutionRequest.empty(), null);
     }
 }

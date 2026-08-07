@@ -4,13 +4,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * PSP webhook request data visible to provider implementations.
- * Raw body may be empty when the request was produced by a parsed OpenAPI controller contract.
+ * Transport-level PSP webhook request data visible to provider implementations.
+ * The provider owns signature verification and parsing of {@code body}.
  */
 public record WebhookRequest(
         String provider,
-        byte[] rawBody,
-        Map<String, Object> payload,
+        String body,
         Map<String, List<String>> headers,
         Map<String, List<String>> queryParams) {
 }

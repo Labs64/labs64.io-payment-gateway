@@ -38,6 +38,7 @@ import io.labs64.paymentgateway.exception.NotFoundException;
 import io.labs64.paymentgateway.exception.PaymentNotPayableException;
 import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
+import io.labs64.paymentgateway.psp.spi.ProviderCheckout;
 import io.labs64.paymentgateway.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -61,6 +62,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentTransactionService transactionService;
     private final PaymentNextActionService paymentNextActionService;
     private final CheckoutSessionService checkoutSessionService;
+    private final CheckoutCallbackUrlFactory checkoutCallbackUrlFactory;
     private final PaymentContextMapper paymentContextMapper;
     private final PaymentDefinitionService paymentDefinitionService;
     private final PaymentProviderRegistry providerRegistry;
@@ -234,9 +236,13 @@ public class PaymentServiceImpl implements PaymentService {
             final PaymentProvider provider,
             final CheckoutSessionEntity session,
             final PaymentExecutionRequest request) {
-        final PaymentContext context = session == null
-                ? paymentContextMapper.toContext(payment, transaction, attempt.paymentProvider(), null, request)
-                : paymentContextMapper.toContext(payment, transaction, attempt.paymentProvider(), session, request);
+        final ProviderCheckout checkout = session == null
+                ? null
+                : new ProviderCheckout(
+                        paymentContextMapper.toCheckoutSession(session),
+                        checkoutCallbackUrlFactory.create(attempt.paymentProvider().getProvider(), session.getId()));
+        final PaymentContext context = paymentContextMapper.toContext(
+                payment, transaction, attempt.paymentProvider(), request, checkout);
         return provider.execute(context);
     }
 

@@ -28,6 +28,9 @@ permissions:
 jobs:
   build-test:
     uses: Labs64/labs64.io-workspace/.github/workflows/java-ci.yml@master
+    secrets:
+      L64_PUB_CI_USERNAME: ${{ secrets.L64_PUB_CI_USERNAME }}
+      L64_PUB_CI_PASSWORD: ${{ secrets.L64_PUB_CI_PASSWORD }}
     with:
       # Root reactor pom (payment-gateway-providers + payment-gateway-be); -pl/-am
       # need the reactor root, not the module's own pom.xml.

@@ -25,6 +25,8 @@ import io.labs64.paymentgateway.psp.spi.PaymentNextActionType;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
 import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
+import io.labs64.paymentgateway.psp.spi.ProviderCheckout;
+import io.labs64.paymentgateway.psp.spi.ProviderCheckoutUrls;
 import io.labs64.paymentgateway.psp.spi.CheckoutSessionDraft;
 import io.labs64.paymentgateway.psp.spi.CheckoutPreparationContext;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
@@ -71,6 +73,9 @@ class PaymentServiceImplTest {
 
     @Mock
     private CheckoutSessionService checkoutSessionService;
+
+    @Mock
+    private CheckoutCallbackUrlFactory checkoutCallbackUrlFactory;
 
     @Mock
     private PaymentContextMapper paymentContextMapper;
@@ -167,8 +172,8 @@ class PaymentServiceImplTest {
                 payment,
                 transaction,
                 payment.getPaymentProvider(),
-                null,
-                PaymentExecutionRequest.empty())).thenReturn(context);
+                PaymentExecutionRequest.empty(),
+                null)).thenReturn(context);
         when(pspProvider.execute(context)).thenReturn(result);
         when(transactionService.update(any(), any(), any())).thenAnswer(invocation -> {
             final java.util.function.Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
@@ -202,8 +207,8 @@ class PaymentServiceImplTest {
                 payment,
                 transaction,
                 payment.getPaymentProvider(),
-                null,
-                PaymentExecutionRequest.empty())).thenReturn(context);
+                PaymentExecutionRequest.empty(),
+                null)).thenReturn(context);
         when(pspProvider.execute(context)).thenReturn(new PaymentResult(
                 PROVIDER,
                 io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.SUCCESS,
@@ -236,6 +241,13 @@ class PaymentServiceImplTest {
                 .paymentTransactionId(transaction.getId())
                 .payload(draft.payload())
                 .build();
+        final ProviderCheckoutUrls checkoutUrls = new ProviderCheckoutUrls(
+                "https://gateway.example/providers/stripe/checkout-sessions/session/return",
+                "https://gateway.example/providers/stripe/checkout-sessions/session/cancel");
+        final io.labs64.paymentgateway.psp.spi.CheckoutSession providerSession =
+                new io.labs64.paymentgateway.psp.spi.CheckoutSession(
+                        session.getId(), session.getPayload(), null, null);
+        final ProviderCheckout checkout = new ProviderCheckout(providerSession, checkoutUrls);
         final PaymentContext context = new PaymentContext(null, null, null);
         final PaymentNextAction nextAction = new PaymentNextAction(
                 PaymentNextActionType.REDIRECT,
@@ -249,7 +261,10 @@ class PaymentServiceImplTest {
                 .thenReturn(preparationContext);
         when(checkoutCapableProvider.prepareCheckoutSession(preparationContext)).thenReturn(Optional.of(draft));
         when(checkoutSessionService.create(transaction, draft.payload(), draft.expiresAt())).thenReturn(session);
-        when(paymentContextMapper.toContext(payment, transaction, payment.getPaymentProvider(), session, executionRequest))
+        when(paymentContextMapper.toCheckoutSession(session)).thenReturn(providerSession);
+        when(checkoutCallbackUrlFactory.create(PROVIDER, session.getId())).thenReturn(checkoutUrls);
+        when(paymentContextMapper.toContext(
+                payment, transaction, payment.getPaymentProvider(), executionRequest, checkout))
                 .thenReturn(context);
         when(checkoutCapableProvider.execute(context)).thenReturn(new PaymentResult(
                 PROVIDER,
@@ -310,8 +325,8 @@ class PaymentServiceImplTest {
                 payment,
                 transaction,
                 payment.getPaymentProvider(),
-                null,
-                PaymentExecutionRequest.empty())).thenReturn(context);
+                PaymentExecutionRequest.empty(),
+                null)).thenReturn(context);
         when(pspProvider.execute(context)).thenThrow(new ProviderExecutionException("PayPal order creation failed."));
         when(transactionService.update(any(), any(), any())).thenAnswer(invocation -> {
             final java.util.function.Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
