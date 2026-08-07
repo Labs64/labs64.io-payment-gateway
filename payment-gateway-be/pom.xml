@@ -43,7 +43,7 @@
         <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
         <maven-dependency-plugin.version>3.11.0</maven-dependency-plugin.version>
         <exec-maven-plugin.version>3.6.3</exec-maven-plugin.version>
-        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
         <openapi.contract.directory>${project.build.directory}/payment-gateway-api</openapi.contract.directory>
         <openapi.source>${openapi.contract.directory}/openapi/openapi-payment-gateway-${payment-gateway.version}.yaml</openapi.source>
         <openapi.generated>${project.build.directory}/generated-openapi/openapi-payment-gateway-v1.yaml</openapi.generated>
