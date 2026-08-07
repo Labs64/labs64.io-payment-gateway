@@ -4,7 +4,7 @@
 
     <groupId>io.labs64</groupId>
     <artifactId>payment-gateway</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Labs64.IO :: Payment Gateway :: Backend</name>
@@ -20,7 +20,7 @@
     <properties>
         <!-- API VERSIONS -->
         <payment-gateway.version>v1</payment-gateway.version>
-        <payment-gateway-api.version>0.0.1-SNAPSHOT</payment-gateway-api.version>
+        <payment-gateway-api.version>0.1.0-SNAPSHOT</payment-gateway-api.version>
         <!-- DEPENDENCIES -->
         <java.version>25</java.version>
         <protobuf-java.version>4.35.1</protobuf-java.version>
@@ -32,7 +32,7 @@
         <jackson-datatype-jsr310.version>2.22.1</jackson-datatype-jsr310.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <lombok.version>1.18.46</lombok.version>
-        <payment-provider.version>0.0.1-SNAPSHOT</payment-provider.version>
+        <payment-provider.version>0.1.0-SNAPSHOT</payment-provider.version>
         <netty.version>4.2.17.Final</netty.version>
         <!-- Jackson is NOT pinned here on purpose. Spring Boot's BOM manages the Jackson 3
              line (jackson-bom) and the Jackson 2 annotations line (jackson-2-bom) as a

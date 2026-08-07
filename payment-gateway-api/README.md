@@ -17,7 +17,7 @@ independent from OpenAPI Generator implementation details.
 <dependency>
     <groupId>io.labs64</groupId>
     <artifactId>payment-gateway-api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
