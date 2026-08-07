@@ -17,7 +17,7 @@ public final class PagedResult<T> implements Iterable<T> {
     }
 
     public List<T> items() {
-        return items;
+        return List.copyOf(items);
     }
 
     public PageInfo pageInfo() {
