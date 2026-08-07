@@ -36,7 +36,7 @@
         <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
         <openapi-generator-maven-plugin.version>7.21.0</openapi-generator-maven-plugin.version>
         <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
-        <maven-dependency-plugin.version>3.9.0</maven-dependency-plugin.version>
+        <maven-dependency-plugin.version>3.11.0</maven-dependency-plugin.version>
         <exec-maven-plugin.version>3.6.2</exec-maven-plugin.version>
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
         <openapi.contract.directory>${project.build.directory}/payment-gateway-api</openapi.contract.directory>
