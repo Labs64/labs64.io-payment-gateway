@@ -14,6 +14,6 @@
     <artifactId>payment-provider-spi</artifactId>
     <packaging>jar</packaging>
 
-    <name>Labs64.IO :: Payment Provider SPI</name>
+    <name>Labs64.IO :: Payment Gateway :: Provider SPI</name>
     <description>Stable contracts implemented by Payment Gateway providers</description>
 </project>

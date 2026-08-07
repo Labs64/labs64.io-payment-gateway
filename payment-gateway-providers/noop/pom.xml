@@ -14,7 +14,7 @@
     <artifactId>payment-provider-noop</artifactId>
     <packaging>jar</packaging>
 
-    <name>Labs64.IO :: NoOp Payment Provider</name>
+    <name>Labs64.IO :: Payment Gateway :: NoOp Payment Provider</name>
     <description>Synchronous NoOp provider for Payment Gateway development and testing</description>
 
     <dependencies>

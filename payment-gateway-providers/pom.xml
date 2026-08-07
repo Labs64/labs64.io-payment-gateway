@@ -16,7 +16,7 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>Labs64.IO :: Payment Gateway Providers</name>
+    <name>Labs64.IO :: Payment Gateway :: Providers</name>
     <description>Payment provider SPI and provider implementations for Labs64.IO Payment Gateway</description>
 
     <modules>
