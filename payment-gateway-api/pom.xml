@@ -9,7 +9,7 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>Labs64.IO :: Payment Gateway API</name>
+    <name>Labs64.IO :: Payment Gateway :: API</name>
     <description>Shared Java contract with validated models for the Labs64.IO Payment Gateway API.</description>
     <url>https://labs64.io</url>
 
