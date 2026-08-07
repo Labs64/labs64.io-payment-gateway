@@ -1,15 +1,16 @@
 default:
     @just --list
 
-# Generate models, compile, and run verification.
+# Compile and package (skip tests)
+build:
+    mvn clean install -DskipTests
+
+# Compile, run tests, and package
 test:
     mvn clean verify
 
-# Package the contract without tests.
-build:
-    mvn clean package -DskipTests
-
-# Build publishable artifacts without deploying them.
-release:
-    mvn clean verify -Prelease
-
+# Check for available Maven dependency, plugin, and property updates
+check-updates:
+    mvn versions:display-plugin-updates -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*'
+    mvn versions:display-property-updates -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*'
+    mvn versions:display-dependency-updates -DprocessDependencyManagement=false -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*'
