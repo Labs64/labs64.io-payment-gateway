@@ -33,7 +33,7 @@
         <lombok.version>1.18.44</lombok.version>
         <payment-provider.version>0.0.1-SNAPSHOT</payment-provider.version>
         <!-- PLUGINS -->
-        <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
+        <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
         <openapi-generator-maven-plugin.version>7.21.0</openapi-generator-maven-plugin.version>
         <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
         <maven-dependency-plugin.version>3.9.0</maven-dependency-plugin.version>
