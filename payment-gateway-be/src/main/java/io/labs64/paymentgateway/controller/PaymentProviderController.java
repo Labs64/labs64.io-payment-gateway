@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import io.labs64.paymentgateway.service.PaymentProviderService;
 import io.labs64.paymentgateway.api.PaymentProvidersApi;
 import io.labs64.paymentgateway.model.PaymentProvider;
-import io.labs64.paymentgateway.model.PaymentProviderListResponse;
+import io.labs64.paymentgateway.model.PaymentProvidersResponse;
 import lombok.RequiredArgsConstructor;
 
 @Slf4j
@@ -45,19 +45,20 @@ public class PaymentProviderController implements PaymentProvidersApi {
     }
 
     @Override
-    public ResponseEntity<PaymentProviderListResponse> listPaymentProviders(
+    public ResponseEntity<PaymentProvidersResponse> listPaymentProviders(
             @Nullable String currency,
             @Nullable String country,
-            @Nullable Boolean active) {
+            @Nullable Boolean active,
+            final Pageable pageable) {
         final String tenantId = AuthContextHolder.require().tenantId();
 
-        log.info("Payment provider list requested | tenantId={}, currency={}, country={}, active={}",
-                tenantId, currency, country, active);
+        log.info("Payment provider list requested | tenantId={}, currency={}, country={}, active={}, pageable={}",
+                tenantId, currency, country, active, pageable);
 
         final PaymentProviderFilter filter = new PaymentProviderFilter(currency, country, active);
 
-        final Page<PaymentProviderEntity> list = service.list(tenantId, filter, Pageable.unpaged());
-        final PaymentProviderListResponse response = mapper.toPage(list);
+        final Page<PaymentProviderEntity> list = service.list(tenantId, filter, pageable);
+        final PaymentProvidersResponse response = mapper.toPage(list);
 
         return ResponseEntity.ok(response);
     }

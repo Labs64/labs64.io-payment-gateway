@@ -37,7 +37,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class AuthEnforcementContractTest {
 
     /** The canonical contract, not a build artifact. */
-    private static final Path SPEC = Path.of("src", "main", "resources", "openapi",
+    private static final Path SPEC = Path.of("..", "payment-gateway-api", "src", "main", "resources", "openapi",
             "openapi-payment-gateway-v1.yaml");
 
     private final MockMvc mockMvc =

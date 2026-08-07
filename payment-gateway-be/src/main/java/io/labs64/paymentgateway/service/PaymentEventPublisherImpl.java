@@ -149,7 +149,9 @@ public class PaymentEventPublisherImpl implements PaymentEventPublisher {
     }
 
     private StatusDetails copy(final StatusDetails value) {
-        return value != null ? new StatusDetails(value.getCode(), value.getMessage()) : null;
+        return value != null
+                ? StatusDetails.builder().code(value.getCode()).message(value.getMessage()).build()
+                : null;
     }
 
     private Map<String, Object> copy(final Map<String, Object> value) {

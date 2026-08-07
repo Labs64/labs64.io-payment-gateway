@@ -113,7 +113,8 @@ public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
                 transaction.getId(),
                 (pt) -> {
                     pt.setStatus(PaymentTransactionStatus.FAILED);
-                    pt.setStatusDetails(new StatusDetails("PSP_ERROR", exception.getMessage()));
+                    pt.setStatusDetails(StatusDetails.builder()
+                            .code("PSP_ERROR").message(exception.getMessage()).build());
                     pt.setPspData(null);
                 });
         paymentEventPublisher.publishFinalized(payment, failedTransaction);
@@ -204,7 +205,7 @@ public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
         if (source == null) {
             return null;
         }
-        return new StatusDetails(source.code(), source.message());
+        return StatusDetails.builder().code(source.code()).message(source.message()).build();
     }
 
 }

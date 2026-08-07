@@ -162,10 +162,13 @@ class PaymentControllerTest {
     }
 
     private static CreatePaymentRequest createRequest() {
-        return new CreatePaymentRequest(
-                PAYMENT_PROVIDER_ID,
-                new PurchaseOrder("USD", List.of(new OrderItem("Widget", 3000L, 1)), 3000L),
-                new BillingInfo("customer@example.com"));
+        final PurchaseOrder purchaseOrder = new PurchaseOrder()
+                .currency("USD")
+                .items(List.of(new OrderItem().name("Widget").price(3000L).quantity(1)))
+                .grossAmount(3000L);
+        return new CreatePaymentRequest().paymentProviderId(PAYMENT_PROVIDER_ID)
+                .purchaseOrder(purchaseOrder)
+                .billingInfo(new BillingInfo().email("customer@example.com"));
     }
 
     private static PaymentEntity payment() {

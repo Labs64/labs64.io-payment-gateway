@@ -8,11 +8,12 @@ import java.util.UUID;
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.model.PaymentProvider;
 import io.labs64.paymentgateway.model.PaymentProviderCreateRequest;
-import io.labs64.paymentgateway.model.PaymentProviderListResponse;
+import io.labs64.paymentgateway.model.PaymentProvidersResponse;
 import io.labs64.paymentgateway.model.PaymentProviderUpdateRequest;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,7 +24,7 @@ class PaymentProviderMapperTest {
 
     @Test
     void toEntityMapsProviderFromCreateRequestButDoesNotMapTenantOwnership() {
-        final PaymentProviderCreateRequest request = new PaymentProviderCreateRequest("stripe", true);
+        final PaymentProviderCreateRequest request = new PaymentProviderCreateRequest().provider("stripe").active(true);
         request.setConfig(Map.of("apiKey", "secret"));
         request.setName("Tenant Stripe");
         request.setDescription("Cards");
@@ -95,13 +96,20 @@ class PaymentProviderMapperTest {
 
     @Test
     void toPageMapsItemsWithoutConfig() {
-        final PaymentProviderListResponse response = mapper.toPage(
-                new PageImpl<>(List.of(entity("tenant-a", "stripe"))));
+        final PaymentProvidersResponse response = mapper.toPage(
+                new PageImpl<>(List.of(entity("tenant-a", "stripe")),
+                        PageRequest.of(2, 5), 11));
 
         assertThat(response.getItems()).hasSize(1);
         assertThat(response.getItems().getFirst().getId()).isEqualTo(PAYMENT_PROVIDER_ID);
         assertThat(response.getItems().getFirst().getProvider()).isEqualTo("stripe");
         assertThat(response.getItems().getFirst().getConfig()).isNull();
+        assertThat(response.getPage()).isEqualTo(2);
+        assertThat(response.getPageSize()).isEqualTo(5);
+        assertThat(response.getTotalItems()).isEqualTo(11);
+        assertThat(response.getTotalPages()).isEqualTo(3);
+        assertThat(response.getHasPrev()).isTrue();
+        assertThat(response.getHasNext()).isFalse();
     }
 
     private static PaymentProviderEntity entity(final String tenantId, final String provider) {

@@ -6,6 +6,19 @@
 
 The Labs64 Unified Payment Gateway Platform is a strategic solution within the Labs64 IO Ecosystem, aimed at consolidating various Payment Service Providers (PSPs) into a single, cohesive and flexible infrastructure. This gateway enables seamless payment processing, improved operational efficiency, and enhanced scalability for businesses seeking to manage and optimize their digital payment flows.
 
+## Modules
+
+| Path | Purpose |
+|------|---------|
+| `payment-gateway-api/` | Canonical OpenAPI contract and Java 17-compatible validated models |
+| `payment-gateway-be/` | Spring Boot payment gateway service |
+| `payment-gateway-providers/` | PSP SPI and provider implementations |
+
+The API contract is owned by `payment-gateway-api/src/main/resources/openapi/openapi-payment-gateway-v1.yaml`.
+The backend consumes the shared models from `io.labs64:payment-gateway-api`
+and generates only its Spring server interfaces. An HTTP client is intentionally
+outside the current API module scope and will be designed separately.
+
 The platform is designed with modular architecture and open integration standards, allowing companies to onboard and switch between multiple PSPs based on regional availability, performance, cost-efficiency, and compliance requirements. By centralizing payment operations, businesses can reduce technical complexity, ensure high availability, and gain better insights into transactional data.
 
 Core Features:

@@ -38,7 +38,7 @@ class CheckoutSessionConfirmationMapperTest {
         assertThat(dto.getPayment().getCurrency()).isEqualTo("USD");
         assertThat(dto.getPaymentTransaction().getId()).isEqualTo(entity.getPaymentTransactionId());
         assertThat(dto.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.SUCCESS);
-        assertThat(dto.getPaymentTransaction().getStatusDetails()).isEqualTo(new StatusDetails("SUCCESS", "Captured"));
+        assertThat(dto.getPaymentTransaction().getStatusDetails()).isEqualTo(new StatusDetails().code("SUCCESS").message("Captured"));
     }
 
     private static CheckoutSessionEntity checkoutSession() {
@@ -61,7 +61,7 @@ class CheckoutSessionConfirmationMapperTest {
         final PaymentTransactionEntity transaction = PaymentTransactionEntity.builder()
                 .id(UUID.randomUUID())
                 .status(PaymentTransactionStatus.SUCCESS)
-                .statusDetails(new StatusDetails("SUCCESS", "Captured"))
+                .statusDetails(new StatusDetails().code("SUCCESS").message("Captured"))
                 .pspData(Map.of("orderId", "paypal-order"))
                 .createdAt(OffsetDateTime.now())
                 .build();

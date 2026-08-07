@@ -1,0 +1,15 @@
+default:
+    @just --list
+
+# Generate models, compile, and run verification.
+test:
+    mvn clean verify
+
+# Package the contract without tests.
+build:
+    mvn clean package -DskipTests
+
+# Build publishable artifacts without deploying them.
+release:
+    mvn clean verify -Prelease
+

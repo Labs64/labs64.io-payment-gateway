@@ -30,7 +30,7 @@ class PaymentTransactionMapperTest {
         assertThat(dto.getId()).isEqualTo(entity.getId());
         assertThat(dto.getPaymentId()).isEqualTo(entity.getPayment().getId());
         assertThat(dto.getStatus()).isEqualTo(PaymentTransactionStatus.FAILED);
-        assertThat(dto.getStatusDetails()).isEqualTo(new StatusDetails("CARD_EXPIRED", "Card expired"));
+        assertThat(dto.getStatusDetails()).isEqualTo(new StatusDetails().code("CARD_EXPIRED").message("Card expired"));
         assertThat(dto.getPspData()).containsEntry("providerReference", "pi_123");
         assertThat(dto.getCreatedAt()).isEqualTo(entity.getCreatedAt());
         assertThat(dto.getUpdatedAt()).isEqualTo(entity.getUpdatedAt());
@@ -80,7 +80,7 @@ class PaymentTransactionMapperTest {
                 .tenantId("tenant-a")
                 .payment(PaymentEntity.builder().id(UUID.randomUUID()).build())
                 .status(PaymentTransactionStatus.FAILED)
-                .statusDetails(new StatusDetails("CARD_EXPIRED", "Card expired"))
+                .statusDetails(new StatusDetails().code("CARD_EXPIRED").message("Card expired"))
                 .pspData(Map.of("providerReference", "pi_123"))
                 .createdAt(now.minusMinutes(1))
                 .updatedAt(now)
