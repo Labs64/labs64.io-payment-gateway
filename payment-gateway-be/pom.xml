@@ -242,7 +242,18 @@
         <repository>
             <id>labs64-nexus</id>
             <name>Labs64 Nexus Releases</name>
-            <url>https://nexus.labs64.com/repository/maven-releases/</url>
+            <url>https://nexus.labs64.com/repository/labs64.io-releases/</url>
+        </repository>
+        <repository>
+            <id>labs64-nexus-snapshots</id>
+            <name>Labs64 Nexus Snapshots</name>
+            <url>https://nexus.labs64.com/repository/labs64.io-snapshots/</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
         </repository>
     </repositories>
 
