@@ -25,6 +25,7 @@ import io.labs64.paymentgateway.psp.spi.PaymentNextActionType;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
 import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
+import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckout;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutUrls;
 import io.labs64.paymentgateway.psp.spi.CheckoutSessionDraft;
@@ -231,7 +232,6 @@ class PaymentServiceImplTest {
         final CheckoutPreparationContext preparationContext = new CheckoutPreparationContext(
                 null,
                 null,
-                null,
                 executionRequest);
         final CheckoutSessionDraft draft = new CheckoutSessionDraft(executionRequest.checkout(), null);
         final CheckoutSessionEntity session = CheckoutSessionEntity.builder()
@@ -257,7 +257,7 @@ class PaymentServiceImplTest {
         when(transactionService.create(any(), any())).thenReturn(transaction);
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition()));
         when(providerRegistry.getProvider(PROVIDER)).thenReturn(checkoutCapableProvider);
-        when(paymentContextMapper.toCheckoutPreparationContext(payment, transaction, payment.getPaymentProvider(), executionRequest))
+        when(paymentContextMapper.toCheckoutPreparationContext(payment, payment.getPaymentProvider(), executionRequest))
                 .thenReturn(preparationContext);
         when(checkoutCapableProvider.prepareCheckoutSession(preparationContext)).thenReturn(Optional.of(draft));
         when(checkoutSessionService.create(transaction, draft.payload(), draft.expiresAt())).thenReturn(session);
@@ -309,6 +309,33 @@ class PaymentServiceImplTest {
         assertThat(response.transaction().getStatusDetails().getCode()).isEqualTo("PAYMENT_PROVIDER_DISABLED");
         verify(providerRegistry, never()).getProvider(any());
         verify(paymentEventPublisher).publishFinalized(payment, transaction);
+    }
+
+    @Test
+    void payRejectsInvalidCheckoutRequestBeforeCreatingTransaction() {
+        final PaymentEntity payment = payment();
+        final PaymentExecutionRequest executionRequest = new PaymentExecutionRequest(Map.of(
+                "cancelUrl", "https://checkout.example/cancel"));
+        final CheckoutPreparationContext preparationContext = new CheckoutPreparationContext(
+                null,
+                null,
+                executionRequest);
+        when(paymentRepository.findByIdAndTenantId(payment.getId(), TENANT_ID)).thenReturn(Optional.of(payment));
+        when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition()));
+        when(providerRegistry.getProvider(PROVIDER)).thenReturn(checkoutCapableProvider);
+        when(paymentContextMapper.toCheckoutPreparationContext(
+                payment, payment.getPaymentProvider(), executionRequest)).thenReturn(preparationContext);
+        when(checkoutCapableProvider.prepareCheckoutSession(preparationContext))
+                .thenThrow(new ProviderValidationException("Stripe checkout requires returnUrl."));
+
+        assertThatThrownBy(() -> service.pay(TENANT_ID, payment.getId(), executionRequest))
+                .isInstanceOf(ProviderValidationException.class)
+                .hasMessage("Stripe checkout requires returnUrl.");
+
+        verify(transactionService, never()).create(any(), any());
+        verify(correlationTraceService, never()).attach(any(), any());
+        verify(checkoutSessionService, never()).create(any(), any(), any());
+        verify(checkoutCapableProvider, never()).execute(any());
     }
 
     @Test

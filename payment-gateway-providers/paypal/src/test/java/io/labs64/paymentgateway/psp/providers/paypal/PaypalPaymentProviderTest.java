@@ -1,11 +1,12 @@
 package io.labs64.paymentgateway.psp.providers.paypal;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import io.labs64.paymentgateway.model.OrderItem;
+import io.labs64.paymentgateway.model.PurchaseOrder;
 import io.labs64.paymentgateway.psp.spi.CheckoutPreparationContext;
 import io.labs64.paymentgateway.psp.spi.CheckoutSession;
 import io.labs64.paymentgateway.psp.spi.CheckoutSessionDraft;
@@ -66,7 +67,6 @@ class PaypalPaymentProviderTest {
         final CheckoutPreparationContext context = new CheckoutPreparationContext(
                 null,
                 null,
-                null,
                 new PaymentExecutionRequest(Map.of(
                         "returnUrl", "https://checkout.example.com/payment/return",
                         "cancelUrl", "https://checkout.example.com/payment/cancel")));
@@ -118,13 +118,6 @@ class PaypalPaymentProviderTest {
     }
 
     @Test
-    void executeRejectsFractionalItemQuantity() {
-        assertThatThrownBy(() -> provider.execute(paymentContextWithItemQuantity(new BigDecimal("1.5"))))
-                .isInstanceOf(ProviderValidationException.class)
-                .hasMessage("PayPal payment requires purchaseOrder.items[].quantity.");
-    }
-
-    @Test
     void executeRejectsZeroItemQuantity() {
         assertThatThrownBy(() -> provider.execute(paymentContextWithItemQuantity(0)))
                 .isInstanceOf(ProviderValidationException.class)
@@ -161,23 +154,23 @@ class PaypalPaymentProviderTest {
     }
 
     private static CheckoutPreparationContext checkoutContext(final Map<String, Object> checkout) {
-        return new CheckoutPreparationContext(null, null, null, new PaymentExecutionRequest(checkout));
+        return new CheckoutPreparationContext(null, null, new PaymentExecutionRequest(checkout));
     }
 
-    private static PaymentContext paymentContextWithItemQuantity(final Object quantity) {
+    private static PaymentContext paymentContextWithItemQuantity(final Integer quantity) {
         return new PaymentContext(
                 new Payment(
                         UUID.randomUUID(),
                         null,
                         "Test payment",
                         null,
-                        Map.of(
-                                "currency", "USD",
-                                "grossAmount", 3000,
-                                "items", List.of(Map.of(
-                                        "name", "Widget",
-                                        "price", 3000,
-                                        "quantity", quantity))),
+                        new PurchaseOrder()
+                                .currency("USD")
+                                .grossAmount(3000L)
+                                .items(List.of(new OrderItem()
+                                        .name("Widget")
+                                        .price(3000L)
+                                        .quantity(quantity))),
                         null,
                         null,
                         null),

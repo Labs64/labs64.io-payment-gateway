@@ -3,6 +3,8 @@ package io.labs64.paymentgateway.psp.providers.noop;
 import java.util.Map;
 import java.util.UUID;
 
+import io.labs64.paymentgateway.model.BillingInfo;
+import io.labs64.paymentgateway.model.PurchaseOrder;
 import io.labs64.paymentgateway.psp.spi.Payment;
 import io.labs64.paymentgateway.psp.spi.PaymentContext;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
@@ -43,8 +45,8 @@ class NoopPaymentProviderTest {
                 PaymentType.ONE_TIME,
                 "Test payment",
                 null,
-                Map.of("currency", "USD", "grossAmount", 3000L),
-                Map.of("email", "customer@example.com"),
+                new PurchaseOrder().currency("USD").grossAmount(3000L),
+                new BillingInfo().email("customer@example.com"),
                 null,
                 Map.of("source", "test"));
     }

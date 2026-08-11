@@ -19,6 +19,10 @@ public interface ProviderCheckoutSupport {
      * payload that the gateway persists in {@link CheckoutSession}. Returning
      * {@link Optional#empty()} means this payment attempt does not need a
      * checkout session.
+     * <p>
+     * This method is called before the gateway creates a payment transaction.
+     * Implementations must therefore be side-effect-free and must not start an
+     * attempt in an external payment system.
      *
      * @param context immutable payment attempt context
      * @return checkout session draft when this attempt needs browser checkout state

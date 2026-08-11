@@ -156,12 +156,15 @@ public class PaymentServiceImpl implements PaymentService {
     public PayPaymentResponse pay(final String tenantId, final UUID id, final PaymentExecutionRequest request) {
         log.info("Pay the payment for tenantId={}, id={}", tenantId, id);
         final PaymentEntity payment = getPayablePayment(tenantId, id);
-        final PaymentTransactionEntity transaction = createPendingTransaction(tenantId, payment);
         final PaymentExecutionRequest executionRequest = request != null ? request : PaymentExecutionRequest.empty();
 
         return switch (preparePaymentAttempt(payment)) {
-            case PaymentAttemptRejected rejected -> failPaymentAttempt(payment, transaction, rejected);
-            case PaymentAttemptReady ready -> executePaymentAttempt(payment, transaction, ready, executionRequest);
+            case PaymentAttemptRejected rejected -> {
+                final PaymentTransactionEntity transaction = createPendingTransaction(tenantId, payment);
+                yield failPaymentAttempt(payment, transaction, rejected);
+            }
+            case PaymentAttemptReady ready -> executePaymentAttempt(
+                    tenantId, payment, ready, executionRequest);
         };
     }
 
@@ -205,15 +208,19 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private PayPaymentResponse executePaymentAttempt(
+            final String tenantId,
             final PaymentEntity payment,
-            final PaymentTransactionEntity transaction,
             final PaymentAttemptReady attempt,
             final PaymentExecutionRequest request) {
         final PaymentProvider provider = providerRegistry.getProvider(attempt.paymentProvider().getProvider());
-        final CheckoutSessionEntity session;
+        final CheckoutSessionDraft checkoutDraft = prepareCheckoutSessionDraft(
+                payment, attempt, provider, request).orElse(null);
+        final PaymentTransactionEntity transaction = createPendingTransaction(tenantId, payment);
+        final CheckoutSessionEntity session = checkoutDraft != null
+                ? createCheckoutSession(transaction, checkoutDraft)
+                : null;
         final PaymentResult result;
         try {
-            session = prepareCheckoutSession(payment, transaction, attempt, provider, request);
             result = executeProvider(payment, transaction, attempt, provider, session, request);
         } catch (ProviderException ex) {
             log.warn("Payment provider execution failed: paymentId={}, paymentTransactionId={}, provider={}, message={}",
@@ -246,23 +253,19 @@ public class PaymentServiceImpl implements PaymentService {
         return provider.execute(context);
     }
 
-    private CheckoutSessionEntity prepareCheckoutSession(
+    private Optional<CheckoutSessionDraft> prepareCheckoutSessionDraft(
             final PaymentEntity payment,
-            final PaymentTransactionEntity transaction,
             final PaymentAttemptReady attempt,
             final PaymentProvider provider,
             final PaymentExecutionRequest request) {
         if (!(provider instanceof ProviderCheckoutSupport checkoutSupport)) {
-            return null;
+            return Optional.empty();
         }
 
         final CheckoutPreparationContext context = paymentContextMapper
-                .toCheckoutPreparationContext(payment, transaction, attempt.paymentProvider(), request);
+                .toCheckoutPreparationContext(payment, attempt.paymentProvider(), request);
 
-        return checkoutSupport
-                .prepareCheckoutSession(context)
-                .map((draft) -> createCheckoutSession(transaction, draft))
-                .orElse(null);
+        return checkoutSupport.prepareCheckoutSession(context);
     }
 
     private CheckoutSessionEntity createCheckoutSession(

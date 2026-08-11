@@ -13,10 +13,15 @@ import io.labs64.paymentgateway.psp.spi.PaymentTransaction;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckout;
 import io.labs64.paymentgateway.psp.spi.ProviderConfig;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
-@Mapper(config = MapperConfigBase.class)
+@Mapper(config = MapperConfigBase.class, uses = PaymentJsonMapper.class)
 public interface PaymentContextMapper {
 
+    @Mapping(target = "recurrence", source = "recurrence", qualifiedByName = "mapToRecurrence")
+    @Mapping(target = "purchaseOrder", source = "purchaseOrder", qualifiedByName = "mapToPurchaseOrder")
+    @Mapping(target = "billingInfo", source = "billingInfo", qualifiedByName = "mapToBillingInfo")
+    @Mapping(target = "shippingInfo", source = "shippingInfo", qualifiedByName = "mapToShippingInfo")
     Payment toPayment(PaymentEntity entity);
 
     default io.labs64.paymentgateway.psp.spi.PaymentType toProviderPaymentType(
@@ -62,12 +67,10 @@ public interface PaymentContextMapper {
 
     default CheckoutPreparationContext toCheckoutPreparationContext(
             final PaymentEntity payment,
-            final PaymentTransactionEntity transaction,
             final PaymentProviderEntity provider,
             final PaymentExecutionRequest request) {
         return new CheckoutPreparationContext(
                 toPayment(payment),
-                toPaymentTransaction(transaction),
                 toProviderConfig(provider),
                 request);
     }
