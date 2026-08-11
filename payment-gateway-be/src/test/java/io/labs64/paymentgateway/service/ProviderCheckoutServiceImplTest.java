@@ -14,6 +14,7 @@ import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
 import io.labs64.paymentgateway.mapper.PaymentContextMapper;
 import io.labs64.paymentgateway.model.PaymentStatus;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
+import io.labs64.paymentgateway.model.PurchaseOrder;
 import io.labs64.paymentgateway.model.StatusDetails;
 import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
 import io.labs64.paymentgateway.psp.spi.CheckoutSession;
@@ -28,7 +29,6 @@ import io.labs64.paymentgateway.psp.spi.ProviderCheckoutContext;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
 import io.labs64.paymentgateway.psp.spi.ProviderConfig;
 import io.labs64.paymentgateway.repository.CheckoutSessionRepository;
-import io.labs64.paymentgateway.repository.PaymentRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -53,9 +53,6 @@ class ProviderCheckoutServiceImplTest {
 
     @Mock
     private PaymentTransactionService transactionService;
-
-    @Mock
-    private PaymentRepository paymentRepository;
 
     @Mock
     private PaymentContextMapper paymentContextMapper;
@@ -86,22 +83,11 @@ class ProviderCheckoutServiceImplTest {
         when(providerRegistry.getProvider(PROVIDER)).thenReturn(provider);
         mapContext(session, context);
         when(provider.completeCheckout(context)).thenReturn(result);
-        when(transactionService.update(eq(TENANT_ID), eq(session.getPaymentTransactionId()), any()))
-                .thenAnswer(invocation -> {
-                    final Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
-                    updater.accept(session.getPaymentTransaction());
-                    return session.getPaymentTransaction();
-                });
 
         final URI redirect = service.complete(PROVIDER, session.getId(), Map.of("token", List.of("paypal-order")));
 
         assertThat(redirect).isEqualTo(expectedRedirect(session, "https://checkout.example/return"));
-        assertThat(session.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.SUCCESS);
-        assertThat(session.getPaymentTransaction().getStatusDetails()).isEqualTo(new StatusDetails().code("SUCCESS").message("Captured"));
-        assertThat(session.getPayment().getStatus()).isEqualTo(PaymentStatus.CLOSED);
-        verify(paymentRepository).save(session.getPayment());
-        verify(paymentEventPublisher).publishFinalized(session.getPayment(), session.getPaymentTransaction());
-        verify(paymentEventPublisher).publishClosed(session.getPayment(), session.getPaymentTransaction());
+        verify(transactionService).applyResult(session.getPaymentTransaction(), result);
     }
 
     @Test
@@ -118,21 +104,11 @@ class ProviderCheckoutServiceImplTest {
         when(providerRegistry.getProvider(PROVIDER)).thenReturn(provider);
         mapContext(session, context);
         when(provider.cancelCheckout(context)).thenReturn(result);
-        when(transactionService.update(eq(TENANT_ID), eq(session.getPaymentTransactionId()), any()))
-                .thenAnswer(invocation -> {
-                    final Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
-                    updater.accept(session.getPaymentTransaction());
-                    return session.getPaymentTransaction();
-                });
 
         final URI redirect = service.cancel(PROVIDER, session.getId(), Map.of("token", List.of("paypal-order")));
 
         assertThat(redirect).isEqualTo(expectedRedirect(session, "https://checkout.example/cancel"));
-        assertThat(session.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.FAILED);
-        assertThat(session.getPayment().getStatus()).isEqualTo(PaymentStatus.READY);
-        verify(paymentRepository, never()).save(any());
-        verify(paymentEventPublisher).publishFinalized(session.getPayment(), session.getPaymentTransaction());
-        verify(paymentEventPublisher, never()).publishClosed(any(), any());
+        verify(transactionService).applyResult(session.getPaymentTransaction(), result);
     }
 
     @Test
@@ -144,7 +120,7 @@ class ProviderCheckoutServiceImplTest {
         mapContext(session, context);
         when(provider.completeCheckout(context))
                 .thenThrow(new ProviderExecutionException("PayPal order capture failed."));
-        when(transactionService.update(eq(TENANT_ID), eq(session.getPaymentTransactionId()), any()))
+        when(transactionService.updateIfNonTerminal(eq(TENANT_ID), eq(session.getPaymentTransactionId()), any()))
                 .thenAnswer(invocation -> {
                     final Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
                     updater.accept(session.getPaymentTransaction());
@@ -158,21 +134,29 @@ class ProviderCheckoutServiceImplTest {
         assertThat(session.getPaymentTransaction().getStatusDetails()).isEqualTo(
                 new StatusDetails().code("PSP_ERROR").message("PayPal order capture failed."));
         assertThat(session.getPayment().getStatus()).isEqualTo(PaymentStatus.READY);
-        verify(paymentRepository, never()).save(any());
         verify(paymentEventPublisher).publishFinalized(session.getPayment(), session.getPaymentTransaction());
         verify(paymentEventPublisher, never()).publishClosed(any(), any());
     }
 
     @Test
-    void completeTerminalTransactionUsesFallbackRedirectWithoutCallingProvider() {
+    void completeTerminalTransactionStillRedirectsWithoutUpdatingTransaction() {
         final CheckoutSessionEntity session = session(PaymentTransactionStatus.SUCCESS);
+        final ProviderCheckoutContext context = context(session);
+        final PaymentResult result = new PaymentResult(
+                PROVIDER,
+                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.SUCCESS,
+                Map.of("orderId", "paypal-order"),
+                new io.labs64.paymentgateway.psp.spi.StatusDetails("SUCCESS", "Captured"),
+                redirect("https://checkout.example/return"));
         when(checkoutSessionRepository.findById(session.getId())).thenReturn(Optional.of(session));
+        when(providerRegistry.getProvider(PROVIDER)).thenReturn(provider);
+        mapContext(session, context);
+        when(provider.completeCheckout(context)).thenReturn(result);
 
-        final URI redirect = service.complete(PROVIDER, session.getId(), Map.of());
+        final URI redirect = service.complete(PROVIDER, session.getId(), context.queryParams());
 
-        assertThat(redirect).isEqualTo(URI.create("/"));
-        verify(providerRegistry, never()).getProvider(any());
-        verify(transactionService, never()).update(any(), any(), any());
+        assertThat(redirect).isEqualTo(expectedRedirect(session, "https://checkout.example/return"));
+        verify(transactionService).applyResult(session.getPaymentTransaction(), result);
     }
 
     private void mapContext(final CheckoutSessionEntity session, final ProviderCheckoutContext context) {
@@ -190,7 +174,7 @@ class ProviderCheckoutServiceImplTest {
                                 session.getPayment().getType().name()),
                         session.getPayment().getDescription(),
                         null,
-                        session.getPayment().getPurchaseOrder(),
+                        new PurchaseOrder().currency("USD").grossAmount(3000L),
                         null,
                         null,
                         null),

@@ -7,5 +7,5 @@ public record PaymentResult(
         PaymentTransactionStatus status,
         Map<String, Object> pspData,
         StatusDetails statusDetails,
-        PaymentNextAction nextAction) {
+        PaymentNextAction nextAction) implements ProviderResult {
 }
