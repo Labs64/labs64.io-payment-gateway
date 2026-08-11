@@ -3,9 +3,11 @@ package io.labs64.paymentgateway.repository;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -19,6 +21,17 @@ import io.labs64.paymentgateway.model.PaymentTransactionStatus;
 public interface PaymentTransactionRepository extends JpaRepository<PaymentTransactionEntity, UUID> {
 
     Optional<PaymentTransactionEntity> findByIdAndTenantId(UUID id, String tenantId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT pt
+            FROM PaymentTransactionEntity pt
+            WHERE pt.id = :id
+              AND pt.tenantId = :tenantId
+            """)
+    Optional<PaymentTransactionEntity> findByIdAndTenantIdForUpdate(
+            @Param("id") UUID id,
+            @Param("tenantId") String tenantId);
 
     @Query("""
             SELECT pt

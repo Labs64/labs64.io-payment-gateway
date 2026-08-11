@@ -6,6 +6,7 @@ import io.labs64.paymentgateway.model.ErrorResponse;
 import io.labs64.paymentgateway.psp.spi.ProviderException;
 import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
 import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
+import io.labs64.paymentgateway.psp.spi.WebhookRejectedException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,15 @@ class GlobalExceptionHandlerTest {
                 new ProviderExecutionException("Provider request failed."));
 
         assertError(response, HttpStatus.BAD_GATEWAY, ErrorCode.PSP_ERROR, "Provider request failed.");
+    }
+
+    @Test
+    void webhookRejectedExceptionReturnsBadRequest() {
+        final ResponseEntity<ErrorResponse> response = handler.handleWebhookRejectedException(
+                new WebhookRejectedException("Webhook verification failed."));
+
+        assertError(response, HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR,
+                "Webhook verification failed.");
     }
 
     @Test

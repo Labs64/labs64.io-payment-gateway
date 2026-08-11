@@ -11,11 +11,11 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>payment-provider-paypal</artifactId>
+    <artifactId>payment-provider-stripe</artifactId>
     <packaging>jar</packaging>
 
-    <name>Labs64.IO :: Payment Gateway :: PayPal Payment Provider</name>
-    <description>PayPal Checkout and webhook provider for Labs64.IO Payment Gateway</description>
+    <name>Labs64.IO :: Payment Gateway :: Stripe Payment Provider</name>
+    <description>Stripe Checkout and webhook provider for Labs64.IO Payment Gateway</description>
 
     <dependencies>
         <dependency>
@@ -23,16 +23,12 @@
             <artifactId>payment-provider-spi</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.paypal.sdk</groupId>
-            <artifactId>paypal-server-sdk</artifactId>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>

@@ -16,4 +16,11 @@
 
     <name>Labs64.IO :: Payment Gateway :: Provider SPI</name>
     <description>Stable contracts implemented by Payment Gateway providers</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.labs64</groupId>
+            <artifactId>payment-gateway-api</artifactId>
+        </dependency>
+    </dependencies>
 </project>

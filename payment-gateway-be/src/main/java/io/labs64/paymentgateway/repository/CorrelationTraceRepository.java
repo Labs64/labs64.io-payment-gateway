@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import io.labs64.paymentgateway.correlation.CorrelationEntityType;
 import io.labs64.paymentgateway.entity.CorrelationTraceEntity;
 
 /**
@@ -13,6 +14,6 @@ import io.labs64.paymentgateway.entity.CorrelationTraceEntity;
 public interface CorrelationTraceRepository extends JpaRepository<CorrelationTraceEntity, UUID> {
 
     Optional<CorrelationTraceEntity> findFirstByEntityTypeAndEntityIdOrderByCreatedAtDesc(
-            String entityType,
+            CorrelationEntityType entityType,
             UUID entityId);
 }

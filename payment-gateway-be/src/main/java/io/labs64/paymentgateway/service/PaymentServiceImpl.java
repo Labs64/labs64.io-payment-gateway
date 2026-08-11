@@ -15,7 +15,6 @@ import io.labs64.paymentgateway.mapper.PaymentContextMapper;
 import io.labs64.paymentgateway.message.PaymentMessages;
 import io.labs64.paymentgateway.model.PaymentStatus;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
-import io.labs64.paymentgateway.model.PaymentType;
 import io.labs64.paymentgateway.model.StatusDetails;
 import io.labs64.paymentgateway.psp.spi.CheckoutPreparationContext;
 import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
@@ -45,11 +44,11 @@ import lombok.RequiredArgsConstructor;
 import static io.labs64.paymentgateway.domain.PaymentTransactionFailureCode.PAYMENT_PROVIDER_NOT_FOUND;
 import static io.labs64.paymentgateway.domain.PaymentTransactionFailureCode.PAYMENT_PROVIDER_DISABLED;
 import static io.labs64.paymentgateway.domain.PaymentTransactionFailureCode.PSP_ERROR;
-import static io.labs64.paymentgateway.domain.PaymentTransactionStatuses.isTerminal;
 
 /**
  * Implementation of {@link PaymentService}.
- * Handles the full payment lifecycle including creation, execution, closing, and retry.
+ * Handles the full payment lifecycle including creation, execution, closing,
+ * and retry.
  */
 @Slf4j
 @Service
@@ -156,12 +155,15 @@ public class PaymentServiceImpl implements PaymentService {
     public PayPaymentResponse pay(final String tenantId, final UUID id, final PaymentExecutionRequest request) {
         log.info("Pay the payment for tenantId={}, id={}", tenantId, id);
         final PaymentEntity payment = getPayablePayment(tenantId, id);
-        final PaymentTransactionEntity transaction = createPendingTransaction(tenantId, payment);
         final PaymentExecutionRequest executionRequest = request != null ? request : PaymentExecutionRequest.empty();
 
         return switch (preparePaymentAttempt(payment)) {
-            case PaymentAttemptRejected rejected -> failPaymentAttempt(payment, transaction, rejected);
-            case PaymentAttemptReady ready -> executePaymentAttempt(payment, transaction, ready, executionRequest);
+            case PaymentAttemptRejected rejected -> {
+                final PaymentTransactionEntity transaction = createPendingTransaction(tenantId, payment);
+                yield failPaymentAttempt(payment, transaction, rejected);
+            }
+            case PaymentAttemptReady ready -> executePaymentAttempt(
+                    tenantId, payment, ready, executionRequest);
         };
     }
 
@@ -179,11 +181,12 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private PaymentTransactionEntity createPendingTransaction(final String tenantId, final PaymentEntity payment) {
-        final PaymentTransactionEntity transaction = transactionService.create(tenantId, PaymentTransactionEntity.builder()
-                .payment(payment)
-                .tenantId(tenantId)
-                .status(PaymentTransactionStatus.PENDING)
-                .build());
+        final PaymentTransactionEntity transaction = transactionService.create(tenantId,
+                PaymentTransactionEntity.builder()
+                        .payment(payment)
+                        .tenantId(tenantId)
+                        .status(PaymentTransactionStatus.PENDING)
+                        .build());
         correlationTraceService.attach(CorrelationEntityType.PAYMENT_TRANSACTION, transaction.getId());
         return transaction;
     }
@@ -205,23 +208,28 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private PayPaymentResponse executePaymentAttempt(
+            final String tenantId,
             final PaymentEntity payment,
-            final PaymentTransactionEntity transaction,
             final PaymentAttemptReady attempt,
             final PaymentExecutionRequest request) {
         final PaymentProvider provider = providerRegistry.getProvider(attempt.paymentProvider().getProvider());
-        final CheckoutSessionEntity session;
+        final CheckoutSessionDraft checkoutDraft = prepareCheckoutSessionDraft(
+                payment, attempt, provider, request).orElse(null);
+        final PaymentTransactionEntity transaction = createPendingTransaction(tenantId, payment);
+        final CheckoutSessionEntity session = checkoutDraft != null
+                ? createCheckoutSession(transaction, checkoutDraft)
+                : null;
         final PaymentResult result;
         try {
-            session = prepareCheckoutSession(payment, transaction, attempt, provider, request);
             result = executeProvider(payment, transaction, attempt, provider, session, request);
         } catch (ProviderException ex) {
-            log.warn("Payment provider execution failed: paymentId={}, paymentTransactionId={}, provider={}, message={}",
+            log.warn(
+                    "Payment provider execution failed: paymentId={}, paymentTransactionId={}, provider={}, message={}",
                     payment.getId(), transaction.getId(), attempt.paymentProvider().getProvider(), ex.getMessage(), ex);
             return failPaymentAttempt(payment, transaction, new PaymentAttemptRejected(PSP_ERROR, ex.getMessage()));
         }
 
-        applyExecutionResult(payment, transaction, session, result);
+        applyExecutionResult(transaction, session, result);
 
         log.info("Payment executed: paymentId={}, paymentTransactionId={}, status={}",
                 payment.getId(), transaction.getId(), transaction.getStatus());
@@ -246,23 +254,19 @@ public class PaymentServiceImpl implements PaymentService {
         return provider.execute(context);
     }
 
-    private CheckoutSessionEntity prepareCheckoutSession(
+    private Optional<CheckoutSessionDraft> prepareCheckoutSessionDraft(
             final PaymentEntity payment,
-            final PaymentTransactionEntity transaction,
             final PaymentAttemptReady attempt,
             final PaymentProvider provider,
             final PaymentExecutionRequest request) {
         if (!(provider instanceof ProviderCheckoutSupport checkoutSupport)) {
-            return null;
+            return Optional.empty();
         }
 
         final CheckoutPreparationContext context = paymentContextMapper
-                .toCheckoutPreparationContext(payment, transaction, attempt.paymentProvider(), request);
+                .toCheckoutPreparationContext(payment, attempt.paymentProvider(), request);
 
-        return checkoutSupport
-                .prepareCheckoutSession(context)
-                .map((draft) -> createCheckoutSession(transaction, draft))
-                .orElse(null);
+        return checkoutSupport.prepareCheckoutSession(context);
     }
 
     private CheckoutSessionEntity createCheckoutSession(
@@ -275,51 +279,24 @@ public class PaymentServiceImpl implements PaymentService {
             final PaymentEntity payment,
             final PaymentTransactionEntity transaction,
             final PaymentAttemptRejected failure) {
-        final PaymentTransactionEntity failedTransaction = failTransaction(transaction, failure.code(), failure.message());
-        paymentEventPublisher.publishFinalized(payment, failedTransaction);
+        final PaymentTransactionEntity failedTransaction = transactionService.updateIfNonTerminal(
+                transaction.getTenantId(),
+                transaction.getId(),
+                pt -> {
+                    pt.setStatus(PaymentTransactionStatus.FAILED);
+                    pt.setStatusDetails(StatusDetails.builder()
+                            .code(failure.code().name()).message(failure.message()).build());
+                    pt.setPspData(null);
+                    paymentEventPublisher.publishFinalized(pt.getPayment(), pt);
+                });
         return new PayPaymentResponse(payment, failedTransaction, null);
     }
 
-    private PaymentTransactionEntity failTransaction(
-            final PaymentTransactionEntity transaction,
-            final PaymentTransactionFailureCode code,
-            final String message) {
-        return transactionService.update(transaction.getTenantId(), transaction.getId(), (pt) -> {
-            pt.setStatus(PaymentTransactionStatus.FAILED);
-            pt.setStatusDetails(StatusDetails.builder()
-                    .code(code.name()).message(message).build());
-            pt.setPspData(null);
-        });
-    }
-
     private void applyExecutionResult(
-            final PaymentEntity payment,
             final PaymentTransactionEntity transaction,
             final CheckoutSessionEntity session,
             final PaymentResult result) {
-        final PaymentTransactionStatus resultStatus = PaymentContextMapper.toModelTransactionStatus(result.status());
-        final PaymentTransactionEntity updatedTransaction = transactionService.update(
-                transaction.getTenantId(),
-                transaction.getId(),
-                (pt) -> {
-                    pt.setStatus(resultStatus);
-                    pt.setStatusDetails(toStatusDetails(result.statusDetails()));
-                    pt.setPspData(result.pspData());
-                });
-        final boolean closesPayment = PaymentTransactionStatus.SUCCESS.equals(resultStatus)
-                && PaymentType.ONE_TIME.equals(payment.getType());
-
-        if (closesPayment) {
-            payment.setStatus(PaymentStatus.CLOSED);
-        }
-
-        if (isTerminal(resultStatus)) {
-            paymentEventPublisher.publishFinalized(payment, updatedTransaction);
-        }
-
-        if (closesPayment) {
-            paymentEventPublisher.publishClosed(payment, updatedTransaction);
-        }
+        transactionService.applyResult(transaction, result);
 
         if (result.nextAction() != null && session != null) {
             checkoutSessionService.updateNextAction(
@@ -336,13 +313,6 @@ public class PaymentServiceImpl implements PaymentService {
         data.put("type", nextAction.type().name());
         data.put("details", nextAction.details());
         return data;
-    }
-
-    private StatusDetails toStatusDetails(final io.labs64.paymentgateway.psp.spi.StatusDetails source) {
-        if (source == null) {
-            return null;
-        }
-        return StatusDetails.builder().code(source.code()).message(source.message()).build();
     }
 
     private PaymentProviderEntity getActivePaymentProvider(final String tenantId, final UUID paymentProviderId) {
