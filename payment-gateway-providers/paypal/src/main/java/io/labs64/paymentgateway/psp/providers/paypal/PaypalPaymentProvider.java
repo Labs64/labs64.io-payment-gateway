@@ -5,13 +5,20 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import com.paypal.sdk.Environment;
 import com.paypal.sdk.PaypalServerSdkClient;
 import com.paypal.sdk.authentication.ClientCredentialsAuthModel;
@@ -54,24 +61,30 @@ import io.labs64.paymentgateway.psp.spi.PaymentNextActionType;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
 import io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus;
+import io.labs64.paymentgateway.psp.spi.PaymentWebhookContext;
+import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutContext;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigField;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigSupport;
 import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
 import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
+import io.labs64.paymentgateway.psp.spi.ProviderWebhookSupport;
 import io.labs64.paymentgateway.psp.spi.StatusDetails;
+import io.labs64.paymentgateway.psp.spi.WebhookRejectedException;
+import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 /**
  * PayPal payment provider.
  * <p>
- * This class currently owns the PayPal tenant configuration contract and
- * browser checkout order create/capture flow.
+ * This class owns the PayPal tenant configuration contract, browser checkout,
+ * order capture, and verified webhook handling.
  */
 @Component
-public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSupport, ProviderCheckoutSupport {
+public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSupport,
+        ProviderCheckoutSupport, ProviderWebhookSupport {
 
     public static final String PROVIDER = "paypal";
 
@@ -79,6 +92,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
     private static final String CLIENT_ID = "clientId";
     private static final String CLIENT_SECRET = "clientSecret";
     private static final String ENVIRONMENT = "environment";
+    private static final String WEBHOOK_ID = "webhookId";
 
     // environment
     private static final String SANDBOX = "sandbox";
@@ -88,6 +102,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
     private static final String RETURN_URL = "returnUrl";
     private static final String CANCEL_URL = "cancelUrl";
     private static final String ORDER_ID = "orderId";
+    private static final String ORDER_APPROVED = "CHECKOUT.ORDER.APPROVED";
     private static final String APPROVE_REL = "approve";
     private static final String CONTENT_TYPE_JSON = "application/json";
     private static final String PREFER_REPRESENTATION = "return=representation";
@@ -99,7 +114,18 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
     private static final Set<ProviderConfigField> CONFIG_FIELDS = Set.of(
             ProviderConfigField.required(CLIENT_ID),
             ProviderConfigField.required(CLIENT_SECRET),
-            ProviderConfigField.required(ENVIRONMENT));
+            ProviderConfigField.required(ENVIRONMENT),
+            ProviderConfigField.required(WEBHOOK_ID));
+
+    private final PaypalWebhookVerifier webhookVerifier;
+
+    public PaypalPaymentProvider() {
+        this(new PaypalApiWebhookVerifier());
+    }
+
+    PaypalPaymentProvider(final PaypalWebhookVerifier webhookVerifier) {
+        this.webhookVerifier = webhookVerifier;
+    }
 
     @Override
     public String provider() {
@@ -177,6 +203,42 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
                 redirectToSessionPayload(context, CANCEL_URL));
     }
 
+    @Override
+    public UUID extractPaymentTransactionId(final WebhookRequest request) {
+        try {
+            return transactionId(payload(request.body()));
+        } catch (WebhookRejectedException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            throw new WebhookRejectedException("PayPal webhook payload is invalid.", ex);
+        }
+    }
+
+    @Override
+    public PaymentWebhookResult handleWebhook(final PaymentWebhookContext context) {
+        final String webhookId = requiredConfig(context.provider().config(), WEBHOOK_ID);
+        webhookVerifier.verify(client(context.provider().config()), webhookId, context.request());
+
+        final JsonObject payload = payload(context.request().body());
+        final UUID verifiedTransactionId = transactionId(payload);
+        if (!context.transaction().id().equals(verifiedTransactionId)) {
+            throw new WebhookRejectedException("PayPal webhook transaction does not match restored transaction.");
+        }
+
+        final String eventType = requiredString(payload, "event_type");
+        final JsonObject resource = requiredObject(payload, "resource");
+        if (ORDER_APPROVED.equals(eventType)) {
+            return captureApprovedOrder(context, payload, resource);
+        }
+
+        final PaymentTransactionStatus status = webhookStatus(eventType);
+        return new PaymentWebhookResult(
+                provider(),
+                status,
+                webhookData(payload, resource),
+                new StatusDetails(status.name(), "PayPal webhook mapped to payment status " + status + "."));
+    }
+
     private Order createOrder(final PaymentContext context) {
         final CreateOrderInput input = new CreateOrderInput.Builder(CONTENT_TYPE_JSON, toOrderRequest(context))
                 .prefer(PREFER_REPRESENTATION)
@@ -194,14 +256,24 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
     }
 
     private Order captureOrder(final ProviderCheckoutContext context, final String orderId) {
+        return captureOrder(
+                context.provider().config(),
+                context.transaction().id(),
+                orderId);
+    }
+
+    private Order captureOrder(
+            final Map<String, String> config,
+            final UUID transactionId,
+            final String orderId) {
         final CaptureOrderInput input = new CaptureOrderInput.Builder(orderId, CONTENT_TYPE_JSON)
                 .prefer(PREFER_REPRESENTATION)
-                .paypalRequestId(context.transaction().id().toString())
+                .paypalRequestId(transactionId.toString())
                 .body(new OrderCaptureRequest.Builder().build())
                 .build();
 
         try {
-            final ApiResponse<Order> response = client(context.provider().config())
+            final ApiResponse<Order> response = client(config)
                     .getOrdersController()
                     .captureOrder(input);
             return response.getResult();
@@ -575,6 +647,154 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
 
     private static String normalizedEnvironment(final String value) {
         return StringUtils.defaultString(value).trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static JsonObject payload(final String body) {
+        if (StringUtils.isBlank(body)) {
+            throw new WebhookRejectedException("PayPal webhook payload is empty.");
+        }
+        try {
+            final JsonElement payload = JsonParser.parseString(body);
+            if (!payload.isJsonObject()) {
+                throw new WebhookRejectedException("PayPal webhook payload is invalid.");
+            }
+            return payload.getAsJsonObject();
+        } catch (JsonParseException | IllegalStateException ex) {
+            throw new WebhookRejectedException("PayPal webhook payload is invalid.", ex);
+        }
+    }
+
+    private static UUID transactionId(final JsonObject payload) {
+        final JsonObject resource = requiredObject(payload, "resource");
+        String transactionId = string(resource, "invoice_id");
+        if (StringUtils.isBlank(transactionId)) {
+            transactionId = purchaseUnitTransactionId(resource);
+        }
+        if (StringUtils.isBlank(transactionId)) {
+            throw new WebhookRejectedException("PayPal webhook does not contain paymentTransactionId.");
+        }
+        try {
+            return UUID.fromString(transactionId);
+        } catch (IllegalArgumentException ex) {
+            throw new WebhookRejectedException("PayPal webhook contains an invalid paymentTransactionId.", ex);
+        }
+    }
+
+    private static String purchaseUnitTransactionId(final JsonObject resource) {
+        final JsonArray purchaseUnits = array(resource, "purchase_units");
+        if (purchaseUnits == null) {
+            return null;
+        }
+        for (JsonElement element : purchaseUnits) {
+            if (element.isJsonObject()) {
+                final String invoiceId = string(element.getAsJsonObject(), "invoice_id");
+                if (StringUtils.isNotBlank(invoiceId)) {
+                    return invoiceId;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static PaymentTransactionStatus webhookStatus(final String eventType) {
+        return switch (eventType) {
+            case "PAYMENT.CAPTURE.COMPLETED", "CHECKOUT.ORDER.COMPLETED" ->
+                    PaymentTransactionStatus.SUCCESS;
+            case "PAYMENT.CAPTURE.PENDING" ->
+                    PaymentTransactionStatus.PENDING;
+            case "PAYMENT.CAPTURE.DENIED", "PAYMENT.CAPTURE.DECLINED", "PAYMENT.CAPTURE.REVERSED" ->
+                    PaymentTransactionStatus.FAILED;
+            default -> throw new WebhookRejectedException("Unsupported PayPal webhook event: " + eventType);
+        };
+    }
+
+    private PaymentWebhookResult captureApprovedOrder(
+            final PaymentWebhookContext context,
+            final JsonObject payload,
+            final JsonObject resource) {
+        final String orderId = requiredString(resource, "id");
+        final Order order = captureOrder(
+                context.provider().config(),
+                context.transaction().id(),
+                orderId);
+        final PaymentTransactionStatus status = OrderStatus.COMPLETED.equals(order != null ? order.getStatus() : null)
+                ? PaymentTransactionStatus.SUCCESS
+                : PaymentTransactionStatus.FAILED;
+        final Map<String, Object> data = new LinkedHashMap<>(webhookData(payload, resource));
+        data.put(ORDER_ID, orderId);
+        data.put("captureStatus", status(order));
+        return new PaymentWebhookResult(
+                provider(),
+                status,
+                Map.copyOf(data),
+                toStatusDetails(order));
+    }
+
+    private static Map<String, Object> webhookData(
+            final JsonObject payload,
+            final JsonObject resource) {
+        final Map<String, Object> data = new LinkedHashMap<>();
+        putIfPresent(data, "eventId", string(payload, "id"));
+        putIfPresent(data, "eventType", string(payload, "event_type"));
+        putIfPresent(data, "resourceId", string(resource, "id"));
+        putIfPresent(data, "paypalStatus", string(resource, "status"));
+        putIfPresent(data, ORDER_ID, relatedOrderId(resource));
+        return Map.copyOf(data);
+    }
+
+    private static String relatedOrderId(final JsonObject resource) {
+        final JsonObject supplementaryData = object(resource, "supplementary_data");
+        final JsonObject relatedIds = object(supplementaryData, "related_ids");
+        return string(relatedIds, "order_id");
+    }
+
+    private static JsonObject requiredObject(final JsonObject source, final String name) {
+        final JsonObject value = object(source, name);
+        if (value == null) {
+            throw new WebhookRejectedException("PayPal webhook payload is missing " + name + ".");
+        }
+        return value;
+    }
+
+    private static String requiredString(final JsonObject source, final String name) {
+        final String value = string(source, name);
+        if (StringUtils.isBlank(value)) {
+            throw new WebhookRejectedException("PayPal webhook payload is missing " + name + ".");
+        }
+        return value;
+    }
+
+    private static JsonObject object(final JsonObject source, final String name) {
+        return source != null && source.has(name) && source.get(name).isJsonObject()
+                ? source.getAsJsonObject(name)
+                : null;
+    }
+
+    private static JsonArray array(final JsonObject source, final String name) {
+        return source != null && source.has(name) && source.get(name).isJsonArray()
+                ? source.getAsJsonArray(name)
+                : null;
+    }
+
+    private static String string(final JsonObject source, final String name) {
+        return source != null && source.has(name) && !source.get(name).isJsonNull()
+                && source.get(name).isJsonPrimitive()
+                ? source.get(name).getAsString()
+                : null;
+    }
+
+    private static String requiredConfig(final Map<String, String> config, final String name) {
+        final String value = config != null ? config.get(name) : null;
+        if (StringUtils.isBlank(value)) {
+            throw new WebhookRejectedException("PayPal provider config requires " + name + ".");
+        }
+        return value.trim();
+    }
+
+    private static void putIfPresent(final Map<String, Object> target, final String name, final String value) {
+        if (StringUtils.isNotBlank(value)) {
+            target.put(name, value);
+        }
     }
 
     private static String requireAbsoluteUri(final Map<String, Object> checkout, final String field) {
