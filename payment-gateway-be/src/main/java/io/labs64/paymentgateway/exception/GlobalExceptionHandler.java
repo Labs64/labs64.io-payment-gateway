@@ -19,6 +19,7 @@ import io.labs64.paymentgateway.message.ValidationMessages;
 import io.labs64.paymentgateway.psp.spi.ProviderException;
 import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
 import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
+import io.labs64.paymentgateway.psp.spi.WebhookRejectedException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 
@@ -43,6 +44,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ProviderValidationException.class)
     public ResponseEntity<ErrorResponse> handleProviderValidationException(final ProviderValidationException ex) {
         log.warn("Payment provider validation error: {}", ex.toString());
+        return buildResponse(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, ex.getMessage());
+    }
+
+    @ExceptionHandler(WebhookRejectedException.class)
+    public ResponseEntity<ErrorResponse> handleWebhookRejectedException(final WebhookRejectedException ex) {
+        log.warn("Provider webhook rejected: {}", ex.toString());
         return buildResponse(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, ex.getMessage());
     }
 

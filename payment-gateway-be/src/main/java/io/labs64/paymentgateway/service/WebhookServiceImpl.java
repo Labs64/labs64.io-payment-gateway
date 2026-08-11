@@ -6,14 +6,9 @@ import io.labs64.paymentgateway.correlation.CorrelationConstants;
 import io.labs64.paymentgateway.correlation.CorrelationEntityType;
 import io.labs64.paymentgateway.entity.PaymentEntity;
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
-import io.labs64.paymentgateway.exception.ConflictException;
 import io.labs64.paymentgateway.exception.NotFoundException;
 import io.labs64.paymentgateway.exception.ValidationException;
 import io.labs64.paymentgateway.mapper.PaymentContextMapper;
-import io.labs64.paymentgateway.model.PaymentStatus;
-import io.labs64.paymentgateway.model.PaymentTransactionStatus;
-import io.labs64.paymentgateway.model.PaymentType;
-import io.labs64.paymentgateway.model.StatusDetails;
 import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.ProviderWebhookSupport;
@@ -21,15 +16,12 @@ import io.labs64.paymentgateway.psp.spi.PaymentWebhookContext;
 import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
 import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import io.labs64.paymentgateway.repository.CorrelationTraceRepository;
-import io.labs64.paymentgateway.repository.PaymentRepository;
 import io.labs64.paymentgateway.repository.PaymentTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import static io.labs64.paymentgateway.domain.PaymentTransactionStatuses.isTerminal;
 
 /**
  * Implementation of {@link WebhookService}.
@@ -42,11 +34,10 @@ import static io.labs64.paymentgateway.domain.PaymentTransactionStatuses.isTermi
 public class WebhookServiceImpl implements WebhookService {
 
     private final PaymentProviderRegistry providerRegistry;
-    private final PaymentRepository paymentRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
+    private final PaymentTransactionService transactionService;
     private final CorrelationTraceRepository correlationTraceRepository;
     private final PaymentContextMapper paymentContextMapper;
-    private final PaymentEventPublisher paymentEventPublisher;
 
     @Override
     @Transactional
@@ -58,7 +49,7 @@ public class WebhookServiceImpl implements WebhookService {
             throw new ValidationException("Payment provider does not support webhooks: " + request.provider());
         }
 
-        final UUID transactionId = webhookSupport.resolveTransactionId(request);
+        final UUID transactionId = webhookSupport.extractPaymentTransactionId(request);
         final PaymentTransactionEntity transaction = paymentTransactionRepository.findById(transactionId)
                 .orElseThrow(() -> new NotFoundException("Payment transaction not found for ID: " + transactionId));
         final PaymentEntity payment = transaction.getPayment();
@@ -67,62 +58,16 @@ public class WebhookServiceImpl implements WebhookService {
         ensureWebhookProviderMatchesPaymentProvider(request, payment);
 
         final PaymentWebhookContext context = new PaymentWebhookContext(
-                paymentContextMapper.toPayment(payment),
                 paymentContextMapper.toPaymentTransaction(transaction),
                 paymentContextMapper.toProviderConfig(payment.getPaymentProvider()),
                 request);
         final PaymentWebhookResult result = webhookSupport.handleWebhook(context);
-        final PaymentTransactionStatus resultStatus = PaymentContextMapper.toModelTransactionStatus(result.status());
-
-        if (isTerminal(transaction.getStatus())) {
-            return handleAlreadyTerminalTransaction(transaction, result, resultStatus);
-        }
-
-        transaction.setStatus(resultStatus);
-        transaction.setStatusDetails(toStatusDetails(result.statusDetails()));
-        transaction.setPspData(result.pspData());
-
-        if (PaymentTransactionStatus.SUCCESS.equals(resultStatus)) {
-            if (PaymentType.ONE_TIME.equals(payment.getType())) {
-                payment.setStatus(PaymentStatus.CLOSED);
-            } else {
-                payment.setStatus(PaymentStatus.READY);
-            }
-            paymentRepository.save(payment);
-        }
-
-        if (isTerminal(resultStatus)) {
-            paymentEventPublisher.publishFinalized(payment, transaction);
-        }
-
-        if (PaymentTransactionStatus.SUCCESS.equals(resultStatus) && PaymentType.ONE_TIME.equals(payment.getType())) {
-            paymentEventPublisher.publishClosed(payment, transaction);
-        }
+        transactionService.applyResult(transaction, result);
 
         log.info("Webhook processed: provider={}, paymentTransactionId={}, status={}",
                 request.provider(), transaction.getId(), result.status());
 
         return result;
-    }
-
-    private PaymentWebhookResult handleAlreadyTerminalTransaction(
-            final PaymentTransactionEntity transaction,
-            final PaymentWebhookResult result,
-            final PaymentTransactionStatus resultStatus) {
-        if (transaction.getStatus().equals(resultStatus)) {
-            log.info("Ignoring duplicate terminal webhook: paymentTransactionId={}, status={}",
-                    transaction.getId(), transaction.getStatus());
-            return result;
-        }
-
-        throw new ConflictException("Payment transaction already has terminal status: " + transaction.getStatus());
-    }
-
-    private StatusDetails toStatusDetails(final io.labs64.paymentgateway.psp.spi.StatusDetails source) {
-        if (source == null) {
-            return null;
-        }
-        return StatusDetails.builder().code(source.code()).message(source.message()).build();
     }
 
     private void ensureWebhookProviderMatchesPaymentProvider(final WebhookRequest request, final PaymentEntity payment) {
@@ -139,9 +84,9 @@ public class WebhookServiceImpl implements WebhookService {
     private void restoreCorrelationId(final PaymentTransactionEntity transaction, final PaymentEntity payment) {
         correlationTraceRepository
                 .findFirstByEntityTypeAndEntityIdOrderByCreatedAtDesc(
-                        CorrelationEntityType.PAYMENT_TRANSACTION.name(), transaction.getId())
+                        CorrelationEntityType.PAYMENT_TRANSACTION, transaction.getId())
                 .or(() -> correlationTraceRepository.findFirstByEntityTypeAndEntityIdOrderByCreatedAtDesc(
-                        CorrelationEntityType.PAYMENT.name(), payment.getId()))
+                        CorrelationEntityType.PAYMENT, payment.getId()))
                 .ifPresent(trace -> MDC.put(CorrelationConstants.MDC_CORRELATION_ID, trace.getCorrelationId()));
     }
 }
