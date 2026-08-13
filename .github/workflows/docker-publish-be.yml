@@ -18,3 +18,15 @@ jobs:
       build-command: mvn -B -pl payment-gateway-be -am package
       java-version: "25"
     secrets: inherit
+
+  # Opens a PR in labs64.io-helm-charts pinning the digest into charts/payment-gateway.
+  propagate-to-chart:
+    name: Pin digest in charts/payment-gateway
+    needs: build-and-push
+    uses: Labs64/labs64.io-workspace/.github/workflows/chart-update-dispatch.yml@master
+    with:
+      chart: payment-gateway
+      version: ${{ github.event.release.tag_name }}
+      images: ${{ needs.build-and-push.outputs.image-ref }}
+    secrets:
+      CHART_DISPATCH_TOKEN: ${{ secrets.CHART_DISPATCH_TOKEN }}
