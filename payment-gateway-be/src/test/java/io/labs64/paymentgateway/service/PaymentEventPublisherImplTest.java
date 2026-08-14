@@ -4,16 +4,17 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
 
+import io.labs64.auditflow.model.AuditEvent;
 import io.labs64.paymentgateway.correlation.CorrelationContextHolder;
 import io.labs64.paymentgateway.entity.PaymentEntity;
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
-import io.labs64.paymentgateway.event.EventMetadata;
-import io.labs64.paymentgateway.event.Event;
-import io.labs64.paymentgateway.event.payment.PaymentEventPayload;
 import io.labs64.paymentgateway.event.payment.PaymentEvent;
-import io.labs64.paymentgateway.event.payment.PaymentEventRoute;
+import io.labs64.paymentgateway.event.payment.PaymentEventMapper;
 import io.labs64.paymentgateway.event.payment.PaymentSnapshot;
+import io.labs64.paymentgateway.event.payment.PaymentTransactionSnapshot;
+import io.labs64.paymentgateway.integration.auditflow.AuditFlowProperties;
+import io.labs64.paymentgateway.integration.auditflow.AuditFlowPublisher;
 import io.labs64.paymentgateway.model.PaymentStatus;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
 import io.labs64.paymentgateway.model.StatusDetails;
@@ -24,15 +25,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.messaging.Message;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentEventPublisherImplTest {
@@ -40,22 +38,25 @@ class PaymentEventPublisherImplTest {
     private static final String TENANT_ID = "tenant-a";
     private static final String PROVIDER = "noop";
     private static final String CORRELATION_ID = "correlation-1";
+    private static final String SOURCE_SYSTEM = "labs64.io-payment-gateway";
     private static final UUID PAYMENT_PROVIDER_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440010");
 
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
-    private StreamBridge streamBridge;
+    private AuditFlowPublisher auditFlowPublisher;
 
     private PaymentEventPublisherImpl publisher;
 
     @BeforeEach
     void setUp() {
+        final AuditFlowProperties properties = new AuditFlowProperties();
+        properties.setSourceSystem(SOURCE_SYSTEM);
         publisher = new PaymentEventPublisherImpl(
                 applicationEventPublisher,
-                streamBridge,
-                "labs64.io-payment-gateway");
+                new PaymentEventMapper(properties),
+                auditFlowPublisher);
     }
 
     @AfterEach
@@ -64,7 +65,7 @@ class PaymentEventPublisherImplTest {
     }
 
     @Test
-    void publishFinalizedBuildsStablePayloadWithCorrelationId() {
+    void publishFinalizedBuildsAuditEventWithDomainSnapshots() {
         CorrelationContextHolder.set(CORRELATION_ID);
         final PaymentEntity payment = payment();
         final PaymentTransactionEntity transaction = transaction(payment);
@@ -74,61 +75,54 @@ class PaymentEventPublisherImplTest {
         final ArgumentCaptor<PaymentEvent> captor = ArgumentCaptor.forClass(PaymentEvent.class);
         verify(applicationEventPublisher).publishEvent(captor.capture());
 
-        final PaymentEvent publication = captor.getValue();
-        final Event<PaymentEventPayload> message = publication.message();
+        final AuditEvent event = captor.getValue().auditEvent();
+        final PaymentSnapshot paymentSnapshot = (PaymentSnapshot) event.getExtra().get("payment");
+        final PaymentTransactionSnapshot transactionSnapshot =
+                (PaymentTransactionSnapshot) event.getExtra().get("transaction");
 
-        assertThat(publication.route()).isEqualTo(PaymentEventRoute.FINALIZED);
-        assertThat(message.event().type()).isEqualTo("payment.finalized");
-        assertThat(message.event().version()).isEqualTo(1);
-        assertThat(message.event().origin()).isEqualTo("labs64.io-payment-gateway");
-        assertThat(message.tenantId()).isEqualTo(TENANT_ID);
-        assertThat(message.correlationId()).isEqualTo(CORRELATION_ID);
-        assertThat(message.payload().payment().id()).isEqualTo(payment.getId());
-        assertThat(message.payload().payment().paymentProviderId()).isEqualTo(PAYMENT_PROVIDER_ID);
-        assertThat(message.payload().payment().provider()).isEqualTo(PROVIDER);
-        assertThat(message.payload().payment().purchaseOrder()).containsEntry("grossAmount", 3000L);
-        assertThat(message.payload().transaction().id()).isEqualTo(transaction.getId());
-        assertThat(message.payload().transaction().status()).isEqualTo(PaymentTransactionStatus.SUCCESS);
-        assertThat(message.payload().transaction().statusDetails()).isEqualTo(new StatusDetails().code("SUCCESS").message("Success"));
+        assertThat(event.getEventType()).isEqualTo("payment.finalized");
+        assertThat(event.getSourceSystem()).isEqualTo(SOURCE_SYSTEM);
+        assertThat(event.getTenantId()).isEqualTo(TENANT_ID);
+        assertThat(event.getCorrelationId()).isEqualTo(CORRELATION_ID);
+        assertThat(event.getEventId()).isNotNull();
+        assertThat(event.getEventTime()).isNotNull();
+        assertThat(event.getExtra()).containsEntry("eventVersion", 1);
+        assertThat(paymentSnapshot.id()).isEqualTo(payment.getId());
+        assertThat(paymentSnapshot.paymentProviderId()).isEqualTo(PAYMENT_PROVIDER_ID);
+        assertThat(paymentSnapshot.provider()).isEqualTo(PROVIDER);
+        assertThat(paymentSnapshot.purchaseOrder()).containsEntry("grossAmount", 3000L);
+        assertThat(transactionSnapshot.id()).isEqualTo(transaction.getId());
+        assertThat(transactionSnapshot.status()).isEqualTo(PaymentTransactionStatus.SUCCESS);
+        assertThat(transactionSnapshot.statusDetails())
+                .isEqualTo(new StatusDetails().code("SUCCESS").message("Success"));
     }
 
     @Test
-    void sendUsesBindingAndCorrelationHeaders() {
-        final PaymentEntity payment = payment();
-        final Event<PaymentEventPayload> message = new Event<>(
-                new EventMetadata(
-                        UUID.randomUUID(),
-                        "payment.created",
-                        1,
-                        "payment-gateway",
-                        OffsetDateTime.now()),
-                TENANT_ID,
-                CORRELATION_ID,
-                new PaymentEventPayload(
-                        new PaymentSnapshot(
-                                payment.getId(),
-                                PAYMENT_PROVIDER_ID,
-                                PROVIDER,
-                                PaymentStatus.READY,
-                                payment.getType(),
-                                null,
-                                payment.getPurchaseOrder(),
-                                null,
-                                null,
-                                null,
-                                null,
-                                payment.getCreatedAt(),
-                                payment.getUpdatedAt()),
-                        null));
-        when(streamBridge.send(eq("paymentCreated-out-0"), any())).thenReturn(true);
+    void sendPublishesMappedEventThroughAuditFlow() {
+        final AuditEvent event = new AuditEvent()
+                .eventType("payment.created")
+                .sourceSystem(SOURCE_SYSTEM)
+                .tenantId(TENANT_ID);
 
-        publisher.send(new PaymentEvent(PaymentEventRoute.CREATED, message));
+        publisher.send(new PaymentEvent(event));
 
-        final var captor = ArgumentCaptor.forClass(Message.class);
-        verify(streamBridge).send(eq("paymentCreated-out-0"), captor.capture());
-        assertThat(captor.getValue().getHeaders()).containsEntry("eventType", "payment.created");
-        assertThat(captor.getValue().getHeaders()).containsEntry("X-Correlation-ID", CORRELATION_ID);
-        assertThat(captor.getValue().getPayload()).isSameAs(message);
+        verify(auditFlowPublisher).publish(event);
+    }
+
+    @Test
+    void sendDoesNotPropagateAuditFlowFailure() {
+        final AuditEvent event = new AuditEvent()
+                .eventId(UUID.randomUUID())
+                .eventType("payment.created")
+                .sourceSystem(SOURCE_SYSTEM)
+                .tenantId(TENANT_ID);
+        doThrow(new IllegalStateException("AuditFlow unavailable"))
+                .when(auditFlowPublisher).publish(event);
+
+        assertThatCode(() -> publisher.send(new PaymentEvent(event)))
+                .doesNotThrowAnyException();
+
+        verify(auditFlowPublisher).publish(event);
     }
 
     private static PaymentEntity payment() {
