@@ -100,10 +100,6 @@ run:
 docu:
     open "http://localhost:8080/swagger-ui/index.html"
 
-# open RabbitMQ management UI in browser
-rabbitmq-ui:
-    open "http://localhost:15672"
-
 # clean build artifacts
 clean:
     mvn -f ../pom.xml -pl payment-gateway-be -am clean

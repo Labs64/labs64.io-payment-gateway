@@ -21,10 +21,10 @@
         <!-- API VERSIONS -->
         <payment-gateway.version>v1</payment-gateway.version>
         <payment-gateway-api.version>0.1.0-SNAPSHOT</payment-gateway-api.version>
+        <auditflow-api.version>0.1.0-SNAPSHOT</auditflow-api.version>
         <!-- DEPENDENCIES -->
         <java.version>25</java.version>
         <protobuf-java.version>4.35.1</protobuf-java.version>
-        <spring-cloud.version>2025.1.2</spring-cloud.version>
         <logstash.version>9.0</logstash.version>
         <labs64-openapi.version>0.1.0-SNAPSHOT</labs64-openapi.version>
         <openapitools.version>0.2.11</openapitools.version>
@@ -67,18 +67,6 @@
         <auth-public-paths.generated>${project.build.directory}/generated-resources/auth-public-paths</auth-public-paths.generated>
         <auth-policy.module>payment-gateway</auth-policy.module>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring-cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <dependencies>
         <!-- Canonical Payment Gateway API contract models. The backend generates
@@ -198,10 +186,15 @@
             <version>${mapstruct.version}</version>
         </dependency>
 
-        <!-- Spring Cloud SDK -->
+        <!-- AuditFlow HTTP client and standard OAuth2 client-credentials support. -->
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
+            <groupId>io.labs64</groupId>
+            <artifactId>auditflow-api</artifactId>
+            <version>${auditflow-api.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-client</artifactId>
         </dependency>
 
         <!-- Payment provider SPI and runtime implementations -->
