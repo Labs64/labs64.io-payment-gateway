@@ -154,6 +154,22 @@ class PaymentServiceImplTest {
     }
 
     @Test
+    void createRejectsRecurringPaymentWhenDefinitionDisallowsIt() {
+        final PaymentEntity input = payment();
+        input.setRecurrence(Map.of("type", "DURATION", "expression", "P1M", "timezone", "UTC"));
+        final PaymentProviderEntity paymentProvider = paymentProvider(true);
+        when(paymentProviderService.get(TENANT_ID, PAYMENT_PROVIDER_ID)).thenReturn(paymentProvider);
+        when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition()));
+        when(msg.recurringNotAllowed(PROVIDER)).thenReturn("recurring not allowed");
+
+        assertThatThrownBy(() -> service.create(TENANT_ID, PAYMENT_PROVIDER_ID, input))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("recurring not allowed");
+
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
     void payExecutesProviderAndClosesOneTimePaymentOnSuccess() {
         final PaymentEntity payment = payment();
         final PaymentTransactionEntity transaction = transaction(payment);
@@ -372,6 +388,20 @@ class PaymentServiceImplTest {
                 .isInstanceOf(PaymentNotPayableException.class);
 
         verify(transactionService, never()).create(any(), any());
+    }
+
+    @Test
+    void updateRejectsRecurringPaymentWhenDefinitionDisallowsIt() {
+        final PaymentEntity payment = payment();
+        when(paymentRepository.findByIdAndTenantId(payment.getId(), TENANT_ID)).thenReturn(Optional.of(payment));
+        when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition()));
+        when(msg.recurringNotAllowed(PROVIDER)).thenReturn("recurring not allowed");
+
+        assertThatThrownBy(() -> service.update(
+                TENANT_ID, payment.getId(),
+                p -> p.setRecurrence(Map.of("type", "DURATION", "expression", "P1M", "timezone", "UTC"))))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("recurring not allowed");
     }
 
     @Test
