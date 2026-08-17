@@ -26,6 +26,10 @@ public class PaymentMessages {
         return msg.get("payment.provider_disabled", provider);
     }
 
+    public String recurringNotAllowed(final String provider) {
+        return msg.get("payment.recurring_not_allowed", provider);
+    }
+
     public String idempotencyConflict(final String idempotencyKey) {
         return msg.get("payment.idempotency_conflict", idempotencyKey);
     }

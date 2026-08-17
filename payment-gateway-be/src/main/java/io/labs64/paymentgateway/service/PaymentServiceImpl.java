@@ -97,6 +97,7 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentEntity create(final String tenantId, final UUID paymentProviderId, final PaymentEntity entity) {
         entity.setTenantId(tenantId);
         entity.setPaymentProvider(getActivePaymentProvider(tenantId, paymentProviderId));
+        ensureRecurringAllowed(entity);
         entity.setStatus(PaymentStatus.READY);
 
         final PaymentEntity saved = paymentRepository.save(entity);
@@ -122,6 +123,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         updater.accept(entity);
+        ensureRecurringAllowed(entity);
 
         return entity;
     }
@@ -313,6 +315,20 @@ public class PaymentServiceImpl implements PaymentService {
         data.put("type", nextAction.type().name());
         data.put("details", nextAction.details());
         return data;
+    }
+
+    private void ensureRecurringAllowed(final PaymentEntity payment) {
+        if (!io.labs64.paymentgateway.model.PaymentType.RECURRING.equals(payment.getType())) {
+            return;
+        }
+
+        final String provider = payment.getPaymentProvider().getProvider();
+        final boolean recurringSupported = paymentDefinitionService.findEnabled(provider)
+                .map(definition -> definition.isRecurring())
+                .orElse(false);
+        if (!recurringSupported) {
+            throw new ConflictException(msg.recurringNotAllowed(provider));
+        }
     }
 
     private PaymentProviderEntity getActivePaymentProvider(final String tenantId, final UUID paymentProviderId) {
