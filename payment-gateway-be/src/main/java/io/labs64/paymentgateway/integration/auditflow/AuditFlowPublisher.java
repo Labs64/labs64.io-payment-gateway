@@ -4,10 +4,12 @@ import io.labs64.auditflow.client.AuditFlowClient;
 import io.labs64.auditflow.client.PublishResult;
 import io.labs64.auditflow.client.exception.AuditFlowException;
 import io.labs64.auditflow.model.AuditEvent;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /** Publishes through AuditFlow and replaces a rejected cached token once. */
 @Component
+@ConditionalOnProperty(prefix = AuditFlowProperties.PREFIX, name = "enabled", havingValue = "true")
 public class AuditFlowPublisher {
 
     private static final int HTTP_UNAUTHORIZED = 401;

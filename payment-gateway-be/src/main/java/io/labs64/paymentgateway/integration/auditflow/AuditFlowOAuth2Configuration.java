@@ -2,6 +2,7 @@ package io.labs64.paymentgateway.integration.auditflow;
 
 import io.labs64.auditflow.client.AuditFlowClient;
 import io.labs64.auditflow.client.RetryPolicy;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,7 @@ import org.springframework.security.oauth2.client.registration.InMemoryClientReg
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnProperty(prefix = AuditFlowProperties.PREFIX, name = "enabled", havingValue = "true")
 @EnableConfigurationProperties(AuditFlowProperties.class)
 public class AuditFlowOAuth2Configuration {
 

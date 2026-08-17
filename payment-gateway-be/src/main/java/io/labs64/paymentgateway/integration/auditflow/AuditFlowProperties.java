@@ -16,6 +16,10 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties("labs64.auditflow")
 public class AuditFlowProperties {
 
+    public static final String PREFIX = "labs64.auditflow";
+
+    private boolean enabled;
+
     @NotBlank
     private String url;
 
@@ -34,6 +38,14 @@ public class AuditFlowProperties {
     @Valid
     @NotNull
     private OAuth2 oauth2 = new OAuth2();
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(final boolean enabled) {
+        this.enabled = enabled;
+    }
 
     public String getUrl() {
         return url;

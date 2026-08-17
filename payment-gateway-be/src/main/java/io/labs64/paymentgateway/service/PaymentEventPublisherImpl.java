@@ -5,11 +5,11 @@ import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
 import io.labs64.paymentgateway.event.payment.PaymentEvent;
 import io.labs64.paymentgateway.event.payment.PaymentEventMapper;
 import io.labs64.paymentgateway.event.payment.PaymentEventType;
+import io.labs64.paymentgateway.integration.auditflow.AuditFlowProperties;
 import io.labs64.paymentgateway.integration.auditflow.AuditFlowPublisher;
 import lombok.extern.slf4j.Slf4j;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -20,6 +20,7 @@ import static org.springframework.transaction.event.TransactionPhase.AFTER_COMMI
 /** Maps payment lifecycle changes and publishes them to AuditFlow after commit. */
 @Slf4j
 @Service
+@ConditionalOnProperty(prefix = AuditFlowProperties.PREFIX, name = "enabled", havingValue = "true")
 public class PaymentEventPublisherImpl implements PaymentEventPublisher {
 
     private final ApplicationEventPublisher applicationEventPublisher;

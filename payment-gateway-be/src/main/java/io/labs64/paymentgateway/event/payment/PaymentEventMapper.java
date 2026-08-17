@@ -14,9 +14,11 @@ import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
 import io.labs64.paymentgateway.integration.auditflow.AuditFlowProperties;
 import io.labs64.paymentgateway.model.StatusDetails;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(prefix = AuditFlowProperties.PREFIX, name = "enabled", havingValue = "true")
 public class PaymentEventMapper {
 
     private static final int EVENT_VERSION = 1;
