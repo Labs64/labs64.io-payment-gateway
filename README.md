@@ -19,6 +19,11 @@ The backend consumes the shared models from `io.labs64:payment-gateway-api`
 and generates only its Spring server interfaces. An HTTP client is intentionally
 outside the current API module scope and will be designed separately.
 
+## Examples
+
+- [Stripe and PayPal demo runbook](examples/payment-gateway-stripe-paypal-demo.md)
+- [NoOp provider flow notebook](examples/payment-gateway-noop-flow.ipynb)
+
 The platform is designed with modular architecture and open integration standards, allowing companies to onboard and switch between multiple PSPs based on regional availability, performance, cost-efficiency, and compliance requirements. By centralizing payment operations, businesses can reduce technical complexity, ensure high availability, and gain better insights into transactional data.
 
 Core Features:
