@@ -125,16 +125,17 @@ labs64:
     gateway-path: /payment-gateway/api/v1
     local-path: /
   auditflow:
-    url: ${AUDITFLOW_URL}
+    enabled: ${AUDITFLOW_ENABLED:false}
+    url: ${AUDITFLOW_URL:}
     source-system: ${AUDITFLOW_SOURCE_SYSTEM:${spring.application.name}}
     connect-timeout: ${AUDITFLOW_CONNECT_TIMEOUT:5s}
     request-timeout: ${AUDITFLOW_REQUEST_TIMEOUT:10s}
     retry-max-attempts: ${AUDITFLOW_RETRY_MAX_ATTEMPTS:3}
     oauth2:
       registration-id: auditflow
-      token-uri: ${AUDITFLOW_OAUTH_TOKEN_URI}
-      client-id: ${AUDITFLOW_OAUTH_CLIENT_ID}
-      client-secret: ${AUDITFLOW_OAUTH_CLIENT_SECRET}
+      token-uri: ${AUDITFLOW_OAUTH_TOKEN_URI:}
+      client-id: ${AUDITFLOW_OAUTH_CLIENT_ID:}
+      client-secret: ${AUDITFLOW_OAUTH_CLIENT_SECRET:}
       scopes: ${AUDITFLOW_OAUTH_SCOPES:audit-event:write}
   auth-context:
     enabled: ${LABS64_AUTHCONTEXT_ENABLED:true}
