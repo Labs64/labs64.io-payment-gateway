@@ -7,14 +7,14 @@ on:
       - "payment-gateway-be/**"
       - "payment-gateway-providers/**"
       - "pom.xml"
-      - ".github/workflows/payment-gateway-be-ci.yml"
+      - ".github/workflows/labs64io-be-ci.yml"
       - ".github/compose/**"
   pull_request:
     paths:
       - "payment-gateway-be/**"
       - "payment-gateway-providers/**"
       - "pom.xml"
-      - ".github/workflows/payment-gateway-be-ci.yml"
+      - ".github/workflows/labs64io-be-ci.yml"
       - ".github/compose/**"
   workflow_dispatch:
 
