@@ -38,6 +38,7 @@ class IdempotencyResponseBodyAdviceTest {
                 "tenant-a",
                 "idk-1",
                 "hash-1",
+                "execution-1",
                 new IdempotencyOperation("POST", "/api/v1/payments/{paymentId}/pay"));
         servletRequest.setAttribute(IdempotencyInterceptor.REQUEST_CONTEXT_ATTRIBUTE, context);
         final IdempotencyResponseBodyAdvice advice = new IdempotencyResponseBodyAdvice(service, servletRequest, objectMapper);
@@ -66,6 +67,7 @@ class IdempotencyResponseBodyAdviceTest {
                 "tenant-a",
                 "idk-1",
                 "hash-1",
+                "execution-1",
                 new IdempotencyOperation("POST", "/api/v1/payments/{paymentId}/pay"));
         servletRequest.setAttribute(IdempotencyInterceptor.REQUEST_CONTEXT_ATTRIBUTE, context);
         final IdempotencyResponseBodyAdvice advice = new IdempotencyResponseBodyAdvice(service, servletRequest, objectMapper);

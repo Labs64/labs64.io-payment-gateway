@@ -106,10 +106,7 @@ payment-gateway:
     distributed-lock-ttl-seconds: 30
   idempotency:
     redis-ttl: ${IDEMPOTENCY_REDIS_TTL:PT3H}
-    database-ttl: ${IDEMPOTENCY_DATABASE_TTL:P1D}
     processing-timeout: ${IDEMPOTENCY_PROCESSING_TIMEOUT:PT5M}
-    cleanup-interval: ${IDEMPOTENCY_CLEANUP_INTERVAL:PT1H}
-    cleanup-batch-size: ${IDEMPOTENCY_CLEANUP_BATCH_SIZE:1000}
 
 # Trusted gateway auth-context (auth-context-spring-boot-starter).
 # Fail-closed: non-public paths 401 without valid X-Auth-* headers from the
