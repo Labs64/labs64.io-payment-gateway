@@ -20,20 +20,20 @@ Complete this section first.
 
 - The Kubernetes context points to the demo cluster.
 - Payment Gateway, API Gateway, mock OIDC, PostgreSQL, Redis, and RabbitMQ are
-  healthy.
+   healthy.
 - `gateway.localhost` resolves on the machine running the demo.
 - `curl`, `jq`, `just`, and Stripe CLI are installed.
 - Stripe is in a sandbox/test environment.
 - PayPal is in Sandbox mode.
 - Stripe CLI is authenticated to the same Stripe sandbox as the `sk_test_...`
-  key used below.
+   key used below.
 - The PayPal webhook belongs to the same REST application as the PayPal
-  `clientId` and `clientSecret`.
+   `clientId` and `clientSecret`.
 - A fresh PayPal personal sandbox buyer account is available.
 
 ### Verify the external Payment Gateway route
 
-```bash
+```bash {"terminalRows":"31"}
 export PG_API="http://gateway.localhost/payment-gateway/api/v1"
 
 curl --fail-with-body --silent --show-error \
@@ -42,37 +42,50 @@ curl --fail-with-body --silent --show-error \
 
 Expected: HTTP 200 and definitions containing `stripe` and `paypal`.
 
-### Verify the generated PSP callback base URL
+### Temporary Payment Gateway egress workaround
 
-Payment Gateway, not a provider, constructs the Stripe/PayPal browser callback
-URLs. For a local Kubernetes demo, the deployment must use:
-
-```text
-PAYMENT_GATEWAY_PUBLIC_BASE_URL=http://gateway.localhost/payment-gateway/api/v1
-```
-
-Inspect the deployed value:
+The Payment Gateway pod must be able to call the Stripe and PayPal HTTPS APIs.
+Until provider-specific egress rules are available in the Helm chart, apply the
+following temporary NetworkPolicy patch once after deploying the demo cluster:
 
 ```bash
-kubectl -n labs64io get deployment \
-  -l app.kubernetes.io/name=payment-gateway -o json |
-  jq -r '.. | objects |
-    select(.name? == "PAYMENT_GATEWAY_PUBLIC_BASE_URL") |
-    .value'
+kubectl -n labs64io patch networkpolicy labs64io-payment-gateway \
+  --type=json \
+  --patch='[
+    {
+      "op": "add",
+      "path": "/spec/egress/-",
+      "value": {
+        "to": [
+          {
+            "ipBlock": {
+              "cidr": "0.0.0.0/0",
+              "except": [
+                "10.0.0.0/8",
+                "172.16.0.0/12",
+                "192.168.0.0/16",
+                "169.254.0.0/16"
+              ]
+            }
+          }
+        ],
+        "ports": [
+          {
+            "protocol": "TCP",
+            "port": 443
+          }
+        ]
+      }
+    }
+  ]'
 ```
 
-If it is missing or still points to `localhost:8080`, merge this entry into
-the Payment Gateway Helm override and redeploy it before the demo:
+This opens outbound TCP port 443 to public IPv4 addresses while excluding
+private and link-local ranges. The patch is temporary and may be overwritten by
+a Helm upgrade or a NetworkPolicy reconciliation.
 
-```yaml
-env:
-  # Keep the existing entries too.
-  - name: PAYMENT_GATEWAY_PUBLIC_BASE_URL
-    value: http://gateway.localhost/payment-gateway/api/v1
-```
-
-Do not continue until a created Stripe/PayPal checkout receives callback URLs
-under `gateway.localhost/payment-gateway/api/v1/providers/...`.
+> **TODO:** Remove this workaround after the Helm chart provides restricted,
+> provider-aware egress for the Stripe and PayPal API endpoints.
 
 ## 1. Obtain the demo JWT
 
@@ -139,12 +152,11 @@ Official references:
 
 ### 2.2 Start Stripe webhook forwarding
 
-Keep this command running in a dedicated terminal:
+Keep this command running in a dedicated terminal. It is intentionally written
+on one line so it can be copied unchanged into Bash or PowerShell:
 
-```bash
-stripe listen \
-  --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired \
-  --forward-to http://gateway.localhost/payment-gateway/api/v1/providers/stripe/webhooks
+```sh
+stripe listen --events "checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired" --forward-to "http://gateway.localhost/payment-gateway/api/v1/providers/stripe/webhooks"
 ```
 
 Wait for:
@@ -313,7 +325,7 @@ After payment:
 - Stripe CLI prints `checkout.session.completed -> 200`;
 - the final redirect reaches the supplied `returnUrl`;
 - browser return and webhook may race, which is an intentional concurrency
-  demonstration.
+   demonstration.
 
 ### 2.6 Show the Stripe result
 
@@ -334,7 +346,7 @@ Expected:
 - transaction status: `SUCCESS`;
 - one-time payment status: `CLOSED`;
 - Stripe event name can remain in `pspData`, while normalized
-  `statusDetails.code` is `SUCCESS`.
+   `statusDetails.code` is `SUCCESS`.
 
 ## 3. PayPal setup
 
@@ -394,6 +406,7 @@ In the same PayPal Sandbox REST application:
    - **Payment capture pending** — `PAYMENT.CAPTURE.PENDING`;
    - **Payment capture denied** — `PAYMENT.CAPTURE.DENIED`;
    - **Payment capture reversed** — `PAYMENT.CAPTURE.REVERSED`.
+
 3. Save it and copy the webhook ID. This is the endpoint ID, not an event ID.
 
 `CHECKOUT.ORDER.APPROVED` is the key event: the provider captures the approved
@@ -542,7 +555,7 @@ This flow demonstrates that:
 - PG created the PayPal order with `intent=CAPTURE`;
 - PG stored its transaction UUID in PayPal `invoice_id`;
 - the browser return and `CHECKOUT.ORDER.APPROVED` webhook can both attempt
-  capture;
+   capture;
 - both use the transaction UUID as the PayPal idempotency key;
 - PG verifies the webhook against PayPal using the configured `webhookId`;
 - PG applies the provider result under a transaction lock.
