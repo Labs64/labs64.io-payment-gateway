@@ -4,5 +4,6 @@ public record IdempotencyContext(
         String tenantId,
         String idempotencyKey,
         String requestHash,
+        String executionToken,
         IdempotencyOperation operation) {
 }

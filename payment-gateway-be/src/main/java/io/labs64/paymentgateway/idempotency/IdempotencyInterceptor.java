@@ -6,6 +6,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Optional;
+import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.labs64.paymentgateway.exception.TenantRequiredException;
@@ -55,6 +56,7 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
                 requireTenantId(),
                 idempotencyKey,
                 requestHash(request),
+                UUID.randomUUID().toString(),
                 new IdempotencyOperation(request.getMethod(), pathPattern(request)));
 
         final Optional<IdempotencyResponse> cachedResponse = idempotencyService.startOrReplay(context);

@@ -34,11 +34,11 @@ public class PaymentGatewayProperties {
     void logConfiguration() {
         long enabledCount = paymentDefinitions.stream().filter(PaymentDefinition::isEnabled).count();
         log.info("Payment gateway config — paymentDefinitions: {} ({} enabled), retry.maxRetries: {}, "
-                + "idempotency.redisTtl: {}, idempotency.cleanupInterval: {}",
+                + "idempotency.redisTtl: {}, idempotency.processingTimeout: {}",
                 paymentDefinitions.size(), enabledCount,
                 retry.getMaxRetries(),
                 idempotency.getRedisTtl(),
-                idempotency.getCleanupInterval());
+                idempotency.getProcessingTimeout());
     }
 
     @Getter
@@ -71,9 +71,6 @@ public class PaymentGatewayProperties {
     @Setter
     public static class IdempotencyConfig {
         private Duration redisTtl = Duration.ofHours(3);
-        private Duration databaseTtl = Duration.ofDays(1);
         private Duration processingTimeout = Duration.ofMinutes(5);
-        private Duration cleanupInterval = Duration.ofHours(1);
-        private int cleanupBatchSize = 1000;
     }
 }

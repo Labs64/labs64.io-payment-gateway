@@ -10,6 +10,4 @@ public interface IdempotencyService {
     Optional<IdempotencyResponse> startOrReplay(IdempotencyContext context);
 
     void complete(IdempotencyContext context, IdempotencyResponse response);
-
-    void cleanupExpired();
 }
