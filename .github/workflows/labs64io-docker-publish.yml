@@ -1,4 +1,4 @@
-name: Labs64.IO - Payment Gateway Backend - Publish Docker
+name: Labs64.IO - Payment Gateway - Publish Docker
 
 permissions:
   contents: read
