@@ -19,7 +19,7 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 |------|---------|-------|------|------|
 | `payment-gateway-api/` | Shared API contract | Java 17, Maven | — | Canonical OpenAPI spec + validated shared models |
 | `payment-gateway-be/` | Backend | Java 25, Spring Boot 4.1.0, Maven | 8080 | REST API, idempotency, webhooks, provider registry |
-| `payment-gateway-providers/` | PSP modules | Java 25, Maven | — | `providers-spi/` (the SPI) + one module per PSP (`noop/`, `paypal/`) |
+| `payment-gateway-providers/` | PSP modules | Java 25, Maven | — | `providers-spi/` (the SPI) + one module per PSP (`noop/`, `paypal/`, `stripe/`) |
 | `payment-gateway-fe/` | Frontend | (stub — just a justfile) | — | Placeholder |
 | `tests/` | Tests | Robot Framework | — | Module-level e2e/integration tests |
 | `examples/` | Examples | — | — | Integration examples |
@@ -41,7 +41,7 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 - **Key services**: `PaymentService`, `PaymentTransactionService`, `PaymentProviderService`, `PaymentDefinitionService`, `PaymentNextActionService`, `WebhookService`, `IdempotencyService`
 - **Key controllers**: `PaymentController`, `PaymentTransactionController`, `PaymentProviderController`, `PaymentDefinitionController`, `WebhookController`
 - **PSP integration**: SPI-based plugin system. The SPI lives in its own module `payment-gateway-providers/providers-spi/` (package `io.labs64.paymentgateway.psp.spi`: `PaymentProvider`, `Payment`, `PaymentContext`, `PaymentResult`, `PaymentTransaction`, `ProviderCheckoutSupport`, `ProviderWebhookSupport`, `PaymentWebhookResult`, …).
-- **Current providers**: `NoopPaymentProvider` (`payment-gateway-providers/noop/`) and `PaypalPaymentProvider` (`payment-gateway-providers/paypal/`). Add new providers as a new module under `payment-gateway-providers/<name>/`.
+- **Current providers**: `NoopPaymentProvider` (`payment-gateway-providers/noop/`), `PaypalPaymentProvider` (`payment-gateway-providers/paypal/`), and `StripePaymentProvider` (`payment-gateway-providers/stripe/`). Add new providers as a new module under `payment-gateway-providers/<name>/`.
 - **Provider registry**: `PaymentProviderRegistry` in `payment-gateway-be` `psp/internal/` manages provider lookup.
 - **Idempotency**: Redis-backed idempotency with `IdempotencyInterceptor`, `IdempotencyService`, `IdempotencyCleanupScheduler`.
 - **Correlation**: `CorrelationTraceService` + `CorrelationContextHolder` for request tracing.
@@ -53,7 +53,7 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 
 ### Dockerfile
 
-- Base: `eclipse-temurin:25-alpine`
+- Base: `eclipse-temurin:25-jre`
 - Non-root user: `l64user` (uid/gid 1064)
 - Healthcheck: `/actuator/health/liveness`
 - Entrypoint: `java ${JAVA_OPTS} -jar app.jar`
