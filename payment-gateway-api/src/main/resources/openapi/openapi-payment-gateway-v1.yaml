@@ -475,17 +475,9 @@ paths:
       responses:
         "200":
           description: >-
-            Payment paid synchronously. Payment transaction status is SUCCESS or FAILED.
-            Both terminal states are returned as 200; inspect paymentTransaction.status to
-            determine the outcome.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ExecutePaymentResponse"
-        "202":
-          description: >-
-            Payment accepted for async processing. Payment transaction is PENDING
-            and will be updated via PSP webhook.
+            Payment request processed successfully. The payment transaction status is SUCCESS,
+            FAILED, or PENDING. Inspect paymentTransaction.status to determine the business
+            outcome and nextAction when further customer action is required.
           content:
             application/json:
               schema:
