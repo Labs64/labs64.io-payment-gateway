@@ -45,3 +45,23 @@ jobs:
       docker-build-context: ./payment-gateway-be
       docker-build-tag: payment-gateway:ci-${{ github.sha }}
       submit-dependency-graph: true
+
+  # Edge image — pushed to Docker Hub as :edge after a green master build, so
+  # downstream integration environments can run today's master without building it.
+  # labs64.io-tests' nightly regression deploys exactly this image; the release
+  # path, which additionally pins the digest into the Helm chart, stays in
+  # labs64io-docker-publish.yml.
+  edge-image:
+    name: Edge image (labs64/payment-gateway)
+    needs: build-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    uses: Labs64/labs64.io-workspace/.github/workflows/docker-publish.yml@master
+    with:
+      image: labs64/payment-gateway
+      context: ./payment-gateway-be
+      mode: edge
+      # The Dockerfile copies target/*.jar; -am so payment-gateway-providers is
+      # built into the reactor first.
+      build-command: mvn -B -ntp -DskipTests -pl payment-gateway-be -am package
+      java-version: "25"
+    secrets: inherit
