@@ -13,7 +13,7 @@ ${PAYMENT_FLOW_SESSION}    payment-flow-e2e
 *** Test Cases ***
 Complete synchronous payment through noop provider
     [Documentation]    A one-time payment moves from READY to CLOSED and persists one successful transaction.
-    [Tags]    payment-gateway    regression    critical
+    [Tags]    payment-gateway    regression
     ${provider_id}=    Ensure Active Noop Payment Provider    ${PAYMENT_FLOW_SESSION}
 
     ${create_response}=    Create Valid Payment    ${provider_id}    ${PAYMENT_FLOW_SESSION}
@@ -55,7 +55,7 @@ Complete synchronous payment through noop provider
 
 Replay identical pay request with the same idempotency key
     [Documentation]    Repeating the same pay command replays its response and creates no second transaction.
-    [Tags]    payment-gateway    regression    critical    idempotency
+    [Tags]    payment-gateway    regression    idempotency
     ${provider_id}=    Ensure Active Noop Payment Provider    ${PAYMENT_FLOW_SESSION}
     ${create_response}=    Create Valid Payment    ${provider_id}    ${PAYMENT_FLOW_SESSION}
     Response Status Should Be    ${create_response}    201

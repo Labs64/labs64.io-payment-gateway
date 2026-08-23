@@ -8,7 +8,7 @@ Suite Teardown   Delete All Sessions
 *** Test Cases ***
 Complete payment provider lifecycle
     [Documentation]    Tenant payment provider can be created, retrieved, updated, and deleted.
-    [Tags]    payment-gateway    regression    critical
+    [Tags]    payment-gateway    regression
     ${create_response}=    Create Payment Provider
     Response Status Should Be    ${create_response}    200
     ${provider_id}=    Set Variable    ${create_response.json()}[id]

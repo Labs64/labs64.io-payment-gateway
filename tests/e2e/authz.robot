@@ -33,14 +33,14 @@ Allow public access despite unrelated scope (200)
 
 Reject missing authorization for payment providers (401)
     [Documentation]    GET /payment-providers without auth header returns 401.
-    [Tags]    payment-gateway    regression    critical    auth
+    [Tags]    payment-gateway    regression    auth
     Create Unauthenticated Payment Gateway Session    pg-authz-no-auth
     ${response}=    List Payment Providers    pg-authz-no-auth
     Response Status Should Be    ${response}    401
 
 Reject malformed bearer token (401)
     [Documentation]    Invalid bearer credential returns 401.
-    [Tags]    payment-gateway    regression    critical    auth
+    [Tags]    payment-gateway    regression    auth
     # Deliberately nonsensical test fixture credential — not a real credential or signing key.
     ${headers}=    Create Dictionary
     ...    Authorization=Bearer test-fixture-malformed-jwt
@@ -52,35 +52,35 @@ Reject malformed bearer token (401)
 
 Reject wrong scope for payment providers (403)
     [Documentation]    Token missing payment-provider:read scope is denied with 403 by cerbos.
-    [Tags]    payment-gateway    regression    critical    auth    tenant-isolation
+    [Tags]    payment-gateway    regression    auth    tenant-isolation
     Create Payment Gateway Session With Scope    payment-provider:write    pg-authz-wrong-scope
     ${response}=    List Payment Providers    pg-authz-wrong-scope
     Response Status Should Be    ${response}    403
 
 Allow read-scoped access to payment providers (200)
     [Documentation]    Token with payment-provider:read scope is allowed.
-    [Tags]    payment-gateway    regression    critical    auth
+    [Tags]    payment-gateway    regression    auth
     Create Payment Gateway Session With Scope    payment-provider:read    pg-authz-correct-scope
     ${response}=    List Payment Providers    pg-authz-correct-scope
     Response Status Should Be    ${response}    200
 
 Reject create provider with read-only scope (403)
     [Documentation]    POST /payment-providers requires write scope; read-only token is denied.
-    [Tags]    payment-gateway    regression    critical    auth    tenant-isolation
+    [Tags]    payment-gateway    regression    auth    tenant-isolation
     Create Payment Gateway Session With Scope    payment-provider:read    pg-authz-create-denied
     ${response}=    Create Payment Provider    pg-authz-create-denied
     Response Status Should Be    ${response}    403
 
 Reject get provider details with read-only scope (403)
     [Documentation]    GET /payment-providers/{id} requires write scope to prevent config leak.
-    [Tags]    payment-gateway    regression    critical    auth    tenant-isolation
+    [Tags]    payment-gateway    regression    auth    tenant-isolation
     Create Payment Gateway Session With Scope    payment-provider:read    pg-authz-detail-denied
     ${response}=    Get Payment Provider    00000000-0000-0000-0000-000000000000    pg-authz-detail-denied
     Response Status Should Be    ${response}    403
 
 Reject token with no scopes (403)
     [Documentation]    Token with empty scope set is denied with 403 by cerbos.
-    [Tags]    payment-gateway    regression    critical    auth
+    [Tags]    payment-gateway    regression    auth
     Create Payment Gateway Session With Scope    no-access    pg-authz-no-scopes
     ${response}=    List Payment Providers    pg-authz-no-scopes
     Response Status Should Be    ${response}    403
@@ -123,21 +123,21 @@ Verify Cerbos deny in authproxy logs for no scopes (local-k8s)
 
 Reject missing read scope for payments (403)
     [Documentation]    GET /payments requires payment:read; token missing it is denied.
-    [Tags]    payment-gateway    regression    critical    auth    tenant-isolation
+    [Tags]    payment-gateway    regression    auth    tenant-isolation
     Create Payment Gateway Session With Scope    payment:write    pg-authz-payments-wrong-scope
     ${response}=    List Payments    pg-authz-payments-wrong-scope
     Response Status Should Be    ${response}    403
 
 Allow read-scoped access to payments (200)
     [Documentation]    GET /payments with payment:read scope is allowed.
-    [Tags]    payment-gateway    regression    critical    auth
+    [Tags]    payment-gateway    regression    auth
     Create Payment Gateway Session With Scope    payment:read    pg-authz-payments-correct-scope
     ${response}=    List Payments    pg-authz-payments-correct-scope
     Response Status Should Be    ${response}    200
 
 Reject read-only scope for creating payment (403)
     [Documentation]    POST /payments requires payment:write; read-only token is denied.
-    [Tags]    payment-gateway    regression    critical    auth    tenant-isolation
+    [Tags]    payment-gateway    regression    auth    tenant-isolation
     Create Payment Gateway Session With Scope    payment:read    pg-authz-payments-create-denied
     ${response}=    Create Payment    pg-authz-payments-create-denied
     Response Status Should Be    ${response}    403
