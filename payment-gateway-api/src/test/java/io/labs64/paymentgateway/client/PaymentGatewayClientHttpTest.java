@@ -74,6 +74,9 @@ class PaymentGatewayClientHttpTest {
         final CallOptions options = CallOptions.builder()
                 .correlationId("call-correlation")
                 .idempotencyKey("list-request-1")
+                .headers(Map.of(
+                        "Authorization", "Custom value",
+                        "X-Auth-User", "svc:auditflow"))
                 .build();
 
         final PagedResult<PaymentProvider> result = client.paymentProviders().list(query, options);
@@ -88,6 +91,7 @@ class PaymentGatewayClientHttpTest {
         assertEquals("Bearer token-1", first.authorization());
         assertEquals("call-correlation", first.correlationId());
         assertEquals("list-request-1", first.idempotencyKey());
+        assertEquals("svc:auditflow", first.internalUser());
         assertEquals(Map.of(
                 "currency", List.of("EUR"),
                 "country", List.of("DE"),
@@ -195,6 +199,7 @@ class PaymentGatewayClientHttpTest {
                 exchange.getRequestHeaders().getFirst("Authorization"),
                 exchange.getRequestHeaders().getFirst("X-Correlation-ID"),
                 exchange.getRequestHeaders().getFirst("Idempotency-Key"),
+                exchange.getRequestHeaders().getFirst("X-Auth-User"),
                 new String(requestBody, StandardCharsets.UTF_8)));
 
         final PreparedResponse response = preparedResponse.get();
@@ -274,6 +279,7 @@ class PaymentGatewayClientHttpTest {
             String authorization,
             String correlationId,
             String idempotencyKey,
+            String internalUser,
             String body) {
     }
 }

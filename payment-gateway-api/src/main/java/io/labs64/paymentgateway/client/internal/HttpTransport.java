@@ -90,11 +90,12 @@ class HttpTransport {
             request.timeout(effectiveTimeout);
         }
 
+        options.headers().forEach(request::setHeader);
         applyAuthorization(request);
-        resolveCorrelationId(options).ifPresent(value -> request.header(CORRELATION_HEADER, value));
+        resolveCorrelationId(options).ifPresent(value -> request.setHeader(CORRELATION_HEADER, value));
 
         if (options.idempotencyKey() != null) {
-            request.header(IDEMPOTENCY_HEADER, options.idempotencyKey());
+            request.setHeader(IDEMPOTENCY_HEADER, options.idempotencyKey());
         }
 
         try {
@@ -150,7 +151,7 @@ class HttpTransport {
         if (token == null || token.isBlank()) {
             throw new PaymentGatewayAuthenticationException("Access token provider returned a blank token", null);
         }
-        request.header("Authorization", "Bearer " + token.trim());
+        request.setHeader("Authorization", "Bearer " + token.trim());
     }
 
     private Optional<String> resolveCorrelationId(final CallOptions options) {

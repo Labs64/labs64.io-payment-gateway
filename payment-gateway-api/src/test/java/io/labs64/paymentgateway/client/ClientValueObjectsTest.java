@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class ClientValueObjectsTest {
@@ -18,6 +19,7 @@ class ClientValueObjectsTest {
                 .correlationId("correlation-1")
                 .idempotencyKey("payment-1")
                 .timeout(Duration.ofSeconds(10))
+                .header("X-Auth-User", "svc:auditflow")
                 .build();
 
         final CallOptions changed = original.toBuilder()
@@ -28,6 +30,7 @@ class ClientValueObjectsTest {
         assertEquals("correlation-2", changed.correlationId());
         assertEquals("payment-1", changed.idempotencyKey());
         assertEquals(Duration.ofSeconds(10), changed.timeout());
+        assertEquals(Map.of("X-Auth-User", "svc:auditflow"), changed.headers());
     }
 
     @Test
