@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
+        <version>4.1.1</version>
         <relativePath />
     </parent>
 
@@ -30,7 +30,9 @@
         <java.version>25</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <commons-lang3.version>3.20.0</commons-lang3.version>
-        <paypal.version>2.3.0</paypal.version>
+        <!-- TODO: RVA - move me to the submodule -->
+        <paypal.version>2.4.0</paypal.version>
+        <!-- TODO: RVA - move me to the submodule -->
         <stripe.version>33.3.0</stripe.version>
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
