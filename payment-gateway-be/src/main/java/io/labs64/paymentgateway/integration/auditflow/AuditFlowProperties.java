@@ -37,7 +37,7 @@ public class AuditFlowProperties {
 
     @Valid
     @NotNull
-    private OAuth2 oauth2 = new OAuth2();
+    private InternalCall internalCall = new InternalCall();
 
     public boolean isEnabled() {
         return enabled;
@@ -87,61 +87,28 @@ public class AuditFlowProperties {
         this.retryMaxAttempts = retryMaxAttempts;
     }
 
-    public OAuth2 getOauth2() {
-        return oauth2;
+    public InternalCall getInternalCall() {
+        return internalCall;
     }
 
-    public void setOauth2(final OAuth2 oauth2) {
-        this.oauth2 = oauth2;
+    public void setInternalCall(final InternalCall internalCall) {
+        this.internalCall = internalCall;
     }
 
-    public static class OAuth2 {
+    public static class InternalCall {
 
         @NotBlank
-        private String registrationId = "auditflow";
-
-        @NotBlank
-        private String tokenUri;
-
-        @NotBlank
-        private String clientId;
-
-        @NotBlank
-        private String clientSecret;
+        private String serviceName = "payment-gateway";
 
         @NotEmpty
-        private List<@NotBlank String> scopes = new ArrayList<>();
+        private List<@NotBlank String> scopes = new ArrayList<>(List.of("audit-event:write"));
 
-        public String getRegistrationId() {
-            return registrationId;
+        public String getServiceName() {
+            return serviceName;
         }
 
-        public void setRegistrationId(final String registrationId) {
-            this.registrationId = registrationId;
-        }
-
-        public String getTokenUri() {
-            return tokenUri;
-        }
-
-        public void setTokenUri(final String tokenUri) {
-            this.tokenUri = tokenUri;
-        }
-
-        public String getClientId() {
-            return clientId;
-        }
-
-        public void setClientId(final String clientId) {
-            this.clientId = clientId;
-        }
-
-        public String getClientSecret() {
-            return clientSecret;
-        }
-
-        public void setClientSecret(final String clientSecret) {
-            this.clientSecret = clientSecret;
+        public void setServiceName(final String serviceName) {
+            this.serviceName = serviceName;
         }
 
         public List<String> getScopes() {

@@ -101,6 +101,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- Framework-independent auth-context model and internal header encoding. -->
+        <dependency>
+            <groupId>io.labs64</groupId>
+            <artifactId>auth-context-core</artifactId>
+            <version>${auth-context.version}</version>
+        </dependency>
         <!-- Trusted gateway auth-context: X-Auth-* parsing, fail-closed
              enforcement and propagation. Replaces the former in-app Spring Security
              stack (SecurityConfig/DevAuthFilter). Served by Labs64 Nexus. -->
@@ -186,15 +192,11 @@
             <version>${mapstruct.version}</version>
         </dependency>
 
-        <!-- AuditFlow HTTP client and standard OAuth2 client-credentials support. -->
+        <!-- AuditFlow HTTP client; internal auth headers come from auth-context-core. -->
         <dependency>
             <groupId>io.labs64</groupId>
             <artifactId>auditflow-api</artifactId>
             <version>${auditflow-api.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-client</artifactId>
         </dependency>
 
         <!-- Payment provider SPI and runtime implementations -->
