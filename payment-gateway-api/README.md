@@ -48,7 +48,7 @@ PaymentProviderQuery query = PaymentProviderQuery.builder()
 PagedResult<PaymentProvider> providers = client.paymentProviders().list(query);
 ```
 
-`CallOptions` can override the correlation id and call timeout and can add an idempotency key.
+`CallOptions` can add request-scoped headers and an idempotency key, or override the correlation id and call timeout.
 List filters use query objects, so future optional filters do not require new method overloads.
 
 ## Build

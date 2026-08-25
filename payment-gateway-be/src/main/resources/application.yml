@@ -128,12 +128,9 @@ labs64:
     connect-timeout: ${AUDITFLOW_CONNECT_TIMEOUT:5s}
     request-timeout: ${AUDITFLOW_REQUEST_TIMEOUT:10s}
     retry-max-attempts: ${AUDITFLOW_RETRY_MAX_ATTEMPTS:3}
-    oauth2:
-      registration-id: auditflow
-      token-uri: ${AUDITFLOW_OAUTH_TOKEN_URI:}
-      client-id: ${AUDITFLOW_OAUTH_CLIENT_ID:}
-      client-secret: ${AUDITFLOW_OAUTH_CLIENT_SECRET:}
-      scopes: ${AUDITFLOW_OAUTH_SCOPES:audit-event:write}
+    internal-call:
+      service-name: ${AUDITFLOW_INTERNAL_SERVICE_NAME:payment-gateway}
+      scopes: ${AUDITFLOW_INTERNAL_SCOPES:audit-event:write}
   auth-context:
     enabled: ${LABS64_AUTHCONTEXT_ENABLED:true}
     public-paths:
@@ -159,6 +156,5 @@ logging:
   level:
     root: INFO
     io.labs64: DEBUG
-    org.springframework.security.oauth2.client: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%X{correlationId:-}] [%X{tenantId:-}] - %msg%n"
