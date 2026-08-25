@@ -17,6 +17,10 @@
     <name>Labs64.IO :: Payment Gateway :: PayPal Payment Provider</name>
     <description>PayPal Checkout and webhook provider for Labs64.IO Payment Gateway</description>
 
+    <properties>
+        <paypal.version>2.4.0</paypal.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.labs64</groupId>
@@ -25,6 +29,7 @@
         <dependency>
             <groupId>com.paypal.sdk</groupId>
             <artifactId>paypal-server-sdk</artifactId>
+            <version>${paypal.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
