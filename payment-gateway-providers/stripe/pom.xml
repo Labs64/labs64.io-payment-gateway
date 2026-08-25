@@ -17,6 +17,10 @@
     <name>Labs64.IO :: Payment Gateway :: Stripe Payment Provider</name>
     <description>Stripe Checkout and webhook provider for Labs64.IO Payment Gateway</description>
 
+    <properties>
+        <stripe.version>33.3.0</stripe.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.labs64</groupId>
@@ -25,6 +29,7 @@
         <dependency>
             <groupId>com.stripe</groupId>
             <artifactId>stripe-java</artifactId>
+            <version>${stripe.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
