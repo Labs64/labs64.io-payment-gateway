@@ -1,6 +1,6 @@
 services:
   app:
-    image: eclipse-temurin:25-jdk-alpine
+    image: eclipse-temurin:25-jre-alpine
     working_dir: /app
     env_file: ./.env
     environment:
