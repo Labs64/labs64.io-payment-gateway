@@ -30,10 +30,6 @@
         <java.version>25</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <commons-lang3.version>3.20.0</commons-lang3.version>
-        <!-- TODO: RVA - move me to the submodule -->
-        <paypal.version>2.4.0</paypal.version>
-        <!-- TODO: RVA - move me to the submodule -->
-        <stripe.version>33.3.0</stripe.version>
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
     </properties>
@@ -54,16 +50,6 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
                 <version>${commons-lang3.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.paypal.sdk</groupId>
-                <artifactId>paypal-server-sdk</artifactId>
-                <version>${paypal.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.stripe</groupId>
-                <artifactId>stripe-java</artifactId>
-                <version>${stripe.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
