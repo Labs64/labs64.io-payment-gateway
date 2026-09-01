@@ -1,0 +1,24 @@
+{
+  "name": "PayPal - issue upstream-error OAuth token",
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/oauth2/token",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Basic cGF5cGFsLWVycm9yLWNsaWVudC1pZDpwYXlwYWwtZXJyb3ItY2xpZW50LXNlY3JldA=="
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "access_token": "paypal-error-access-token",
+      "token_type": "Bearer",
+      "expires_in": 32400
+    }
+  }
+}

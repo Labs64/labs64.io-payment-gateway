@@ -1,0 +1,21 @@
+{
+  "name": "PayPal - verify webhook signature",
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/notifications/verify-webhook-signature",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer paypal-access-token"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "verification_status": "SUCCESS"
+    }
+  }
+}

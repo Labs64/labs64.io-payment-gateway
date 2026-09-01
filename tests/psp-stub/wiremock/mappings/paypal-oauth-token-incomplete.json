@@ -1,0 +1,24 @@
+{
+  "name": "PayPal - issue incomplete-response OAuth token",
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/oauth2/token",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Basic cGF5cGFsLWluY29tcGxldGUtY2xpZW50LWlkOnBheXBhbC1pbmNvbXBsZXRlLWNsaWVudC1zZWNyZXQ="
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "access_token": "paypal-incomplete-access-token",
+      "token_type": "Bearer",
+      "expires_in": 32400
+    }
+  }
+}

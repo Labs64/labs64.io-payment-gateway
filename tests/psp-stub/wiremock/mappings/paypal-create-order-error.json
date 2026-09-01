@@ -1,0 +1,24 @@
+{
+  "name": "PayPal - create order upstream error",
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/v2/checkout/orders",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer paypal-error-access-token"
+      }
+    }
+  },
+  "response": {
+    "status": 500,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "name": "INTERNAL_SERVER_ERROR",
+      "message": "Stubbed PayPal upstream failure",
+      "debug_id": "paypal-psp-stub-error"
+    }
+  }
+}
