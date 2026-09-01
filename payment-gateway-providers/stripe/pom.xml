@@ -18,7 +18,7 @@
     <description>Stripe Checkout and webhook provider for Labs64.IO Payment Gateway</description>
 
     <properties>
-        <stripe.version>33.3.0</stripe.version>
+        <stripe.version>33.4.0</stripe.version>
     </properties>
 
     <dependencies>
