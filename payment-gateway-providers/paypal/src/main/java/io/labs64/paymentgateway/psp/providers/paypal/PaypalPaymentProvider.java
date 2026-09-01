@@ -21,7 +21,6 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.paypal.sdk.Environment;
 import com.paypal.sdk.PaypalServerSdkClient;
-import com.paypal.sdk.authentication.ClientCredentialsAuthModel;
 import com.paypal.sdk.http.response.ApiResponse;
 import com.paypal.sdk.models.Address;
 import com.paypal.sdk.models.AmountBreakdown;
@@ -74,7 +73,6 @@ import io.labs64.paymentgateway.psp.spi.StatusDetails;
 import io.labs64.paymentgateway.psp.spi.WebhookRejectedException;
 import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.stereotype.Component;
 
 /**
  * PayPal payment provider.
@@ -82,7 +80,6 @@ import org.springframework.stereotype.Component;
  * This class owns the PayPal tenant configuration contract, browser checkout,
  * order capture, and verified webhook handling.
  */
-@Component
 public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSupport,
         ProviderCheckoutSupport, ProviderWebhookSupport {
 
@@ -117,13 +114,17 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
             ProviderConfigField.required(ENVIRONMENT),
             ProviderConfigField.required(WEBHOOK_ID));
 
+    private final PaypalClientFactory clientFactory;
     private final PaypalWebhookVerifier webhookVerifier;
 
-    public PaypalPaymentProvider() {
-        this(new PaypalApiWebhookVerifier());
+    public PaypalPaymentProvider(final PaypalClientFactory clientFactory) {
+        this(clientFactory, new PaypalApiWebhookVerifier(clientFactory));
     }
 
-    PaypalPaymentProvider(final PaypalWebhookVerifier webhookVerifier) {
+    PaypalPaymentProvider(
+            final PaypalClientFactory clientFactory,
+            final PaypalWebhookVerifier webhookVerifier) {
+        this.clientFactory = clientFactory;
         this.webhookVerifier = webhookVerifier;
     }
 
@@ -515,13 +516,10 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
     }
 
     private PaypalServerSdkClient client(final Map<String, String> config) {
-        return new PaypalServerSdkClient.Builder()
-                .environment(toEnvironment(config.get(ENVIRONMENT)))
-                .clientCredentialsAuth(new ClientCredentialsAuthModel.Builder(
-                        config.get(CLIENT_ID),
-                        config.get(CLIENT_SECRET))
-                        .build())
-                .build();
+        return clientFactory.create(
+                config.get(CLIENT_ID),
+                config.get(CLIENT_SECRET),
+                toEnvironment(config.get(ENVIRONMENT)));
     }
 
     private static Environment toEnvironment(final String value) {

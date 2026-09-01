@@ -35,7 +35,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PaypalPaymentProviderTest {
 
-    private final PaypalPaymentProvider provider = new PaypalPaymentProvider();
+    private static final PaypalClientFactory CLIENT_FACTORY =
+            new PaypalClientFactory(new PaypalClientProperties(null));
+
+    private final PaypalPaymentProvider provider = new PaypalPaymentProvider(CLIENT_FACTORY);
 
     @Test
     void providerReturnsPaypalIdentifier() {
@@ -194,7 +197,7 @@ class PaypalPaymentProviderTest {
     void handleWebhookVerifiesAndMapsCompletedCapture() {
         final UUID transactionId = UUID.randomUUID();
         final AtomicReference<String> verifiedWebhookId = new AtomicReference<>();
-        final PaypalPaymentProvider webhookProvider = new PaypalPaymentProvider(
+        final PaypalPaymentProvider webhookProvider = new PaypalPaymentProvider(CLIENT_FACTORY,
                 (client, webhookId, request) -> verifiedWebhookId.set(webhookId));
         final WebhookRequest request = webhookRequest(capturePayload(
                 transactionId, "PAYMENT.CAPTURE.COMPLETED", "COMPLETED"));
@@ -217,7 +220,7 @@ class PaypalPaymentProviderTest {
     @Test
     void handleWebhookRejectsWhenPaypalVerificationFails() {
         final UUID transactionId = UUID.randomUUID();
-        final PaypalPaymentProvider webhookProvider = new PaypalPaymentProvider((client, webhookId, request) -> {
+        final PaypalPaymentProvider webhookProvider = new PaypalPaymentProvider(CLIENT_FACTORY, (client, webhookId, request) -> {
             throw new WebhookRejectedException("PayPal webhook verification failed.");
         });
         final PaymentWebhookContext context = webhookContext(
@@ -232,7 +235,7 @@ class PaypalPaymentProviderTest {
     @Test
     void handleWebhookMapsPendingCapture() {
         final UUID transactionId = UUID.randomUUID();
-        final PaypalPaymentProvider webhookProvider = new PaypalPaymentProvider((client, webhookId, request) -> { });
+        final PaypalPaymentProvider webhookProvider = new PaypalPaymentProvider(CLIENT_FACTORY, (client, webhookId, request) -> { });
 
         final PaymentWebhookResult result = webhookProvider.handleWebhook(webhookContext(
                 transactionId,
@@ -245,7 +248,7 @@ class PaypalPaymentProviderTest {
     @Test
     void handleWebhookMapsDeniedCaptureToFailed() {
         final UUID transactionId = UUID.randomUUID();
-        final PaypalPaymentProvider webhookProvider = new PaypalPaymentProvider((client, webhookId, request) -> { });
+        final PaypalPaymentProvider webhookProvider = new PaypalPaymentProvider(CLIENT_FACTORY, (client, webhookId, request) -> { });
 
         final PaymentWebhookResult result = webhookProvider.handleWebhook(webhookContext(
                 transactionId,
@@ -259,7 +262,7 @@ class PaypalPaymentProviderTest {
     void handleWebhookRejectsVerifiedTransactionMismatch() {
         final UUID restoredTransactionId = UUID.randomUUID();
         final UUID payloadTransactionId = UUID.randomUUID();
-        final PaypalPaymentProvider webhookProvider = new PaypalPaymentProvider((client, webhookId, request) -> { });
+        final PaypalPaymentProvider webhookProvider = new PaypalPaymentProvider(CLIENT_FACTORY, (client, webhookId, request) -> { });
 
         assertThatThrownBy(() -> webhookProvider.handleWebhook(webhookContext(
                 restoredTransactionId,
