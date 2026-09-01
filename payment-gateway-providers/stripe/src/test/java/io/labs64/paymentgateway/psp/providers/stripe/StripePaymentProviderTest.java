@@ -33,7 +33,8 @@ class StripePaymentProviderTest {
 
     private static final String WEBHOOK_SECRET = "whsec_test_secret";
 
-    private final StripePaymentProvider provider = new StripePaymentProvider();
+    private final StripePaymentProvider provider = new StripePaymentProvider(
+            new StripeClientFactory(new StripeClientProperties(null)));
 
     @Test
     void providerReturnsStripeIdentifier() {

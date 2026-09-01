@@ -29,6 +29,28 @@ Never commit real keys. The Stripe CLI signing secret and the Dashboard
 endpoint signing secret are different values. Store the secret belonging to
 the endpoint that sends events to the current environment.
 
+## API endpoint override
+
+By default, the provider lets the Stripe SDK use Stripe's official API endpoint. Isolated
+integration environments may set the provider-owned Spring property:
+
+```yaml
+payment-provider:
+  stripe:
+    api-base-url: http://localhost:8090
+```
+
+Spring's environment-variable equivalent is:
+
+```bash
+PAYMENT_PROVIDER_STRIPE_API_BASE_URL=http://localhost:8090
+```
+
+This is process-level test infrastructure configuration, not tenant `PaymentProvider` config.
+The Stripe provider's auto-configuration owns the property and applies it only while constructing
+the Stripe SDK client. If it is absent, the SDK default is unchanged. Payment Gateway does not
+contain Stripe-specific configuration binding.
+
 ## Webhook endpoint
 
 The backend route is:
@@ -114,6 +136,34 @@ in the local Stripe provider configuration while the listener is in use.
    terminal result cannot overwrite the transaction.
 9. For a successful one-time payment, the transaction becomes `SUCCESS`, the
    payment becomes `CLOSED`, and finalized/closed events are published.
+
+## Automated PSP integration coverage
+
+The opt-in Robot suite `tests/e2e/stripe_psp_flow.robot` runs the built Payment Gateway through
+the public gateway edge while the real Stripe Java SDK talks to an external WireMock process.
+It covers:
+
+- the outbound create-session HTTP contract, including amount, currency, metadata, callbacks,
+  authorization, and the provider-side idempotency key;
+- replay of the same `/pay` request without a second Stripe call;
+- Stripe 5xx and incomplete-success responses mapped to synchronous `FAILED/PSP_ERROR` results;
+- paid and unpaid browser returns, cancellation, tenant redirects, and persisted state;
+- valid success/failure webhook signatures, invalid-signature rejection, and protection of a
+  terminal successful transaction from a late failure event.
+
+Run it through the shared test orchestrator:
+
+```bash
+cd ../labs64.io-tests
+just test-up
+just test-psp
+just test-down
+```
+
+This deterministic suite verifies our integration contract and state transitions. It does not
+prove that Stripe's hosted UI, credentials, account configuration, or live network are healthy;
+those remain the responsibility of a small separately scheduled smoke flow against Stripe test
+mode.
 
 ## Troubleshooting
 
