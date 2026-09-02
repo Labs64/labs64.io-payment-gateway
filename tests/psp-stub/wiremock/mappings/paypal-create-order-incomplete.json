@@ -1,0 +1,24 @@
+{
+  "name": "PayPal - create incomplete order",
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/v2/checkout/orders",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer paypal-incomplete-access-token"
+      }
+    }
+  },
+  "response": {
+    "status": 201,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": "PAYPAL-ORDER-INCOMPLETE",
+      "status": "CREATED",
+      "links": []
+    }
+  }
+}

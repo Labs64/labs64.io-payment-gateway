@@ -1,0 +1,25 @@
+{
+  "name": "Stripe - create Checkout Session upstream error",
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/checkout/sessions",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer sk_test_psp_stub_error"
+      }
+    }
+  },
+  "response": {
+    "status": 500,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "error": {
+        "type": "api_error",
+        "message": "Stubbed Stripe upstream failure"
+      }
+    }
+  }
+}

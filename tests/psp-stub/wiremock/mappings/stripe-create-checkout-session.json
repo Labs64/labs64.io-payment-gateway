@@ -1,0 +1,36 @@
+{
+  "name": "Stripe - create Checkout Session",
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/checkout/sessions",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer sk_test_psp_stub"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "contains": "mode=payment"
+      },
+      {
+        "contains": "client_reference_id="
+      },
+      {
+        "contains": "success_url="
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": "cs_test_psp_stub",
+      "object": "checkout.session",
+      "payment_status": "unpaid",
+      "status": "open",
+      "url": "https://checkout.stripe.test/c/pay/cs_test_psp_stub"
+    }
+  }
+}

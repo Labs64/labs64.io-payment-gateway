@@ -33,6 +33,28 @@ Example configuration:
 Never commit real credentials. `webhookId` is the ID of the registered webhook
 endpoint, not the ID of an individual delivered event.
 
+## API endpoint override
+
+By default, the provider lets the PayPal SDK use PayPal's official Sandbox or Live endpoint.
+Isolated integration environments may set the provider-owned Spring property:
+
+```yaml
+payment-provider:
+  paypal:
+    api-base-url: http://localhost:8090
+```
+
+Spring's environment-variable equivalent is:
+
+```bash
+PAYMENT_PROVIDER_PAYPAL_API_BASE_URL=http://localhost:8090
+```
+
+This is process-level infrastructure configuration, not tenant `PaymentProvider` config. The
+PayPal provider's auto-configuration applies it while constructing SDK clients and while sending
+webhook verification requests. If absent, the official SDK endpoint is unchanged; Payment
+Gateway does not own PayPal-specific configuration binding.
+
 ## Webhook endpoint
 
 The backend route is:
@@ -131,6 +153,24 @@ PayPal documentation:
    duplicate return or capture webhook cannot overwrite a terminal transaction.
 10. For a successful one-time payment, the transaction becomes `SUCCESS`, the
     payment becomes `CLOSED`, and finalized/closed events are published.
+
+## Automated PSP integration coverage
+
+The opt-in Robot suite `tests/e2e/paypal_psp_flow.robot` runs the built Payment Gateway through
+the public gateway edge while the real PayPal Java SDK talks to external WireMock. It covers the
+OAuth, create-order, capture-order, and webhook-verification HTTP contracts; idempotent replay;
+upstream and incomplete responses; browser return/cancel; approved-order capture fallback;
+completed and denied events; verification rejection; and terminal-state protection.
+
+```bash
+cd ../labs64.io-tests
+just test-up
+just test-psp
+just test-down
+```
+
+The deterministic suite verifies our integration and state transitions. It does not prove that
+PayPal credentials, account configuration, hosted checkout, or the live PayPal network are healthy.
 
 ## Troubleshooting
 

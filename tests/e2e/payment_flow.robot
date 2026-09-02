@@ -86,3 +86,61 @@ Replay identical pay request with the same idempotency key
     ${transactions}=    Set Variable    ${transactions_response.json()}[items]
     Length Should Be    ${transactions}    1
     Should Be Equal As Strings    ${transactions}[0][id]    ${transaction_id}
+
+Reject idempotency key reused for another payment
+    [Documentation]    An idempotency key cannot replay a pay result for a different payment resource.
+    [Tags]    payment-gateway    regression    idempotency
+    ${provider_id}=    Ensure Active Noop Payment Provider    ${PAYMENT_FLOW_SESSION}
+    ${first_create_response}=    Create Valid Payment    ${provider_id}    ${PAYMENT_FLOW_SESSION}
+    Response Status Should Be    ${first_create_response}    201
+    ${first_payment_id}=    Set Variable    ${first_create_response.json()}[id]
+    ${second_create_response}=    Create Valid Payment    ${provider_id}    ${PAYMENT_FLOW_SESSION}
+    Response Status Should Be    ${second_create_response}    201
+    ${second_payment_id}=    Set Variable    ${second_create_response.json()}[id]
+    ${idempotency_key}=    Evaluate    str(uuid.uuid4())    modules=uuid
+
+    ${first_pay_response}=    Pay Payment
+    ...    ${first_payment_id}
+    ...    ${PAYMENT_FLOW_SESSION}
+    ...    idempotency_key=${idempotency_key}
+    Response Status Should Be    ${first_pay_response}    200
+
+    ${conflict_response}=    Pay Payment
+    ...    ${second_payment_id}
+    ...    ${PAYMENT_FLOW_SESSION}
+    ...    idempotency_key=${idempotency_key}
+    Response Status Should Be    ${conflict_response}    409
+    Response Should Contain Key    ${conflict_response}    code
+    Should Be Equal As Strings    ${conflict_response.json()}[code]    IDEMPOTENCY_CONFLICT
+
+    ${second_payment_response}=    Get Payment    ${second_payment_id}    ${PAYMENT_FLOW_SESSION}
+    Response Status Should Be    ${second_payment_response}    200
+    Should Be Equal As Strings    ${second_payment_response.json()}[status]    READY
+    ${transactions_response}=    List Payment Transactions    ${second_payment_id}    ${PAYMENT_FLOW_SESSION}
+    Response Status Should Be    ${transactions_response}    200
+    Length Should Be    ${transactions_response.json()}[items]    0
+
+Close a ready payment before execution
+    [Documentation]    Closing a READY payment prevents execution and creates no payment transaction.
+    [Tags]    payment-gateway    regression
+    ${provider_id}=    Ensure Active Noop Payment Provider    ${PAYMENT_FLOW_SESSION}
+    ${create_response}=    Create Valid Payment    ${provider_id}    ${PAYMENT_FLOW_SESSION}
+    Response Status Should Be    ${create_response}    201
+    ${payment_id}=    Set Variable    ${create_response.json()}[id]
+
+    ${close_response}=    Close Payment    ${payment_id}    ${PAYMENT_FLOW_SESSION}
+    Response Status Should Be    ${close_response}    200
+    Should Be Equal As Strings    ${close_response.json()}[id]    ${payment_id}
+    Should Be Equal As Strings    ${close_response.json()}[status]    CLOSED
+
+    ${payment_response}=    Get Payment    ${payment_id}    ${PAYMENT_FLOW_SESSION}
+    Response Status Should Be    ${payment_response}    200
+    Should Be Equal As Strings    ${payment_response.json()}[status]    CLOSED
+
+    ${pay_response}=    Pay Payment    ${payment_id}    ${PAYMENT_FLOW_SESSION}
+    Response Status Should Be    ${pay_response}    409
+    Response Should Contain Key    ${pay_response}    code
+    Should Be Equal As Strings    ${pay_response.json()}[code]    PAYMENT_NOT_PAYABLE
+    ${transactions_response}=    List Payment Transactions    ${payment_id}    ${PAYMENT_FLOW_SESSION}
+    Response Status Should Be    ${transactions_response}    200
+    Length Should Be    ${transactions_response.json()}[items]    0

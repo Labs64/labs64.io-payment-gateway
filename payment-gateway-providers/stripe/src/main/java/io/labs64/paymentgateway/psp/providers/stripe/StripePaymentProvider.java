@@ -14,6 +14,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import com.stripe.StripeClient;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
@@ -43,7 +44,6 @@ import io.labs64.paymentgateway.psp.spi.ProviderWebhookSupport;
 import io.labs64.paymentgateway.psp.spi.StatusDetails;
 import io.labs64.paymentgateway.psp.spi.WebhookRejectedException;
 import io.labs64.paymentgateway.psp.spi.WebhookRequest;
-import org.springframework.stereotype.Component;
 
 /**
  * Stripe-hosted Checkout provider.
@@ -52,7 +52,6 @@ import org.springframework.stereotype.Component;
  * receives gateway-owned callback URLs through the checkout SPI and never constructs gateway
  * routes itself.
  */
-@Component
 public class StripePaymentProvider implements PaymentProvider, ProviderConfigSupport,
         ProviderCheckoutSupport, ProviderWebhookSupport {
 
@@ -74,6 +73,12 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
     private static final Set<ProviderConfigField> CONFIG_FIELDS = Set.of(
             ProviderConfigField.required(SECRET_KEY),
             ProviderConfigField.required(WEBHOOK_SECRET));
+
+    private final StripeClientFactory clientFactory;
+
+    public StripePaymentProvider(final StripeClientFactory clientFactory) {
+        this.clientFactory = clientFactory;
+    }
 
     @Override
     public String provider() {
@@ -117,7 +122,8 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
         final SessionCreateParams params = checkoutSessionParams(context);
         final Session session;
         try {
-            session = Session.create(params, requestOptions(context.provider().config(), context.transaction().id()));
+            final StripeClient client = stripeClient(context.provider().config());
+            session = client.v1().checkout().sessions().create(params, requestOptions(context.transaction().id()));
         } catch (StripeException ex) {
             throw new ProviderExecutionException("Stripe Checkout session creation failed.", ex);
         }
@@ -139,7 +145,8 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
         final String sessionId = requireQueryParam(context, STRIPE_SESSION_ID);
         final Session session;
         try {
-            session = Session.retrieve(sessionId, requestOptions(context.provider().config(), null));
+            final StripeClient client = stripeClient(context.provider().config());
+            session = client.v1().checkout().sessions().retrieve(sessionId);
         } catch (StripeException ex) {
             throw new ProviderExecutionException("Stripe Checkout session retrieval failed.", ex);
         }
@@ -251,13 +258,14 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
         return builder.build();
     }
 
-    private static RequestOptions requestOptions(final Map<String, String> config, final UUID idempotencyKey) {
-        final RequestOptions.RequestOptionsBuilder builder = RequestOptions.builder()
-                .setApiKey(requiredConfig(config, SECRET_KEY));
-        if (idempotencyKey != null) {
-            builder.setIdempotencyKey(idempotencyKey.toString());
-        }
-        return builder.build();
+    private StripeClient stripeClient(final Map<String, String> config) {
+        return clientFactory.create(requiredConfig(config, SECRET_KEY));
+    }
+
+    private static RequestOptions requestOptions(final UUID idempotencyKey) {
+        return RequestOptions.builder()
+                .setIdempotencyKey(idempotencyKey.toString())
+                .build();
     }
 
     private static void ensureSessionMatchesTransaction(final Session session, final UUID transactionId) {

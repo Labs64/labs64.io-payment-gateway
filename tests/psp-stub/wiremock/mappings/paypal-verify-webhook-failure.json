@@ -1,0 +1,25 @@
+{
+  "name": "PayPal - reject webhook signature",
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/notifications/verify-webhook-signature",
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": {
+          "expression": "$.transmission_sig",
+          "equalTo": "invalid-signature"
+        }
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "verification_status": "FAILURE"
+    }
+  }
+}

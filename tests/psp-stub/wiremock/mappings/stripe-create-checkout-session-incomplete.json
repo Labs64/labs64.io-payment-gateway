@@ -1,0 +1,25 @@
+{
+  "name": "Stripe - create incomplete Checkout Session",
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/checkout/sessions",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer sk_test_psp_stub_incomplete"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": "cs_test_psp_stub_incomplete",
+      "object": "checkout.session",
+      "payment_status": "unpaid",
+      "status": "open"
+    }
+  }
+}

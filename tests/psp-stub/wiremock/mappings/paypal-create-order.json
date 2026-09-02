@@ -1,0 +1,29 @@
+{
+  "name": "PayPal - create order",
+  "request": {
+    "method": "POST",
+    "urlPath": "/v2/checkout/orders",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer paypal-access-token"
+      }
+    }
+  },
+  "response": {
+    "status": 201,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": "PAYPAL-ORDER-PSP-STUB",
+      "status": "CREATED",
+      "links": [
+        {
+          "href": "https://www.sandbox.paypal.test/checkoutnow?token=PAYPAL-ORDER-PSP-STUB",
+          "rel": "approve",
+          "method": "GET"
+        }
+      ]
+    }
+  }
+}

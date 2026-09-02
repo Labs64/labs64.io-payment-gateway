@@ -34,13 +34,15 @@ final class PaypalApiWebhookVerifier implements PaypalWebhookVerifier {
     private static final String TRANSMISSION_TIME = "PAYPAL-TRANSMISSION-TIME";
 
     private final HttpClient httpClient;
+    private final PaypalClientFactory clientFactory;
 
-    PaypalApiWebhookVerifier() {
-        this(HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT).build());
+    PaypalApiWebhookVerifier(final PaypalClientFactory clientFactory) {
+        this(HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT).build(), clientFactory);
     }
 
-    PaypalApiWebhookVerifier(final HttpClient httpClient) {
+    PaypalApiWebhookVerifier(final HttpClient httpClient, final PaypalClientFactory clientFactory) {
         this.httpClient = httpClient;
+        this.clientFactory = clientFactory;
     }
 
     @Override
@@ -63,7 +65,7 @@ final class PaypalApiWebhookVerifier implements PaypalWebhookVerifier {
 
         final OAuthToken token = accessToken(client);
         final HttpRequest verificationHttpRequest = HttpRequest.newBuilder()
-                .uri(URI.create(client.getBaseUri() + VERIFY_PATH))
+                .uri(URI.create(clientFactory.apiBaseUri(client) + VERIFY_PATH))
                 .timeout(REQUEST_TIMEOUT)
                 .header("Authorization", token.getTokenType() + " " + token.getAccessToken())
                 .header("Content-Type", "application/json")
