@@ -81,7 +81,7 @@ payment-gateway:
       enabled: true
       name: "Stripe"
       description: "Credit/Debit Card via Stripe"
-      recurring: true
+      recurring: false
       supported-currencies: ["USD", "EUR", "GBP"]
       supported-countries: ["US", "GB", "DE"]
     - provider: "paypal"
