@@ -139,19 +139,23 @@ PayPal documentation:
    to the purchase unit `invoice_id`. It sends only the gateway callback URLs
    to PayPal.
 4. The client follows the approval redirect returned by PayPal.
-5. After buyer approval, either of these paths can finish capture:
+5. Browser return and cancel callbacks must carry a PayPal `token` matching the
+   `orderId` stored on the restored transaction. Missing or mismatched tokens
+   redirect the browser to the configured gateway fallback without calling
+   PayPal or changing transaction state.
+6. After buyer approval, either of these paths can finish capture:
    - the browser reaches the gateway return callback; or
    - PayPal sends `CHECKOUT.ORDER.APPROVED` and the verified webhook handler
      captures the order.
-6. Before trusting a webhook, the provider extracts `invoice_id` only to let
+7. Before trusting a webhook, the provider extracts `invoice_id` only to let
    Payment Gateway restore the transaction and its PayPal provider config.
-7. The provider sends the PayPal transmission headers, full webhook event, and
+8. The provider sends the PayPal transmission headers, full webhook event, and
    configured `webhookId` to PayPal's `verify-webhook-signature` API.
-8. Only a `SUCCESS` verification result is handled. Invalid or unverifiable
+9. Only a `SUCCESS` verification result is handled. Invalid or unverifiable
    requests throw `WebhookRejectedException` and leave the transaction unchanged.
-9. Payment Gateway applies the normalized result under a database lock. A
+10. Payment Gateway applies the normalized result under a database lock. A
    duplicate return or capture webhook cannot overwrite a terminal transaction.
-10. For a successful one-time payment, the transaction becomes `SUCCESS`, the
+11. For a successful one-time payment, the transaction becomes `SUCCESS`, the
     payment becomes `CLOSED`, and finalized/closed events are published.
 
 ## Automated PSP integration coverage

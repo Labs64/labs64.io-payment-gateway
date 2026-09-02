@@ -711,6 +711,8 @@ paths:
               schema:
                 type: string
                 format: uri
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "404":
           $ref: "#/components/responses/NotFoundError"
         "500":
@@ -740,6 +742,8 @@ paths:
               schema:
                 type: string
                 format: uri
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "404":
           $ref: "#/components/responses/NotFoundError"
         "500":

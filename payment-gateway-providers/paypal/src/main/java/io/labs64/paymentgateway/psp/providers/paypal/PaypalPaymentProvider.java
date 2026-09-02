@@ -197,7 +197,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
 
     @Override
     public PaymentResult completeCheckout(final ProviderCheckoutContext context) {
-        final String orderId = requireQueryParam(context, "token");
+        final String orderId = requireMatchingOrderId(context);
         final Order order = captureOrder(context, orderId);
         final OrdersCapture capture = requireCapture(order);
         final PaymentTransactionStatus status = captureStatus(capture.getStatus());
@@ -212,10 +212,8 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
 
     @Override
     public PaymentResult cancelCheckout(final ProviderCheckoutContext context) {
-        final String orderId = firstQueryParam(context, "token").orElse(null);
-        final Map<String, Object> pspData = orderId == null
-                ? Map.of()
-                : Map.of(ORDER_ID, orderId, "status", "CANCELLED");
+        final String orderId = requireMatchingOrderId(context);
+        final Map<String, Object> pspData = Map.of(ORDER_ID, orderId, "status", "CANCELLED");
 
         return new PaymentResult(
                 provider(),
@@ -728,6 +726,22 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
         return firstQueryParam(context, field)
                 .orElseThrow(() -> new ProviderValidationException(
                         "PayPal checkout callback requires query parameter: " + field));
+    }
+
+    private static String requireMatchingOrderId(final ProviderCheckoutContext context) {
+        final String callbackOrderId = requireQueryParam(context, "token");
+        final Map<String, Object> pspData = context.transaction() != null
+                ? context.transaction().pspData()
+                : null;
+        final Object storedValue = pspData != null ? pspData.get(ORDER_ID) : null;
+        if (!(storedValue instanceof String storedOrderId) || StringUtils.isBlank(storedOrderId)) {
+            throw new ProviderValidationException("PayPal checkout transaction is missing its stored order id.");
+        }
+        if (!callbackOrderId.equals(storedOrderId)) {
+            throw new ProviderValidationException(
+                    "PayPal checkout callback token does not match the stored order id.");
+        }
+        return callbackOrderId;
     }
 
     private static Optional<String> firstQueryParam(final ProviderCheckoutContext context, final String field) {
