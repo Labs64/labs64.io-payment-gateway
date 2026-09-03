@@ -5,19 +5,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import io.labs64.paymentgateway.config.PaymentGatewayProperties;
 import io.labs64.paymentgateway.entity.CheckoutSessionEntity;
 import io.labs64.paymentgateway.entity.PaymentEntity;
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
 import io.labs64.paymentgateway.exception.NotFoundException;
 import io.labs64.paymentgateway.exception.ValidationException;
 import io.labs64.paymentgateway.mapper.PaymentContextMapper;
-import io.labs64.paymentgateway.model.PaymentTransactionStatus;
-import io.labs64.paymentgateway.model.StatusDetails;
 import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
 import io.labs64.paymentgateway.psp.spi.PaymentNextAction;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
-import io.labs64.paymentgateway.psp.spi.ProviderException;
+import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
+import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutContext;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
 import io.labs64.paymentgateway.repository.CheckoutSessionRepository;
@@ -35,13 +35,11 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RequiredArgsConstructor
 public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
 
-    private static final URI FALLBACK_REDIRECT = URI.create("/");
-
     private final CheckoutSessionRepository checkoutSessionRepository;
     private final PaymentTransactionService transactionService;
     private final PaymentContextMapper paymentContextMapper;
     private final PaymentProviderRegistry providerRegistry;
-    private final PaymentEventPublisher paymentEventPublisher;
+    private final PaymentGatewayProperties properties;
 
     @Override
     @Transactional
@@ -54,11 +52,17 @@ public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
         final PaymentResult result;
         try {
             result = checkoutSupport(provider).completeCheckout(toContext(session, queryParams));
-        } catch (ProviderException ex) {
-            log.warn("Payment provider checkout completion failed: sessionId={}, paymentTransactionId={}, provider={}, message={}",
+        } catch (ProviderValidationException ex) {
+            log.warn(
+                    "Payment provider checkout completion rejected: sessionId={}, paymentTransactionId={}, provider={}, message={}",
+                    sessionId, transaction.getId(), provider, ex.getMessage());
+            return fallbackRedirect();
+        } catch (ProviderExecutionException ex) {
+            log.warn(
+                    "Payment provider checkout completion failed: sessionId={}, paymentTransactionId={}, provider={}, message={}",
                     sessionId, transaction.getId(), provider, ex.getMessage(), ex);
-            failTransaction(transaction, ex);
-            return FALLBACK_REDIRECT;
+            recordProviderExecutionFailure(transaction, ex);
+            return fallbackRedirect();
         }
         transactionService.applyResult(transaction, result);
         return withCheckoutIdentifiers(redirectFrom(result.nextAction()), session);
@@ -78,29 +82,26 @@ public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
         final PaymentResult result;
         try {
             result = checkoutSupport(provider).cancelCheckout(toContext(session, queryParams));
-        } catch (ProviderException ex) {
-            log.warn("Payment provider checkout cancellation failed: sessionId={}, paymentTransactionId={}, provider={}, message={}",
+        } catch (ProviderValidationException ex) {
+            log.warn(
+                    "Payment provider checkout cancellation rejected: sessionId={}, paymentTransactionId={}, provider={}, message={}",
+                    sessionId, transaction.getId(), provider, ex.getMessage());
+            return fallbackRedirect();
+        } catch (ProviderExecutionException ex) {
+            log.warn(
+                    "Payment provider checkout cancellation failed: sessionId={}, paymentTransactionId={}, provider={}, message={}",
                     sessionId, transaction.getId(), provider, ex.getMessage(), ex);
-            failTransaction(transaction, ex);
-            return FALLBACK_REDIRECT;
+            recordProviderExecutionFailure(transaction, ex);
+            return fallbackRedirect();
         }
         transactionService.applyResult(transaction, result);
         return withCheckoutIdentifiers(redirectFrom(result.nextAction()), session);
     }
 
-    private void failTransaction(
+    private void recordProviderExecutionFailure(
             final PaymentTransactionEntity transaction,
-            final ProviderException exception) {
-        transactionService.updateIfNonTerminal(
-                transaction.getTenantId(),
-                transaction.getId(),
-                (pt) -> {
-                    pt.setStatus(PaymentTransactionStatus.FAILED);
-                    pt.setStatusDetails(StatusDetails.builder()
-                            .code("PSP_ERROR").message(exception.getMessage()).build());
-                    pt.setPspData(null);
-                    paymentEventPublisher.publishFinalized(pt.getPayment(), pt);
-                });
+            final ProviderExecutionException exception) {
+        transactionService.recordProviderExecutionFailure(transaction, exception.failure());
     }
 
     private CheckoutSessionEntity getSession(final UUID sessionId) {
@@ -145,7 +146,11 @@ public class ProviderCheckoutServiceImpl implements ProviderCheckoutService {
                 return URI.create(stringUrl);
             }
         }
-        return FALLBACK_REDIRECT;
+        return fallbackRedirect();
+    }
+
+    private URI fallbackRedirect() {
+        return properties.getCheckoutFallbackRedirectUrl();
     }
 
     private URI withCheckoutIdentifiers(final URI location, final CheckoutSessionEntity session) {

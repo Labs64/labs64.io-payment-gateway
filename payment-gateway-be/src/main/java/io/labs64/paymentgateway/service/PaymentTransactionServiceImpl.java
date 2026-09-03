@@ -16,10 +16,12 @@ import io.labs64.paymentgateway.exception.NotFoundException;
 import io.labs64.paymentgateway.exception.ValidationException;
 import io.labs64.paymentgateway.mapper.PaymentContextMapper;
 import io.labs64.paymentgateway.message.PaymentTransactionMessages;
+import io.labs64.paymentgateway.message.ProviderExecutionMessages;
 import io.labs64.paymentgateway.model.PaymentStatus;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
 import io.labs64.paymentgateway.model.PaymentType;
 import io.labs64.paymentgateway.model.StatusDetails;
+import io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure;
 import io.labs64.paymentgateway.psp.spi.ProviderResult;
 import io.labs64.paymentgateway.repository.PaymentTransactionRepository;
 import io.labs64.paymentgateway.service.filter.PaymentTransactionFilter;
@@ -27,6 +29,9 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 
 import static io.labs64.paymentgateway.domain.PaymentTransactionStatuses.isTerminal;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.PROVIDER_AUTHENTICATION_FAILED;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.PROVIDER_RESPONSE_INVALID;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.PROVIDER_UNAVAILABLE;
 
 /**
  * Implementation of {@link PaymentTransactionService}.
@@ -37,6 +42,7 @@ import static io.labs64.paymentgateway.domain.PaymentTransactionStatuses.isTermi
 public class PaymentTransactionServiceImpl implements PaymentTransactionService {
     private final PaymentTransactionRepository repository;
     private final PaymentTransactionMessages msg;
+    private final ProviderExecutionMessages providerExecutionMessages;
     private final EntityManager entityManager;
     private final PaymentEventPublisher paymentEventPublisher;
 
@@ -137,6 +143,20 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
 
     @Override
     @Transactional
+    public PaymentTransactionEntity recordProviderExecutionFailure(
+            final PaymentTransactionEntity transaction,
+            final ProviderExecutionFailure failure) {
+        return updateIfNonTerminal(
+                transaction.getTenantId(),
+                transaction.getId(),
+                lockedTransaction -> lockedTransaction.setStatusDetails(StatusDetails.builder()
+                        .code(statusDetailCode(failure))
+                        .message(providerExecutionMessages.message(failure))
+                        .build()));
+    }
+
+    @Override
+    @Transactional
     public PaymentTransactionEntity applyResult(
             final PaymentTransactionEntity transaction,
             final ProviderResult result) {
@@ -165,6 +185,14 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
                         paymentEventPublisher.publishClosed(payment, lockedTransaction);
                     }
                 });
+    }
+
+    private static String statusDetailCode(final ProviderExecutionFailure failure) {
+        return switch (failure) {
+            case UNAVAILABLE -> PROVIDER_UNAVAILABLE;
+            case AUTHENTICATION_FAILED -> PROVIDER_AUTHENTICATION_FAILED;
+            case INVALID_RESPONSE -> PROVIDER_RESPONSE_INVALID;
+        };
     }
 
     private static StatusDetails toStatusDetails(

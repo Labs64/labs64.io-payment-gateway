@@ -1,5 +1,6 @@
 package io.labs64.paymentgateway.config;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 
@@ -25,6 +26,7 @@ public class PaymentGatewayProperties {
     private static final Logger log = LoggerFactory.getLogger(PaymentGatewayProperties.class);
 
     private String publicBaseUrl = "http://localhost:8080/api/v1";
+    private URI checkoutFallbackRedirectUrl = URI.create("/");
     private List<PaymentDefinition> paymentDefinitions = List.of();
     private RetryConfig retry = new RetryConfig();
     private RedisConfig redis = new RedisConfig();

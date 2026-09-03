@@ -76,6 +76,7 @@ management:
 # Payment Gateway Configuration
 payment-gateway:
   public-base-url: ${PAYMENT_GATEWAY_PUBLIC_BASE_URL:http://localhost:8080}
+  checkout-fallback-redirect-url: ${PAYMENT_GATEWAY_CHECKOUT_FALLBACK_REDIRECT_URL:/}
   payment-definitions:
     - provider: "stripe"
       enabled: true

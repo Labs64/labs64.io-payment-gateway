@@ -13,6 +13,8 @@ import javax.crypto.spec.SecretKeySpec;
 
 import io.labs64.paymentgateway.psp.spi.CheckoutPreparationContext;
 import io.labs64.paymentgateway.psp.spi.CheckoutSessionDraft;
+import io.labs64.paymentgateway.model.PurchaseOrder;
+import io.labs64.paymentgateway.psp.spi.Payment;
 import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
 import io.labs64.paymentgateway.psp.spi.PaymentTransaction;
 import io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus;
@@ -79,12 +81,9 @@ class StripePaymentProviderTest {
 
     @Test
     void prepareCheckoutSessionStoresTenantReturnAndCancelUrls() {
-        final CheckoutPreparationContext context = new CheckoutPreparationContext(
-                null,
-                null,
-                new PaymentExecutionRequest(Map.of(
-                        "returnUrl", "https://checkout.example.com/return",
-                        "cancelUrl", "https://checkout.example.com/cancel")));
+        final CheckoutPreparationContext context = checkoutContext(Map.of(
+                "returnUrl", "https://checkout.example.com/return",
+                "cancelUrl", "https://checkout.example.com/cancel"));
 
         final CheckoutSessionDraft draft = provider.prepareCheckoutSession(context).orElseThrow();
 
@@ -124,7 +123,7 @@ class StripePaymentProviderTest {
         assertThat(result.provider()).isEqualTo("stripe");
         assertThat(result.status()).isEqualTo(PaymentTransactionStatus.SUCCESS);
         assertThat(result.statusDetails()).isEqualTo(new StatusDetails(
-                "SUCCESS", "Stripe webhook mapped to payment status SUCCESS."));
+                "COMPLETED", "Stripe webhook mapped to payment status SUCCESS."));
         assertThat(result.pspData())
                 .containsEntry("eventId", "evt_test")
                 .containsEntry("eventType", "checkout.session.completed")
@@ -140,7 +139,7 @@ class StripePaymentProviderTest {
         final PaymentWebhookResult result = provider.handleWebhook(context(transactionId, request));
 
         assertThat(result.status()).isEqualTo(PaymentTransactionStatus.PENDING);
-        assertThat(result.statusDetails().code()).isEqualTo("PENDING");
+        assertThat(result.statusDetails().code()).isEqualTo("PROCESSING");
     }
 
     @Test
@@ -164,6 +163,21 @@ class StripePaymentProviderTest {
                 request(payload, signature(payload, WEBHOOK_SECRET)))))
                 .isInstanceOf(WebhookRejectedException.class)
                 .hasMessageContaining("does not match");
+    }
+
+    private static CheckoutPreparationContext checkoutContext(final Map<String, Object> checkout) {
+        return new CheckoutPreparationContext(
+                new Payment(
+                        UUID.randomUUID(),
+                        null,
+                        "Test payment",
+                        null,
+                        new PurchaseOrder().currency("USD").grossAmount(3000L),
+                        null,
+                        null,
+                        null),
+                new ProviderConfig("stripe", config(), "Stripe", null),
+                new PaymentExecutionRequest(checkout));
     }
 
     private static PaymentWebhookContext context(

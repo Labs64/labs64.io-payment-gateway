@@ -1,5 +1,6 @@
 package io.labs64.paymentgateway.exception;
 
+import io.labs64.paymentgateway.message.ProviderExecutionMessages;
 import io.labs64.paymentgateway.message.ValidationMessages;
 import io.labs64.paymentgateway.model.ErrorCode;
 import io.labs64.paymentgateway.model.ErrorResponse;
@@ -15,10 +16,13 @@ import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler handler = new GlobalExceptionHandler(mock(ValidationMessages.class));
+    private final ProviderExecutionMessages providerExecutionMessages = mock(ProviderExecutionMessages.class);
+    private final GlobalExceptionHandler handler =
+            new GlobalExceptionHandler(mock(ValidationMessages.class), providerExecutionMessages);
 
     @Test
     void providerValidationExceptionReturnsBadRequest() {
@@ -30,10 +34,16 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void providerExecutionExceptionReturnsBadGateway() {
+        when(providerExecutionMessages.message(
+                io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE))
+                .thenReturn("The payment provider did not return a definitive payment result.");
         final ResponseEntity<ErrorResponse> response = handler.handleProviderExecutionException(
-                new ProviderExecutionException("Provider request failed."));
+                new ProviderExecutionException(
+                        io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE,
+                        "Provider request failed."));
 
-        assertError(response, HttpStatus.BAD_GATEWAY, ErrorCode.PSP_ERROR, "Provider request failed.");
+        assertError(response, HttpStatus.BAD_GATEWAY, ErrorCode.PSP_ERROR,
+                "The payment provider did not return a definitive payment result.");
     }
 
     @Test
@@ -47,10 +57,12 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void genericProviderExceptionReturnsBadGateway() {
+        when(providerExecutionMessages.unexpected()).thenReturn("An unexpected payment provider error occurred.");
         final ResponseEntity<ErrorResponse> response = handler.handleProviderException(
-                new ProviderException("Unexpected provider failure."));
+                new ProviderException("Unexpected provider failure.") { });
 
-        assertError(response, HttpStatus.BAD_GATEWAY, ErrorCode.PSP_ERROR, "Unexpected provider failure.");
+        assertError(response, HttpStatus.BAD_GATEWAY, ErrorCode.PSP_ERROR,
+                "An unexpected payment provider error occurred.");
     }
 
     private static void assertError(

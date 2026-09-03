@@ -450,10 +450,14 @@ paths:
         this operation closes the payment on success. For recurring payments,
         this operation always attempts the first payment immediately; after the
         first successful payment, the payment remains READY and the next payment
-        time is calculated from the recurrence rule. A normal PSP decline is
-        represented as HTTP 200 with paymentTransaction.status=FAILED. HTTP 502
-        is reserved for upstream PSP communication/system errors. PSP may
-        require delayed completion with later webhook notification.
+        time is calculated from the recurrence rule. A definitive PSP decline is
+        represented as HTTP 200 with paymentTransaction.status=FAILED. When a
+        durable payment transaction exists but a PSP communication or response
+        error leaves the payment outcome unknown, HTTP 200 is returned with
+        paymentTransaction.status=PENDING and normalized statusDetails. HTTP 502
+        is reserved for upstream failures for which no payment transaction response
+        can be returned. PSP may require delayed completion with later webhook
+        notification.
       operationId: payPayment
       tags:
         - Payments
@@ -475,9 +479,10 @@ paths:
       responses:
         "200":
           description: >-
-            Payment request processed successfully. The payment transaction status is SUCCESS,
-            FAILED, or PENDING. Inspect paymentTransaction.status to determine the business
-            outcome and nextAction when further customer action is required.
+            Payment attempt accepted. The payment transaction status is SUCCESS,
+            FAILED, or PENDING. PENDING also represents a technically indeterminate
+            PSP outcome; inspect statusDetails.code and nextAction to determine whether
+            customer action, provider processing, or later recovery is required.
           content:
             application/json:
               schema:
@@ -1734,8 +1739,8 @@ components:
           nullable: true
           readOnly: true
           example:
-            code: CARD_EXPIRED
-            message: "The card has expired."
+            code: DECLINED
+            message: "The payment was declined by the provider."
         pspData:
           type: object
           description: >-
@@ -1759,9 +1764,12 @@ components:
       type: string
       description: >-
         Current status of the payment transaction.
-        PENDING: payment is initiated but not completed yet.
-        SUCCESS: payment completed successfully.
-        FAILED: payment attempt failed; will be retried based on dunning logic.
+        PENDING: non-terminal; the payment is awaiting customer/provider action or
+        the PSP did not return a definitive outcome.
+        SUCCESS: terminal; the PSP definitively confirmed successful payment.
+        FAILED: terminal; the PSP definitively confirmed a negative payment outcome,
+        or the customer cancelled or allowed the attempt to expire. A new retry is a
+        new payment transaction.
       enum:
         - PENDING
         - SUCCESS
@@ -1777,12 +1785,18 @@ components:
       properties:
         code:
           type: string
-          description: Machine-readable status detail code.
-          example: CARD_EXPIRED
+          description: >-
+            Stable, machine-readable detail code. Canonical codes are
+            AWAITING_CUSTOMER, PROCESSING, PROVIDER_UNAVAILABLE,
+            PROVIDER_AUTHENTICATION_FAILED, PROVIDER_RESPONSE_INVALID, COMPLETED,
+            PAYMENT_FAILED, DECLINED, CANCELLED, EXPIRED, and PROVIDER_REJECTED.
+            Provider-specific raw statuses belong to pspData and must not be used
+            by clients for gateway orchestration decisions.
+          example: DECLINED
         message:
           type: string
           description: Human-readable status detail message.
-          example: "The card has expired."
+          example: "The payment was declined by the provider."
 
     PayPaymentRequest:
       type: object

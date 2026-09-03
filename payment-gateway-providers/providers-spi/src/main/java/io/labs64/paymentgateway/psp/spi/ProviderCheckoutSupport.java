@@ -39,6 +39,10 @@ public interface ProviderCheckoutSupport {
      *
      * @param context checkout callback context
      * @return provider payment result to be applied by the gateway
+     * @throws ProviderValidationException when untrusted callback data is invalid;
+     *         the gateway must leave the existing transaction unchanged
+     * @throws ProviderExecutionException when a PSP operation produces no
+     *         definitive result; the gateway must keep the transaction non-terminal
      */
     PaymentResult completeCheckout(ProviderCheckoutContext context);
 
@@ -50,6 +54,10 @@ public interface ProviderCheckoutSupport {
      *
      * @param context checkout callback context
      * @return provider payment result to be applied by the gateway
+     * @throws ProviderValidationException when untrusted callback data is invalid;
+     *         the gateway must leave the existing transaction unchanged
+     * @throws ProviderExecutionException when a PSP operation produces no
+     *         definitive result; the gateway must keep the transaction non-terminal
      */
     PaymentResult cancelCheckout(ProviderCheckoutContext context);
 }

@@ -11,14 +11,18 @@ import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
 import io.labs64.paymentgateway.exception.NotFoundException;
 import io.labs64.paymentgateway.exception.ValidationException;
 import io.labs64.paymentgateway.message.PaymentTransactionMessages;
+import io.labs64.paymentgateway.message.ProviderExecutionMessages;
 import io.labs64.paymentgateway.model.PaymentStatus;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
 import io.labs64.paymentgateway.model.StatusDetails;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
+import io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure;
 import io.labs64.paymentgateway.repository.PaymentTransactionRepository;
 import io.labs64.paymentgateway.service.filter.PaymentTransactionFilter;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -43,6 +47,9 @@ class PaymentTransactionServiceImplTest {
 
     @Mock
     private PaymentTransactionMessages msg;
+
+    @Mock
+    private ProviderExecutionMessages providerExecutionMessages;
 
     @Mock
     private EntityManager entityManager;
@@ -193,6 +200,30 @@ class PaymentTransactionServiceImplTest {
                 id,
                 pt -> pt.setStatus(PaymentTransactionStatus.SUCCESS)))
                 .isInstanceOf(NotFoundException.class);
+    }
+
+    @ParameterizedTest
+    @EnumSource(ProviderExecutionFailure.class)
+    void recordProviderExecutionFailureKeepsTransactionPendingWithLocalizedDetails(
+            final ProviderExecutionFailure failure) {
+        final PaymentTransactionEntity transaction = transaction();
+        final String expectedCode = switch (failure) {
+            case UNAVAILABLE -> "PROVIDER_UNAVAILABLE";
+            case AUTHENTICATION_FAILED -> "PROVIDER_AUTHENTICATION_FAILED";
+            case INVALID_RESPONSE -> "PROVIDER_RESPONSE_INVALID";
+        };
+        when(repository.findByIdAndTenantIdForUpdate(transaction.getId(), TENANT_ID))
+                .thenReturn(Optional.of(transaction));
+        when(providerExecutionMessages.message(failure)).thenReturn("Localized provider message.");
+
+        final PaymentTransactionEntity updated =
+                service.recordProviderExecutionFailure(transaction, failure);
+
+        assertThat(updated.getStatus()).isEqualTo(PaymentTransactionStatus.PENDING);
+        assertThat(updated.getStatusDetails()).isEqualTo(
+                new StatusDetails().code(expectedCode).message("Localized provider message."));
+        verify(paymentEventPublisher, never()).publishFinalized(any(), any());
+        verify(paymentEventPublisher, never()).publishClosed(any(), any());
     }
 
     @Test

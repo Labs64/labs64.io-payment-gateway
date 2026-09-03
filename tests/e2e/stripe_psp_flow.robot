@@ -31,7 +31,7 @@ Create pending Stripe Checkout with the expected SDK request
     Should Be Equal As Strings    ${pay_result}[payment][id]    ${payment_id}
     Should Be Equal As Strings    ${pay_result}[payment][status]    READY
     Should Be Equal As Strings    ${pay_result}[paymentTransaction][status]    PENDING
-    Should Be Equal As Strings    ${pay_result}[paymentTransaction][statusDetails][code]    PENDING
+    Should Be Equal As Strings    ${pay_result}[paymentTransaction][statusDetails][code]    AWAITING_CUSTOMER
     Should Be Equal As Strings    ${pay_result}[paymentTransaction][pspData][checkoutSessionId]    ${STRIPE_CHECKOUT_SESSION_ID}
     Should Be Equal As Strings    ${pay_result}[nextAction][type]    REDIRECT
     Should Be Equal As Strings    ${pay_result}[nextAction][details][url]    https://checkout.stripe.test/c/pay/${STRIPE_CHECKOUT_SESSION_ID}
@@ -77,16 +77,16 @@ Replay Stripe pay without a second PSP call
     Response Status Should Be    ${transactions_response}    200
     Length Should Be    ${transactions_response.json()}[items]    1
 
-Map Stripe upstream failure to PSP error
-    [Documentation]    A Stripe 5xx becomes a synchronous FAILED/PSP_ERROR result and never a successful payment.
+Keep Stripe transaction pending when upstream result is unavailable
+    [Documentation]    A Stripe 5xx leaves the transaction non-terminal with normalized diagnostic details.
     [Tags]    payment-gateway    regression    psp-stub    stripe    error-path
     ${payment_id}=    Create Stripe Payment    ${STRIPE_ERROR_API_KEY}
     ${checkout}=    Build Stripe Checkout Request
     ${response}=    Pay Payment    ${payment_id}    ${STRIPE_PSP_SESSION}    checkout=${checkout}
     Response Status Should Be    ${response}    200
-    Should Be Equal As Strings    ${response.json()}[paymentTransaction][status]    FAILED
-    Should Be Equal As Strings    ${response.json()}[paymentTransaction][statusDetails][code]    PSP_ERROR
-    Should Contain    ${response.json()}[paymentTransaction][statusDetails][message]    Stripe Checkout session creation failed
+    Should Be Equal As Strings    ${response.json()}[paymentTransaction][status]    PENDING
+    Should Be Equal As Strings    ${response.json()}[paymentTransaction][statusDetails][code]    PROVIDER_UNAVAILABLE
+    Should Contain    ${response.json()}[paymentTransaction][statusDetails][message]    definitive payment result
     Should Be Equal    ${response.json()}[nextAction]    ${None}
     Stripe Checkout Session Create Request Count Should Be    1
     Payment Should Have Status    ${payment_id}    READY
@@ -98,9 +98,9 @@ Reject incomplete successful Stripe response
     ${checkout}=    Build Stripe Checkout Request
     ${response}=    Pay Payment    ${payment_id}    ${STRIPE_PSP_SESSION}    checkout=${checkout}
     Response Status Should Be    ${response}    200
-    Should Be Equal As Strings    ${response.json()}[paymentTransaction][status]    FAILED
-    Should Be Equal As Strings    ${response.json()}[paymentTransaction][statusDetails][code]    PSP_ERROR
-    Should Contain    ${response.json()}[paymentTransaction][statusDetails][message]    Stripe returned an incomplete Checkout session
+    Should Be Equal As Strings    ${response.json()}[paymentTransaction][status]    PENDING
+    Should Be Equal As Strings    ${response.json()}[paymentTransaction][statusDetails][code]    PROVIDER_RESPONSE_INVALID
+    Should Contain    ${response.json()}[paymentTransaction][statusDetails][message]    invalid response
     Should Be Equal    ${response.json()}[nextAction]    ${None}
     Stripe Checkout Session Create Request Count Should Be    1
     Payment Should Have Status    ${payment_id}    READY
@@ -178,7 +178,7 @@ Complete unpaid browser return later from a signed Stripe webhook
     ${transaction_response}=    Get Payment Transaction    ${transaction_id}    ${STRIPE_PSP_SESSION}
     Response Status Should Be    ${transaction_response}    200
     Should Be Equal As Strings    ${transaction_response.json()}[status]    SUCCESS
-    Should Be Equal As Strings    ${transaction_response.json()}[statusDetails][code]    SUCCESS
+    Should Be Equal As Strings    ${transaction_response.json()}[statusDetails][code]    COMPLETED
     Should Be Equal As Strings    ${transaction_response.json()}[pspData][eventType]    checkout.session.completed
     Should Be Equal As Strings    ${transaction_response.json()}[pspData][stripeObjectId]    ${STRIPE_CHECKOUT_SESSION_ID}
     Payment Should Have Status    ${payment_id}    CLOSED
@@ -198,7 +198,7 @@ Fail pending payment from a signed asynchronous Stripe webhook
     ${transaction_response}=    Get Payment Transaction    ${transaction_id}    ${STRIPE_PSP_SESSION}
     Response Status Should Be    ${transaction_response}    200
     Should Be Equal As Strings    ${transaction_response.json()}[status]    FAILED
-    Should Be Equal As Strings    ${transaction_response.json()}[statusDetails][code]    FAILED
+    Should Be Equal As Strings    ${transaction_response.json()}[statusDetails][code]    PAYMENT_FAILED
     Should Be Equal As Strings    ${transaction_response.json()}[pspData][eventType]    checkout.session.async_payment_failed
     Payment Should Have Status    ${payment_id}    READY
 

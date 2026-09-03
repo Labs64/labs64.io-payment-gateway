@@ -12,7 +12,6 @@ import io.labs64.paymentgateway.psp.spi.CheckoutPreparationContext;
 import io.labs64.paymentgateway.psp.spi.CheckoutSession;
 import io.labs64.paymentgateway.psp.spi.CheckoutSessionDraft;
 import io.labs64.paymentgateway.psp.spi.Payment;
-import io.labs64.paymentgateway.psp.spi.PaymentContext;
 import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
 import io.labs64.paymentgateway.psp.spi.PaymentNextActionType;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
@@ -22,8 +21,6 @@ import io.labs64.paymentgateway.psp.spi.PaymentWebhookContext;
 import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutContext;
 import io.labs64.paymentgateway.psp.spi.ProviderConfig;
-import io.labs64.paymentgateway.psp.spi.ProviderCheckout;
-import io.labs64.paymentgateway.psp.spi.ProviderCheckoutUrls;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigField;
 import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
 import io.labs64.paymentgateway.psp.spi.WebhookRejectedException;
@@ -73,12 +70,9 @@ class PaypalPaymentProviderTest {
 
     @Test
     void prepareCheckoutSessionStoresReturnAndCancelUrls() {
-        final CheckoutPreparationContext context = new CheckoutPreparationContext(
-                null,
-                null,
-                new PaymentExecutionRequest(Map.of(
-                        "returnUrl", "https://checkout.example.com/payment/return",
-                        "cancelUrl", "https://checkout.example.com/payment/cancel")));
+        final CheckoutPreparationContext context = checkoutContext(Map.of(
+                "returnUrl", "https://checkout.example.com/payment/return",
+                "cancelUrl", "https://checkout.example.com/payment/cancel"));
 
         final CheckoutSessionDraft draft = provider.prepareCheckoutSession(context).orElseThrow();
 
@@ -127,10 +121,27 @@ class PaypalPaymentProviderTest {
     }
 
     @Test
-    void executeRejectsZeroItemQuantity() {
-        assertThatThrownBy(() -> provider.execute(paymentContextWithItemQuantity(0)))
+    void prepareCheckoutSessionRejectsZeroItemQuantityBeforeExecution() {
+        assertThatThrownBy(() -> provider.prepareCheckoutSession(checkoutContextWithItemQuantity(0)))
                 .isInstanceOf(ProviderValidationException.class)
                 .hasMessage("PayPal payment requires purchaseOrder.items[].quantity.");
+    }
+
+    @Test
+    void prepareCheckoutSessionRejectsNonPositiveGrossAmountBeforeExecution() {
+        final Map<String, Object> checkout = Map.of(
+                "returnUrl", "https://checkout.example.com/payment/return",
+                "cancelUrl", "https://checkout.example.com/payment/cancel");
+
+        for (final long grossAmount : List.of(0L, -1L)) {
+            final CheckoutPreparationContext context = checkoutContext(checkout);
+            context.payment().purchaseOrder().setGrossAmount(grossAmount);
+
+            assertThatThrownBy(() -> provider.prepareCheckoutSession(context))
+                    .as("grossAmount=%s", grossAmount)
+                    .isInstanceOf(ProviderValidationException.class)
+                    .hasMessage("PayPal payment requires a positive purchaseOrder.grossAmount.");
+        }
     }
 
     @Test
@@ -208,7 +219,7 @@ class PaypalPaymentProviderTest {
         assertThat(result.status()).isEqualTo(PaymentTransactionStatus.SUCCESS);
         assertThat(result.statusDetails()).isEqualTo(
                 new io.labs64.paymentgateway.psp.spi.StatusDetails(
-                        "SUCCESS", "PayPal webhook mapped to payment status SUCCESS."));
+                        "COMPLETED", "PayPal webhook mapped to payment status SUCCESS."));
         assertThat(result.pspData())
                 .containsEntry("eventId", "WH-1")
                 .containsEntry("eventType", "PAYMENT.CAPTURE.COMPLETED")
@@ -242,7 +253,7 @@ class PaypalPaymentProviderTest {
                 webhookRequest(capturePayload(transactionId, "PAYMENT.CAPTURE.PENDING", "PENDING"))));
 
         assertThat(result.status()).isEqualTo(PaymentTransactionStatus.PENDING);
-        assertThat(result.statusDetails().code()).isEqualTo("PENDING");
+        assertThat(result.statusDetails().code()).isEqualTo("PROCESSING");
     }
 
     @Test
@@ -255,7 +266,7 @@ class PaypalPaymentProviderTest {
                 webhookRequest(capturePayload(transactionId, "PAYMENT.CAPTURE.DENIED", "DENIED"))));
 
         assertThat(result.status()).isEqualTo(PaymentTransactionStatus.FAILED);
-        assertThat(result.statusDetails().code()).isEqualTo("FAILED");
+        assertThat(result.statusDetails().code()).isEqualTo("DECLINED");
     }
 
     @Test
@@ -314,11 +325,22 @@ class PaypalPaymentProviderTest {
     }
 
     private static CheckoutPreparationContext checkoutContext(final Map<String, Object> checkout) {
-        return new CheckoutPreparationContext(null, null, new PaymentExecutionRequest(checkout));
+        return new CheckoutPreparationContext(
+                new Payment(
+                        UUID.randomUUID(),
+                        null,
+                        "Test payment",
+                        null,
+                        new PurchaseOrder().currency("USD").grossAmount(3000L),
+                        null,
+                        null,
+                        null),
+                new ProviderConfig("paypal", config("sandbox"), "PayPal", null),
+                new PaymentExecutionRequest(checkout));
     }
 
-    private static PaymentContext paymentContextWithItemQuantity(final Integer quantity) {
-        return new PaymentContext(
+    private static CheckoutPreparationContext checkoutContextWithItemQuantity(final Integer quantity) {
+        return new CheckoutPreparationContext(
                 new Payment(
                         UUID.randomUUID(),
                         null,
@@ -334,13 +356,9 @@ class PaypalPaymentProviderTest {
                         null,
                         null,
                         null),
-                new PaymentTransaction(UUID.randomUUID(), PaymentTransactionStatus.PENDING),
                 new ProviderConfig("paypal", config("sandbox"), "PayPal", null),
-                PaymentExecutionRequest.empty(),
-                new ProviderCheckout(
-                        new CheckoutSession(UUID.randomUUID(), Map.of(), null, null),
-                        new ProviderCheckoutUrls(
-                                "https://gateway.example/paypal/return",
-                                "https://gateway.example/paypal/cancel")));
+                new PaymentExecutionRequest(Map.of(
+                        "returnUrl", "https://checkout.example.com/payment/return",
+                        "cancelUrl", "https://checkout.example.com/payment/cancel")));
     }
 }

@@ -16,7 +16,6 @@ import io.labs64.paymentgateway.mapper.PaymentContextMapper;
 import io.labs64.paymentgateway.message.PaymentMessages;
 import io.labs64.paymentgateway.model.PaymentStatus;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
-import io.labs64.paymentgateway.model.StatusDetails;
 import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
 import io.labs64.paymentgateway.psp.spi.PaymentContext;
 import io.labs64.paymentgateway.psp.spi.PaymentExecutionRequest;
@@ -294,25 +293,38 @@ class PaymentServiceImplTest {
     }
 
     @Test
-    void payCreatesFailedTransactionWhenPaymentDefinitionIsDisabled() {
+    void payRejectsDisabledProviderBeforeCreatingTransaction() {
         final PaymentEntity payment = payment();
-        final PaymentTransactionEntity transaction = transaction(payment);
+
         when(paymentRepository.findByIdAndTenantId(payment.getId(), TENANT_ID)).thenReturn(Optional.of(payment));
-        when(transactionService.create(any(), any())).thenReturn(transaction);
         when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.empty());
         when(msg.providerDisabled(PROVIDER)).thenReturn("disabled");
-        when(transactionService.updateIfNonTerminal(any(), any(), any())).thenAnswer(invocation -> {
-            final java.util.function.Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
-            updater.accept(transaction);
-            return transaction;
-        });
 
-        final PayPaymentResponse response = service.pay(TENANT_ID, payment.getId());
+        assertThatThrownBy(() -> service.pay(TENANT_ID, payment.getId()))
+                .isInstanceOf(PaymentNotPayableException.class)
+                .hasMessage("disabled");
 
-        assertThat(response.transaction().getStatus()).isEqualTo(PaymentTransactionStatus.FAILED);
-        assertThat(response.transaction().getStatusDetails().getCode()).isEqualTo("PAYMENT_PROVIDER_DISABLED");
+        verify(transactionService, never()).create(any(), any());
         verify(providerRegistry, never()).getProvider(any());
-        verify(paymentEventPublisher).publishFinalized(payment, transaction);
+        verify(paymentEventPublisher, never()).publishFinalized(any(), any());
+    }
+
+    @Test
+    void payRejectsInactiveProviderBeforeCreatingTransaction() {
+        final PaymentEntity payment = payment();
+        payment.setPaymentProvider(paymentProvider(false));
+
+        when(paymentRepository.findByIdAndTenantId(payment.getId(), TENANT_ID)).thenReturn(Optional.of(payment));
+        when(msg.inactivePaymentProvider(PROVIDER)).thenReturn("inactive");
+
+        assertThatThrownBy(() -> service.pay(TENANT_ID, payment.getId()))
+                .isInstanceOf(PaymentNotPayableException.class)
+                .hasMessage("inactive");
+
+        verify(transactionService, never()).create(any(), any());
+        verify(paymentDefinitionService, never()).findEnabled(any());
+        verify(providerRegistry, never()).getProvider(any());
+        verify(paymentEventPublisher, never()).publishFinalized(any(), any());
     }
 
     @Test
@@ -343,7 +355,7 @@ class PaymentServiceImplTest {
     }
 
     @Test
-    void payCreatesFailedTransactionWhenProviderExecutionFails() {
+    void payLeavesTransactionPendingWhenProviderExecutionHasNoDefinitiveResult() {
         final PaymentEntity payment = payment();
         final PaymentTransactionEntity transaction = transaction(payment);
         final PaymentContext context = new PaymentContext(null, null, null);
@@ -358,21 +370,21 @@ class PaymentServiceImplTest {
                 payment.getPaymentProvider(),
                 PaymentExecutionRequest.empty(),
                 null)).thenReturn(context);
-        when(pspProvider.execute(context)).thenThrow(new ProviderExecutionException("PayPal order creation failed."));
-        when(transactionService.updateIfNonTerminal(any(), any(), any())).thenAnswer(invocation -> {
-            final java.util.function.Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
-            updater.accept(transaction);
-            return transaction;
-        });
+        when(pspProvider.execute(context)).thenThrow(new ProviderExecutionException(
+                io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE,
+                "PayPal order creation failed."));
+        when(transactionService.recordProviderExecutionFailure(
+                transaction,
+                io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE)).thenReturn(transaction);
 
         final PayPaymentResponse response = service.pay(TENANT_ID, payment.getId());
 
-        assertThat(response.transaction().getStatus()).isEqualTo(PaymentTransactionStatus.FAILED);
-        assertThat(response.transaction().getStatusDetails()).isEqualTo(
-                new StatusDetails().code("PSP_ERROR").message("PayPal order creation failed."));
+        assertThat(response.transaction().getStatus()).isEqualTo(PaymentTransactionStatus.PENDING);
         assertThat(response.nextAction()).isNull();
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.READY);
-        verify(paymentEventPublisher).publishFinalized(payment, transaction);
+        verify(transactionService).recordProviderExecutionFailure(
+                transaction, io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE);
+        verify(paymentEventPublisher, never()).publishFinalized(any(), any());
         verify(paymentEventPublisher, never()).publishClosed(any(), any());
         verify(paymentNextActionService, never()).create(any(), any());
     }
@@ -430,11 +442,24 @@ class PaymentServiceImplTest {
     void createPendingTransactionUsesTenantAndPayment() {
         final PaymentEntity payment = payment();
         final PaymentTransactionEntity transaction = transaction(payment);
+        final PaymentContext context = new PaymentContext(null, null, null);
+        final PaymentResult result = new PaymentResult(
+                PROVIDER,
+                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.PENDING,
+                Map.of(),
+                null,
+                null);
         when(paymentRepository.findByIdAndTenantId(payment.getId(), TENANT_ID)).thenReturn(Optional.of(payment));
         when(transactionService.create(any(), any())).thenReturn(transaction);
-        when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.empty());
-        when(msg.providerDisabled(PROVIDER)).thenReturn("disabled");
-        when(transactionService.updateIfNonTerminal(any(), any(), any())).thenReturn(transaction);
+        when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition()));
+        when(providerRegistry.getProvider(PROVIDER)).thenReturn(pspProvider);
+        when(paymentContextMapper.toContext(
+                payment,
+                transaction,
+                payment.getPaymentProvider(),
+                PaymentExecutionRequest.empty(),
+                null)).thenReturn(context);
+        when(pspProvider.execute(context)).thenReturn(result);
 
         service.pay(TENANT_ID, payment.getId());
 

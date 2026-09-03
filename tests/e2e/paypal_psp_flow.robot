@@ -37,7 +37,7 @@ Create pending PayPal order with expected OAuth and SDK requests
     Should Be Equal As Strings    ${pay_result}[payment][id]    ${payment_id}
     Should Be Equal As Strings    ${pay_result}[payment][status]    READY
     Should Be Equal As Strings    ${pay_result}[paymentTransaction][status]    PENDING
-    Should Be Equal As Strings    ${pay_result}[paymentTransaction][statusDetails][code]    PENDING
+    Should Be Equal As Strings    ${pay_result}[paymentTransaction][statusDetails][code]    AWAITING_CUSTOMER
     Should Be Equal As Strings    ${pay_result}[paymentTransaction][pspData][orderId]    ${PAYPAL_ORDER_ID}
     Should Be Equal As Strings    ${pay_result}[paymentTransaction][pspData][status]    CREATED
     Should Be Equal As Strings    ${pay_result}[nextAction][type]    REDIRECT
@@ -84,30 +84,30 @@ Replay PayPal pay without a second order or OAuth call
     Response Status Should Be    ${transactions_response}    200
     Length Should Be    ${transactions_response.json()}[items]    1
 
-Map PayPal create-order failure to PSP error
-    [Documentation]    A PayPal Orders 5xx becomes a synchronous FAILED/PSP_ERROR result.
+Keep PayPal transaction pending when create-order result is unavailable
+    [Documentation]    A PayPal Orders 5xx leaves the transaction non-terminal with normalized diagnostic details.
     [Tags]    payment-gateway    regression    psp-stub    paypal    error-path
     ${payment_id}=    Create PayPal Payment    ${PAYPAL_ERROR_CLIENT_ID}    ${PAYPAL_ERROR_CLIENT_SECRET}
     ${checkout}=    Build PayPal Checkout Request
     ${response}=    Pay Payment    ${payment_id}    ${PAYPAL_PSP_SESSION}    checkout=${checkout}
     Response Status Should Be    ${response}    200
-    Should Be Equal As Strings    ${response.json()}[paymentTransaction][status]    FAILED
-    Should Be Equal As Strings    ${response.json()}[paymentTransaction][statusDetails][code]    PSP_ERROR
-    Should Contain    ${response.json()}[paymentTransaction][statusDetails][message]    PayPal order creation failed
+    Should Be Equal As Strings    ${response.json()}[paymentTransaction][status]    PENDING
+    Should Be Equal As Strings    ${response.json()}[paymentTransaction][statusDetails][code]    PROVIDER_UNAVAILABLE
+    Should Contain    ${response.json()}[paymentTransaction][statusDetails][message]    definitive payment result
     Should Be Equal    ${response.json()}[nextAction]    ${None}
     PSP API Request Count Should Be    POST    ${PAYPAL_ORDERS_API_PATH}    1
     PayPal Payment Should Have Status    ${payment_id}    READY
 
 Reject incomplete successful PayPal order response
-    [Documentation]    A PayPal 201 without an approval link is persisted as FAILED/PSP_ERROR.
+    [Documentation]    A PayPal 201 without an approval link leaves the transaction PENDING with an invalid-response detail.
     [Tags]    payment-gateway    regression    psp-stub    paypal    error-path
     ${payment_id}=    Create PayPal Payment    ${PAYPAL_INCOMPLETE_CLIENT_ID}    ${PAYPAL_INCOMPLETE_CLIENT_SECRET}
     ${checkout}=    Build PayPal Checkout Request
     ${response}=    Pay Payment    ${payment_id}    ${PAYPAL_PSP_SESSION}    checkout=${checkout}
     Response Status Should Be    ${response}    200
-    Should Be Equal As Strings    ${response.json()}[paymentTransaction][status]    FAILED
-    Should Be Equal As Strings    ${response.json()}[paymentTransaction][statusDetails][code]    PSP_ERROR
-    Should Contain    ${response.json()}[paymentTransaction][statusDetails][message]    PayPal order creation returned no approval link
+    Should Be Equal As Strings    ${response.json()}[paymentTransaction][status]    PENDING
+    Should Be Equal As Strings    ${response.json()}[paymentTransaction][statusDetails][code]    PROVIDER_RESPONSE_INVALID
+    Should Contain    ${response.json()}[paymentTransaction][statusDetails][message]    invalid response
     Should Be Equal    ${response.json()}[nextAction]    ${None}
     PSP API Request Count Should Be    POST    ${PAYPAL_ORDERS_API_PATH}    1
     PayPal Payment Should Have Status    ${payment_id}    READY
@@ -138,8 +138,8 @@ Complete PayPal browser return through capture API
     Should Be Equal As Strings    ${confirmation.json()}[payment][status]    CLOSED
     Should Be Equal As Strings    ${confirmation.json()}[paymentTransaction][status]    SUCCESS
 
-Fail PayPal browser return when capture API fails
-    [Documentation]    A PayPal capture 5xx redirects safely and persists FAILED/PSP_ERROR instead of closing the payment.
+Keep PayPal browser return pending when capture result is unavailable
+    [Documentation]    A PayPal capture 5xx redirects safely and leaves the transaction non-terminal.
     [Tags]    payment-gateway    regression    psp-stub    paypal    checkout-return    error-path
     ${payment_id}    ${transaction_id}    ${pay_result}    ${return_url}    ${cancel_url}    ${checkout_session_id}=
     ...    Create Pending PayPal Payment
@@ -154,9 +154,9 @@ Fail PayPal browser return when capture API fails
     Should Be Equal As Strings    ${response.headers}[Location]    /
     ${transaction_response}=    Get Payment Transaction    ${transaction_id}    ${PAYPAL_PSP_SESSION}
     Response Status Should Be    ${transaction_response}    200
-    Should Be Equal As Strings    ${transaction_response.json()}[status]    FAILED
-    Should Be Equal As Strings    ${transaction_response.json()}[statusDetails][code]    PSP_ERROR
-    Should Contain    ${transaction_response.json()}[statusDetails][message]    PayPal order capture failed
+    Should Be Equal As Strings    ${transaction_response.json()}[status]    PENDING
+    Should Be Equal As Strings    ${transaction_response.json()}[statusDetails][code]    PROVIDER_UNAVAILABLE
+    Should Contain    ${transaction_response.json()}[statusDetails][message]    definitive payment result
     PayPal Payment Should Have Status    ${payment_id}    READY
 
 Cancel PayPal browser checkout
@@ -244,7 +244,7 @@ Fail payment from verified PayPal denied webhook
     ${transaction_response}=    Get Payment Transaction    ${transaction_id}    ${PAYPAL_PSP_SESSION}
     Response Status Should Be    ${transaction_response}    200
     Should Be Equal As Strings    ${transaction_response.json()}[status]    FAILED
-    Should Be Equal As Strings    ${transaction_response.json()}[statusDetails][code]    FAILED
+    Should Be Equal As Strings    ${transaction_response.json()}[statusDetails][code]    DECLINED
     Should Be Equal As Strings    ${transaction_response.json()}[pspData][eventType]    PAYMENT.CAPTURE.DENIED
     PayPal Payment Should Have Status    ${payment_id}    READY
     PSP API Request Count Should Be    POST    ${PAYPAL_WEBHOOK_VERIFY_API_PATH}    1
@@ -293,7 +293,7 @@ Ignore late PayPal failure after successful terminal webhook
     Should Be Equal As Strings    ${transaction_response.json()}[pspData][eventId]    ${success_event_id}
     Should Be Equal As Strings    ${transaction_response.json()}[pspData][eventType]    PAYMENT.CAPTURE.COMPLETED
     PayPal Payment Should Have Status    ${payment_id}    CLOSED
-    PSP API Request Count Should Be    POST    ${PAYPAL_WEBHOOK_VERIFY_API_PATH}    2
+    PSP API Request Count Should Be    POST    ${PAYPAL_WEBHOOK_VERIFY_API_PATH}    1
 
 *** Keywords ***
 Prepare PayPal PSP Stub Test

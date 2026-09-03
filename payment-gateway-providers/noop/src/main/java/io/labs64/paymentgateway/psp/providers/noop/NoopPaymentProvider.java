@@ -34,7 +34,7 @@ public class NoopPaymentProvider implements PaymentProvider {
 
         log.info("Noop PSP: Executing payment for paymentId={}, transaction={}", payment.id(), transaction.id());
 
-        final StatusDetails details = new StatusDetails("SUCCESS", "TBD");
+        final StatusDetails details = new StatusDetails("COMPLETED", "Payment completed successfully.");
 
         return new PaymentResult(provider(), PaymentTransactionStatus.SUCCESS, Map.of(), details, null);
     }

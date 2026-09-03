@@ -12,8 +12,11 @@ import io.labs64.paymentgateway.mapper.PaymentContextMapper;
 import io.labs64.paymentgateway.psp.internal.PaymentProviderRegistry;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.ProviderWebhookSupport;
+import io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus;
 import io.labs64.paymentgateway.psp.spi.PaymentWebhookContext;
 import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
+import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
+import io.labs64.paymentgateway.psp.spi.StatusDetails;
 import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import io.labs64.paymentgateway.repository.CorrelationTraceRepository;
 import io.labs64.paymentgateway.repository.PaymentTransactionRepository;
@@ -22,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static io.labs64.paymentgateway.domain.PaymentTransactionStatuses.isTerminal;
 
 /**
  * Implementation of {@link WebhookService}.
@@ -40,7 +45,7 @@ public class WebhookServiceImpl implements WebhookService {
     private final PaymentContextMapper paymentContextMapper;
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = ProviderExecutionException.class)
     public PaymentWebhookResult processWebhook(final WebhookRequest request) {
         log.info("Processing webhook from provider={}", request.provider());
 
@@ -57,11 +62,24 @@ public class WebhookServiceImpl implements WebhookService {
         restoreCorrelationId(transaction, payment);
         ensureWebhookProviderMatchesPaymentProvider(request, payment);
 
+        if (isTerminal(transaction.getStatus())) {
+            log.info(
+                    "Ignoring webhook for terminal payment transaction: provider={}, paymentTransactionId={}, status={}",
+                    request.provider(), transaction.getId(), transaction.getStatus());
+            return currentResult(request.provider(), transaction);
+        }
+
         final PaymentWebhookContext context = new PaymentWebhookContext(
                 paymentContextMapper.toPaymentTransaction(transaction),
                 paymentContextMapper.toProviderConfig(payment.getPaymentProvider()),
                 request);
-        final PaymentWebhookResult result = webhookSupport.handleWebhook(context);
+        final PaymentWebhookResult result;
+        try {
+            result = webhookSupport.handleWebhook(context);
+        } catch (ProviderExecutionException ex) {
+            transactionService.recordProviderExecutionFailure(transaction, ex.failure());
+            throw ex;
+        }
         transactionService.applyResult(transaction, result);
 
         log.info("Webhook processed: provider={}, paymentTransactionId={}, status={}",
@@ -70,7 +88,20 @@ public class WebhookServiceImpl implements WebhookService {
         return result;
     }
 
-    private void ensureWebhookProviderMatchesPaymentProvider(final WebhookRequest request, final PaymentEntity payment) {
+    private static PaymentWebhookResult currentResult(
+            final String provider,
+            final PaymentTransactionEntity transaction) {
+        final io.labs64.paymentgateway.model.StatusDetails details = transaction.getStatusDetails();
+
+        return new PaymentWebhookResult(
+                provider,
+                PaymentTransactionStatus.valueOf(transaction.getStatus().name()),
+                transaction.getPspData(),
+                details == null ? null : new StatusDetails(details.getCode(), details.getMessage()));
+    }
+
+    private void ensureWebhookProviderMatchesPaymentProvider(final WebhookRequest request,
+            final PaymentEntity payment) {
         if (payment.getPaymentProvider() == null) {
             throw new ValidationException("Payment provider is not available for payment: " + payment.getId());
         }
