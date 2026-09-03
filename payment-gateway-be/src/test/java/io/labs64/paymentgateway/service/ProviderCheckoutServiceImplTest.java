@@ -151,7 +151,7 @@ class ProviderCheckoutServiceImplTest {
                 .thenThrow(new ProviderValidationException("Invalid callback token."));
 
         when(properties.getCheckoutFallbackRedirectUrl()).thenReturn(FALLBACK_REDIRECT);
-        final URI redirect = service.complete(PROVIDER, session.getId(), Map.of());
+        final URI redirect = service.complete(PROVIDER, session.getId(), context.queryParams());
 
         assertThat(redirect).isEqualTo(FALLBACK_REDIRECT);
         assertThat(session.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.PENDING);
