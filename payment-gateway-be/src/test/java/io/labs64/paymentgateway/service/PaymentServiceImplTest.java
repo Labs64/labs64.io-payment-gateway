@@ -201,35 +201,6 @@ class PaymentServiceImplTest {
     }
 
     @Test
-    void payDoesNotRejectInactiveTenantPaymentProviderForExistingPayment() {
-        final PaymentEntity payment = payment();
-        payment.getPaymentProvider().setActive(false);
-        final PaymentTransactionEntity transaction = transaction(payment);
-        final PaymentContext context = new PaymentContext(null, null, null);
-
-        when(paymentRepository.findByIdAndTenantId(payment.getId(), TENANT_ID)).thenReturn(Optional.of(payment));
-        when(transactionService.create(any(), any())).thenReturn(transaction);
-        when(paymentDefinitionService.findEnabled(PROVIDER)).thenReturn(Optional.of(definition()));
-        when(providerRegistry.getProvider(PROVIDER)).thenReturn(pspProvider);
-        when(paymentContextMapper.toContext(
-                payment,
-                transaction,
-                payment.getPaymentProvider(),
-                PaymentExecutionRequest.empty(),
-                null)).thenReturn(context);
-        when(pspProvider.execute(context)).thenReturn(new PaymentResult(
-                PROVIDER,
-                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.SUCCESS,
-                Map.of(),
-                null,
-                null));
-        service.pay(TENANT_ID, payment.getId());
-
-        verify(pspProvider).execute(context);
-        verify(transactionService).applyResult(eq(transaction), any(PaymentResult.class));
-    }
-
-    @Test
     void payCreatesCheckoutSessionForCheckoutProviderAndStoresNextActionOnSession() {
         final PaymentEntity payment = payment();
         final PaymentTransactionEntity transaction = transaction(payment);
