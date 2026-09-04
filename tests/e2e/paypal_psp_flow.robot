@@ -52,6 +52,23 @@ Create pending PayPal order with expected OAuth and SDK requests
     Should Be Equal As Strings    ${transaction_response.json()}[paymentId]    ${payment_id}
     Should Be Equal As Strings    ${transaction_response.json()}[status]    PENDING
 
+Create zero-decimal JPY PayPal order
+    [Documentation]    PayPal receives JPY gross, item total, and unit price as whole major units.
+    [Tags]    payment-gateway    regression    psp-stub    paypal    currency
+    ${payment_id}=    Create PayPal Payment    currency=JPY    gross_amount=${3000}
+    ${checkout}=    Build PayPal Checkout Request
+    ${pay_response}=    Pay Payment
+    ...    ${payment_id}
+    ...    ${PAYPAL_PSP_SESSION}
+    ...    checkout=${checkout}
+    Response Status Should Be    ${pay_response}    200
+    ${order_request}=    Get Only PSP API Request    POST    ${PAYPAL_ORDERS_API_PATH}
+    ${body}=    Parse JSON PSP Request    ${order_request}
+    Should Be Equal As Strings    ${body}[purchase_units][0][amount][currency_code]    JPY
+    Should Be Equal As Strings    ${body}[purchase_units][0][amount][value]    3000
+    Should Be Equal As Strings    ${body}[purchase_units][0][amount][breakdown][item_total][value]    3000
+    Should Be Equal As Strings    ${body}[purchase_units][0][items][0][unit_amount][value]    3000
+
 Replay PayPal pay without a second order or OAuth call
     [Documentation]    Replaying one client idempotency key returns the same transaction without calling PayPal again.
     [Tags]    payment-gateway    regression    psp-stub    paypal    idempotency
@@ -334,6 +351,7 @@ Build PayPal Checkout Request
 
 Create PayPal Payment
     [Arguments]    ${client_id}=${PAYPAL_CLIENT_ID}    ${client_secret}=${PAYPAL_CLIENT_SECRET}
+    ...    ${currency}=EUR    ${gross_amount}=${100}
     ${provider_config}=    Create Dictionary
     ...    clientId=${client_id}
     ...    clientSecret=${client_secret}
@@ -346,7 +364,11 @@ Create PayPal Payment
     ...    ${provider_config}
     Response Status Should Be    ${provider_response}    200
     ${provider_id}=    Set Variable    ${provider_response.json()}[id]
-    ${create_response}=    Create Valid Payment    ${provider_id}    ${PAYPAL_PSP_SESSION}
+    ${request}=    Build Valid Payment Request    ${provider_id}
+    Set To Dictionary    ${request}[purchaseOrder]    currency=${currency}    grossAmount=${gross_amount}
+    Set To Dictionary    ${request}[purchaseOrder][items][0]    price=${gross_amount}
+    ${create_response}=    POST On Session
+    ...    ${PAYPAL_PSP_SESSION}    /payments    json=${request}    expected_status=any
     Response Status Should Be    ${create_response}    201
     RETURN    ${create_response.json()}[id]
 
