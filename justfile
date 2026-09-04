@@ -3,8 +3,8 @@
 APP := "payment-gateway"
 NAMESPACE := "labs64io"
 DEFAULT_FORWARD_PORT := "8020"
-BACKEND_JUSTFILE := "payment-gateway-be/justfile"
 HELM_JUSTFILE := "../labs64.io-helm-charts/justfile"
+WORKSPACE_JUSTFILE := "../labs64.io-workspace/justfile"
 
 default:
     @just --list
@@ -17,9 +17,12 @@ up:
     just --justfile {{HELM_JUSTFILE}} install-tools
     just deploy
 
-# Build and push :latest, install or upgrade the chart, then roll out the new image
-deploy:
-    just --justfile {{BACKEND_JUSTFILE}} docker-push
+# Build and publish the deployable image using the ecosystem builder
+build:
+    just --justfile {{WORKSPACE_JUSTFILE}} build {{APP}}
+
+# Build and publish :latest, install or upgrade the chart, then roll out the new image
+deploy: build
     just --justfile {{HELM_JUSTFILE}} install-app {{APP}}
     just restart
 
