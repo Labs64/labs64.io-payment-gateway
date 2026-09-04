@@ -166,19 +166,26 @@ class PaypalPaymentProviderTest {
     }
 
     @Test
+    void completeCheckoutRejectsCallbackTokenThatDoesNotMatchStoredOrderId() {
+        final ProviderCheckoutContext context = callbackContext("stored-order", "different-order");
+
+        assertThatThrownBy(() -> provider.completeCheckout(context))
+                .isInstanceOf(ProviderValidationException.class)
+                .hasMessage("PayPal checkout callback token does not match the stored order id.");
+    }
+
+    @Test
+    void cancelCheckoutRejectsCallbackTokenThatDoesNotMatchStoredOrderId() {
+        final ProviderCheckoutContext context = callbackContext("stored-order", "different-order");
+
+        assertThatThrownBy(() -> provider.cancelCheckout(context))
+                .isInstanceOf(ProviderValidationException.class)
+                .hasMessage("PayPal checkout callback token does not match the stored order id.");
+    }
+
+    @Test
     void cancelCheckoutReturnsRedirectToStoredCancelUrl() {
-        final ProviderCheckoutContext context = new ProviderCheckoutContext(
-                null,
-                null,
-                null,
-                new CheckoutSession(
-                        UUID.randomUUID(),
-                        Map.of(
-                                "returnUrl", "https://checkout.example.com/payment/return",
-                                "cancelUrl", "https://checkout.example.com/payment/cancel"),
-                        null,
-                        null),
-                Map.of("token", java.util.List.of("paypal-order")));
+        final ProviderCheckoutContext context = callbackContext("paypal-order", "paypal-order");
 
         final PaymentResult result = provider.cancelCheckout(context);
 
@@ -352,6 +359,26 @@ class PaypalPaymentProviderTest {
                   }
                 }
                 """.formatted(eventType, status, transactionId);
+    }
+
+    private static ProviderCheckoutContext callbackContext(
+            final String storedOrderId,
+            final String callbackOrderId) {
+        return new ProviderCheckoutContext(
+                null,
+                new PaymentTransaction(
+                        UUID.randomUUID(),
+                        PaymentTransactionStatus.PENDING,
+                        Map.of("orderId", storedOrderId)),
+                null,
+                new CheckoutSession(
+                        UUID.randomUUID(),
+                        Map.of(
+                                "returnUrl", "https://checkout.example.com/payment/return",
+                                "cancelUrl", "https://checkout.example.com/payment/cancel"),
+                        null,
+                        null),
+                Map.of("token", List.of(callbackOrderId)));
     }
 
     private static CheckoutPreparationContext checkoutContext(final Map<String, Object> checkout) {

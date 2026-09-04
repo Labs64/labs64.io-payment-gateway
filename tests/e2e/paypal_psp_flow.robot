@@ -138,6 +138,29 @@ Complete PayPal browser return through capture API
     Should Be Equal As Strings    ${confirmation.json()}[payment][status]    CLOSED
     Should Be Equal As Strings    ${confirmation.json()}[paymentTransaction][status]    SUCCESS
 
+Reject PayPal browser return with mismatched order token
+    [Documentation]    A callback for another PayPal order is rejected safely without capture or transaction mutation.
+    [Tags]    payment-gateway    regression    psp-stub    paypal    checkout-return    security
+    ${payment_id}    ${transaction_id}    ${pay_result}    ${return_url}    ${cancel_url}    ${checkout_session_id}=
+    ...    Create Pending PayPal Payment
+    ${query}=    Create Dictionary    token=PAYPAL-ORDER-MISMATCH
+    ${response}=    Return Provider Checkout Session
+    ...    ${PAYPAL_PROVIDER}
+    ...    ${checkout_session_id}
+    ...    ${query}
+    ...    ${PAYPAL_PUBLIC_SESSION}
+    Response Status Should Be    ${response}    302
+    Should Be Equal As Strings    ${response.headers}[Location]    /
+    ${transaction_response}=    Get Payment Transaction    ${transaction_id}    ${PAYPAL_PSP_SESSION}
+    Response Status Should Be    ${transaction_response}    200
+    Should Be Equal As Strings    ${transaction_response.json()}[status]    PENDING
+    Should Be Equal As Strings    ${transaction_response.json()}[statusDetails][code]    AWAITING_CUSTOMER
+    Should Be Equal As Strings    ${transaction_response.json()}[pspData][orderId]    ${PAYPAL_ORDER_ID}
+    PayPal Payment Should Have Status    ${payment_id}    READY
+    PSP API Request Count Should Be    POST    ${PAYPAL_ORDERS_API_PATH}/PAYPAL-ORDER-MISMATCH/capture    0
+    PSP API Request Count Should Be    POST    ${PAYPAL_ORDERS_API_PATH}/${PAYPAL_ORDER_ID}/capture    0
+    PSP API Request Count Should Be    POST    ${PAYPAL_OAUTH_API_PATH}    1
+
 Keep PayPal browser return pending when capture result is unavailable
     [Documentation]    A PayPal capture 5xx redirects safely and leaves the transaction non-terminal.
     [Tags]    payment-gateway    regression    psp-stub    paypal    checkout-return    error-path

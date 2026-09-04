@@ -148,7 +148,8 @@ class ProviderCheckoutServiceImplTest {
         when(providerRegistry.getProvider(PROVIDER)).thenReturn(provider);
         mapContext(session, context);
         when(provider.completeCheckout(context))
-                .thenThrow(new ProviderValidationException("Invalid callback token."));
+                .thenThrow(new ProviderValidationException(
+                        "PayPal checkout callback token does not match the stored order id."));
 
         when(properties.getCheckoutFallbackRedirectUrl()).thenReturn(FALLBACK_REDIRECT);
         final URI redirect = service.complete(PROVIDER, session.getId(), context.queryParams());
@@ -157,6 +158,7 @@ class ProviderCheckoutServiceImplTest {
         assertThat(session.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.PENDING);
         assertThat(session.getPaymentTransaction().getStatusDetails()).isEqualTo(
                 new StatusDetails().code("AWAITING_CUSTOMER").message("Waiting for customer."));
+        assertThat(session.getPaymentTransaction().getPspData()).containsEntry("orderId", "paypal-order");
         verify(transactionService, never()).updateIfNonTerminal(any(), any(), any());
     }
 
@@ -203,7 +205,8 @@ class ProviderCheckoutServiceImplTest {
                 new PaymentTransaction(
                         session.getPaymentTransactionId(),
                         io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.valueOf(
-                                session.getPaymentTransaction().getStatus().name())),
+                                session.getPaymentTransaction().getStatus().name()),
+                        session.getPaymentTransaction().getPspData()),
                 new ProviderConfig(PROVIDER, Map.of("clientId", "client-id"), "PayPal", null),
                 new CheckoutSession(session.getId(), session.getPayload(), null, null),
                 Map.of("token", List.of("paypal-order")));
@@ -238,6 +241,7 @@ class ProviderCheckoutServiceImplTest {
                 .id(UUID.randomUUID())
                 .tenantId(TENANT_ID)
                 .status(transactionStatus)
+                .pspData(Map.of("orderId", "paypal-order", "status", "CREATED"))
                 .build();
         transaction.setPayment(payment);
 
