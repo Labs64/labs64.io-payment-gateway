@@ -17,6 +17,7 @@ import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.PaymentTransaction;
 import io.labs64.paymentgateway.psp.spi.PaymentWebhookResult;
 import io.labs64.paymentgateway.psp.spi.ProviderConfig;
+import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
 import io.labs64.paymentgateway.psp.spi.ProviderWebhookSupport;
 import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import io.labs64.paymentgateway.psp.spi.WebhookRejectedException;
@@ -106,39 +107,59 @@ class WebhookServiceImplTest {
     }
 
     @Test
-    void processWebhookDelegatesDuplicateTerminalResult() {
+    void processWebhookSkipsProviderForDuplicateTerminalResult() {
         final PaymentEntity payment = payment(PROVIDER, PaymentStatus.CLOSED);
         final PaymentTransactionEntity transaction = transaction(payment, PaymentTransactionStatus.SUCCESS);
         final WebhookRequest request = request(PROVIDER);
 
         stubTransactionLookup(request, transaction);
-        stubMapper(payment, transaction);
-        final PaymentWebhookResult result = successfulResult();
-        when(paymentProvider.handleWebhook(any())).thenReturn(result);
 
-        service.processWebhook(request);
+        final PaymentWebhookResult response = service.processWebhook(request);
 
-        verify(transactionService).applyResult(transaction, result);
+        assertThat(response.status()).isEqualTo(
+                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.SUCCESS);
+        verify(paymentProvider, never()).handleWebhook(any());
+        verify(transactionService, never()).applyResult(any(), any());
     }
 
     @Test
-    void processWebhookDelegatesDifferentResultForTerminalTransaction() {
-        final PaymentEntity payment = payment(PROVIDER, PaymentStatus.CLOSED);
-        final PaymentTransactionEntity transaction = transaction(payment, PaymentTransactionStatus.SUCCESS);
+    void processWebhookSkipsProviderForFailedTerminalTransaction() {
+        final PaymentEntity payment = payment(PROVIDER, PaymentStatus.READY);
+        final PaymentTransactionEntity transaction = transaction(payment, PaymentTransactionStatus.FAILED);
+        final WebhookRequest request = request(PROVIDER);
+
+        stubTransactionLookup(request, transaction);
+
+        final PaymentWebhookResult response = service.processWebhook(request);
+
+        assertThat(response.status()).isEqualTo(
+                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.FAILED);
+        verify(paymentProvider, never()).handleWebhook(any());
+        verify(transactionService, never()).applyResult(any(), any());
+    }
+
+    @Test
+    void processWebhookRecordsTechnicalDetailsWithoutFinalizingTransaction() {
+        final PaymentEntity payment = payment(PROVIDER, PaymentStatus.READY);
+        final PaymentTransactionEntity transaction = transaction(payment, PaymentTransactionStatus.PENDING);
         final WebhookRequest request = request(PROVIDER);
 
         stubTransactionLookup(request, transaction);
         stubMapper(payment, transaction);
-        final PaymentWebhookResult result = new PaymentWebhookResult(
-                PROVIDER,
-                io.labs64.paymentgateway.psp.spi.PaymentTransactionStatus.FAILED,
-                Map.of(),
-                new io.labs64.paymentgateway.psp.spi.StatusDetails("FAILED", "Failed"));
-        when(paymentProvider.handleWebhook(any())).thenReturn(result);
+        when(paymentProvider.handleWebhook(any())).thenThrow(new ProviderExecutionException(
+                io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE,
+                "Provider unavailable."));
+        when(transactionService.recordProviderExecutionFailure(
+                transaction,
+                io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE)).thenReturn(transaction);
 
-        service.processWebhook(request);
+        assertThatThrownBy(() -> service.processWebhook(request))
+                .isInstanceOf(ProviderExecutionException.class);
 
-        verify(transactionService).applyResult(transaction, result);
+        assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionStatus.PENDING);
+        verify(transactionService).recordProviderExecutionFailure(
+                transaction, io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE);
+        verify(transactionService, never()).applyResult(any(), any());
     }
 
     @Test

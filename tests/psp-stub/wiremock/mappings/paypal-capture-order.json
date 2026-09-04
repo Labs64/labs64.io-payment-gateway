@@ -16,7 +16,23 @@
     },
     "jsonBody": {
       "id": "PAYPAL-ORDER-PSP-STUB",
-      "status": "COMPLETED"
+      "status": "COMPLETED",
+      "purchase_units": [
+        {
+          "payments": {
+            "captures": [
+              {
+                "id": "PAYPAL-CAPTURE-PSP-STUB",
+                "status": "COMPLETED",
+                "amount": {
+                  "currency_code": "USD",
+                  "value": "30.00"
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   }
 }

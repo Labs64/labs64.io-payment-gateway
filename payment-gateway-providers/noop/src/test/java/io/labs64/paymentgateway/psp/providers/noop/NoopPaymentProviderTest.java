@@ -35,7 +35,8 @@ class NoopPaymentProviderTest {
         assertThat(result.provider()).isEqualTo("noop");
         assertThat(result.status()).isEqualTo(PaymentTransactionStatus.SUCCESS);
         assertThat(result.pspData()).isEmpty();
-        assertThat(result.statusDetails()).isEqualTo(new StatusDetails("SUCCESS", "TBD"));
+        assertThat(result.statusDetails()).isEqualTo(
+                new StatusDetails("COMPLETED", "Payment completed successfully."));
         assertThat(result.nextAction()).isNull();
     }
 

@@ -21,11 +21,13 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.paypal.sdk.Environment;
 import com.paypal.sdk.PaypalServerSdkClient;
+import com.paypal.sdk.exceptions.ApiException;
 import com.paypal.sdk.http.response.ApiResponse;
 import com.paypal.sdk.models.Address;
 import com.paypal.sdk.models.AmountBreakdown;
 import com.paypal.sdk.models.AmountWithBreakdown;
 import com.paypal.sdk.models.CaptureOrderInput;
+import com.paypal.sdk.models.CaptureStatus;
 import com.paypal.sdk.models.CheckoutPaymentIntent;
 import com.paypal.sdk.models.CreateOrderInput;
 import com.paypal.sdk.models.FulfillmentType;
@@ -40,7 +42,7 @@ import com.paypal.sdk.models.OrderApplicationContextShippingPreference;
 import com.paypal.sdk.models.OrderApplicationContextUserAction;
 import com.paypal.sdk.models.OrderCaptureRequest;
 import com.paypal.sdk.models.OrderRequest;
-import com.paypal.sdk.models.OrderStatus;
+import com.paypal.sdk.models.OrdersCapture;
 import com.paypal.sdk.models.Payer;
 import com.paypal.sdk.models.PhoneNumber;
 import com.paypal.sdk.models.PhoneType;
@@ -67,12 +69,23 @@ import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigField;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigSupport;
 import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
+import io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure;
 import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
 import io.labs64.paymentgateway.psp.spi.ProviderWebhookSupport;
 import io.labs64.paymentgateway.psp.spi.StatusDetails;
 import io.labs64.paymentgateway.psp.spi.WebhookRejectedException;
 import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import org.apache.commons.lang3.StringUtils;
+
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.AWAITING_CUSTOMER;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.CANCELLED;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.COMPLETED;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.DECLINED;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.PAYMENT_FAILED;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.PROCESSING;
+import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.AUTHENTICATION_FAILED;
+import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.INVALID_RESPONSE;
+import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE;
 
 /**
  * PayPal payment provider.
@@ -148,6 +161,15 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
 
     @Override
     public Optional<CheckoutSessionDraft> prepareCheckoutSession(final CheckoutPreparationContext context) {
+        validateConfig(context.provider().config());
+        requireProviderConfig(context.provider().config(), CLIENT_ID);
+        requireProviderConfig(context.provider().config(), CLIENT_SECRET);
+        final PurchaseOrder purchaseOrder = context.payment().purchaseOrder();
+        final List<ItemRequest> items = toItems(
+                purchaseOrder,
+                hasShippingInfo(context.payment().shippingInfo()));
+        toAmount(purchaseOrder, items);
+
         final Map<String, Object> checkout = context.request().checkout();
         final String returnUrl = requireAbsoluteUri(checkout, RETURN_URL);
         final String cancelUrl = requireAbsoluteUri(checkout, CANCEL_URL);
@@ -169,7 +191,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
                 provider(),
                 PaymentTransactionStatus.PENDING,
                 Map.of(ORDER_ID, orderId, "status", status(order)),
-                new StatusDetails("PENDING", "PayPal order is waiting for buyer approval."),
+                new StatusDetails(AWAITING_CUSTOMER, "PayPal order is waiting for buyer approval."),
                 new PaymentNextAction(PaymentNextActionType.REDIRECT, Map.of("url", approveUrl)));
     }
 
@@ -177,15 +199,14 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
     public PaymentResult completeCheckout(final ProviderCheckoutContext context) {
         final String orderId = requireQueryParam(context, "token");
         final Order order = captureOrder(context, orderId);
-        final PaymentTransactionStatus status = OrderStatus.COMPLETED.equals(order != null ? order.getStatus() : null)
-                ? PaymentTransactionStatus.SUCCESS
-                : PaymentTransactionStatus.FAILED;
+        final OrdersCapture capture = requireCapture(order);
+        final PaymentTransactionStatus status = captureStatus(capture.getStatus());
 
         return new PaymentResult(
                 provider(),
                 status,
-                Map.of(ORDER_ID, orderId, "status", status(order)),
-                toStatusDetails(order),
+                captureData(orderId, order, capture),
+                toStatusDetails(capture),
                 redirectToSessionPayload(context, RETURN_URL));
     }
 
@@ -200,7 +221,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
                 provider(),
                 PaymentTransactionStatus.FAILED,
                 pspData,
-                new StatusDetails("CANCELLED", "PayPal checkout was cancelled by the buyer."),
+                new StatusDetails(CANCELLED, "PayPal checkout was cancelled by the buyer."),
                 redirectToSessionPayload(context, CANCEL_URL));
     }
 
@@ -237,7 +258,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
                 provider(),
                 status,
                 webhookData(payload, resource),
-                new StatusDetails(status.name(), "PayPal webhook mapped to payment status " + status + "."));
+                webhookStatusDetails(eventType, status));
     }
 
     private Order createOrder(final PaymentContext context) {
@@ -251,8 +272,11 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
                     .getOrdersController()
                     .createOrder(input);
             return response.getResult();
-        } catch (com.paypal.sdk.exceptions.ApiException | IOException ex) {
-            throw new ProviderExecutionException("PayPal order creation failed.", ex);
+        } catch (ApiException | IOException ex) {
+            throw new ProviderExecutionException(
+                    classifyExecutionFailure(ex),
+                    "PayPal order creation failed.",
+                    ex);
         }
     }
 
@@ -278,9 +302,22 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
                     .getOrdersController()
                     .captureOrder(input);
             return response.getResult();
-        } catch (com.paypal.sdk.exceptions.ApiException | IOException ex) {
-            throw new ProviderExecutionException("PayPal order capture failed.", ex);
+        } catch (ApiException | IOException ex) {
+            throw new ProviderExecutionException(
+                    classifyExecutionFailure(ex),
+                    "PayPal order capture failed.",
+                    ex);
         }
+    }
+
+    static ProviderExecutionFailure classifyExecutionFailure(final Exception exception) {
+        if (exception instanceof ApiException apiException) {
+            final int responseCode = apiException.getResponseCode();
+            if (responseCode == 401 || responseCode == 403) {
+                return AUTHENTICATION_FAILED;
+            }
+        }
+        return UNAVAILABLE;
     }
 
     private OrderRequest toOrderRequest(final PaymentContext context) {
@@ -317,7 +354,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
 
     private AmountWithBreakdown toAmount(final PurchaseOrder purchaseOrder, final List<ItemRequest> items) {
         final String currency = requireCurrency(purchaseOrder);
-        final BigDecimal grossAmount = requireGrossAmount(purchaseOrder);
+        final BigDecimal grossAmount = requirePositiveGrossAmount(purchaseOrder);
         final AmountWithBreakdown.Builder builder = new AmountWithBreakdown.Builder(
                 currency,
                 toMajorUnits(grossAmount));
@@ -345,7 +382,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
         final BigDecimal taxTotal = purchaseOrder.getTaxAmount() != null
                 ? BigDecimal.valueOf(purchaseOrder.getTaxAmount())
                 : BigDecimal.ZERO;
-        final BigDecimal grossAmount = requireGrossAmount(purchaseOrder);
+        final BigDecimal grossAmount = requirePositiveGrossAmount(purchaseOrder);
         if (itemTotal.add(taxTotal).compareTo(grossAmount) != 0) {
             throw new ProviderValidationException("PayPal payment requires purchaseOrder items and taxAmount to match grossAmount.");
         }
@@ -528,29 +565,84 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
 
     private static String requireOrderId(final Order order) {
         if (order == null || StringUtils.isBlank(order.getId())) {
-            throw new ProviderExecutionException("PayPal order creation returned no order id.");
+            throw new ProviderExecutionException(
+                    INVALID_RESPONSE,
+                    "PayPal order creation returned no order id.");
         }
         return order.getId();
     }
 
     private static String requireApproveUrl(final Order order) {
         if (order == null || order.getLinks() == null) {
-            throw new ProviderExecutionException("PayPal order creation returned no approval link.");
+            throw new ProviderExecutionException(
+                    INVALID_RESPONSE,
+                    "PayPal order creation returned no approval link.");
         }
         return order.getLinks().stream()
                 .filter(link -> APPROVE_REL.equalsIgnoreCase(link.getRel()))
                 .map(LinkDescription::getHref)
                 .filter(StringUtils::isNotBlank)
                 .findFirst()
-                .orElseThrow(() -> new ProviderExecutionException("PayPal order creation returned no approval link."));
+                .orElseThrow(() -> new ProviderExecutionException(
+                        INVALID_RESPONSE,
+                        "PayPal order creation returned no approval link."));
     }
 
-    private static StatusDetails toStatusDetails(final Order order) {
-        final String status = status(order);
-        if (OrderStatus.COMPLETED.equals(order != null ? order.getStatus() : null)) {
-            return new StatusDetails("SUCCESS", "PayPal order was captured successfully.");
+    private static OrdersCapture requireCapture(final Order order) {
+        if (order == null || order.getPurchaseUnits() == null) {
+            throw new ProviderExecutionException(
+                    INVALID_RESPONSE,
+                    "PayPal order capture returned no capture result.");
         }
-        return new StatusDetails(status, "PayPal order was not completed.");
+        return order.getPurchaseUnits().stream()
+                .filter(unit -> unit != null
+                        && unit.getPayments() != null
+                        && unit.getPayments().getCaptures() != null)
+                .flatMap(unit -> unit.getPayments().getCaptures().stream())
+                .findFirst()
+                .orElseThrow(() -> new ProviderExecutionException(
+                        INVALID_RESPONSE,
+                        "PayPal order capture returned no capture result."));
+    }
+
+    private static PaymentTransactionStatus captureStatus(final CaptureStatus status) {
+        if (status == null) {
+            throw new ProviderExecutionException(
+                    INVALID_RESPONSE,
+                    "PayPal order capture returned no capture status.");
+        }
+        return switch (status) {
+            case COMPLETED -> PaymentTransactionStatus.SUCCESS;
+            case PENDING -> PaymentTransactionStatus.PENDING;
+            case DECLINED, FAILED -> PaymentTransactionStatus.FAILED;
+            case PARTIALLY_REFUNDED, REFUNDED, _UNKNOWN -> throw new ProviderExecutionException(
+                    INVALID_RESPONSE,
+                    "PayPal order capture returned an unsupported capture status.");
+        };
+    }
+
+    private static StatusDetails toStatusDetails(final OrdersCapture capture) {
+        return switch (capture.getStatus()) {
+            case COMPLETED -> new StatusDetails(COMPLETED, "PayPal payment was captured successfully.");
+            case PENDING -> new StatusDetails(PROCESSING, "PayPal payment capture is processing.");
+            case DECLINED -> new StatusDetails(DECLINED, "PayPal payment capture was declined.");
+            case FAILED -> new StatusDetails(PAYMENT_FAILED, "PayPal payment capture failed.");
+            case PARTIALLY_REFUNDED, REFUNDED, _UNKNOWN -> throw new ProviderExecutionException(
+                    INVALID_RESPONSE,
+                    "PayPal order capture returned an unsupported capture status.");
+        };
+    }
+
+    private static Map<String, Object> captureData(
+            final String orderId,
+            final Order order,
+            final OrdersCapture capture) {
+        final Map<String, Object> data = new LinkedHashMap<>();
+        data.put(ORDER_ID, orderId);
+        putIfPresent(data, "status", status(order));
+        putIfPresent(data, "captureId", capture.getId());
+        putIfPresent(data, "captureStatus", capture.getStatus() != null ? capture.getStatus().toString() : null);
+        return Map.copyOf(data);
     }
 
     private static PaymentNextAction redirectToSessionPayload(
@@ -577,9 +669,11 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
         return purchaseOrder.getCurrency().trim();
     }
 
-    private static BigDecimal requireGrossAmount(final PurchaseOrder purchaseOrder) {
-        if (purchaseOrder == null || purchaseOrder.getGrossAmount() == null) {
-            throw new ProviderValidationException("PayPal payment requires purchaseOrder.grossAmount.");
+    private static BigDecimal requirePositiveGrossAmount(final PurchaseOrder purchaseOrder) {
+        if (purchaseOrder == null || purchaseOrder.getGrossAmount() == null
+                || purchaseOrder.getGrossAmount() <= 0) {
+            throw new ProviderValidationException(
+                    "PayPal payment requires a positive purchaseOrder.grossAmount.");
         }
         return BigDecimal.valueOf(purchaseOrder.getGrossAmount());
     }
@@ -694,6 +788,19 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
         return null;
     }
 
+    private static StatusDetails webhookStatusDetails(
+            final String eventType,
+            final PaymentTransactionStatus status) {
+        final String code = switch (eventType) {
+            case "PAYMENT.CAPTURE.COMPLETED", "CHECKOUT.ORDER.COMPLETED" -> COMPLETED;
+            case "PAYMENT.CAPTURE.PENDING" -> PROCESSING;
+            case "PAYMENT.CAPTURE.DENIED", "PAYMENT.CAPTURE.DECLINED" -> DECLINED;
+            case "PAYMENT.CAPTURE.REVERSED" -> PAYMENT_FAILED;
+            default -> throw new WebhookRejectedException("Unsupported PayPal webhook event: " + eventType);
+        };
+        return new StatusDetails(code, "PayPal webhook mapped to payment status " + status + ".");
+    }
+
     private static PaymentTransactionStatus webhookStatus(final String eventType) {
         return switch (eventType) {
             case "PAYMENT.CAPTURE.COMPLETED", "CHECKOUT.ORDER.COMPLETED" ->
@@ -715,17 +822,15 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
                 context.provider().config(),
                 context.transaction().id(),
                 orderId);
-        final PaymentTransactionStatus status = OrderStatus.COMPLETED.equals(order != null ? order.getStatus() : null)
-                ? PaymentTransactionStatus.SUCCESS
-                : PaymentTransactionStatus.FAILED;
+        final OrdersCapture capture = requireCapture(order);
+        final PaymentTransactionStatus status = captureStatus(capture.getStatus());
         final Map<String, Object> data = new LinkedHashMap<>(webhookData(payload, resource));
-        data.put(ORDER_ID, orderId);
-        data.put("captureStatus", status(order));
+        data.putAll(captureData(orderId, order, capture));
         return new PaymentWebhookResult(
                 provider(),
                 status,
                 Map.copyOf(data),
-                toStatusDetails(order));
+                toStatusDetails(capture));
     }
 
     private static Map<String, Object> webhookData(
@@ -779,6 +884,14 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
                 && source.get(name).isJsonPrimitive()
                 ? source.get(name).getAsString()
                 : null;
+    }
+
+    private static String requireProviderConfig(final Map<String, String> config, final String name) {
+        final String value = config != null ? config.get(name) : null;
+        if (StringUtils.isBlank(value)) {
+            throw new ProviderValidationException("PayPal provider config requires " + name + ".");
+        }
+        return value.trim();
     }
 
     private static String requiredConfig(final Map<String, String> config, final String name) {

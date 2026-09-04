@@ -1,19 +1,27 @@
 package io.labs64.paymentgateway.psp.spi;
 
 /**
- * Base unchecked exception for failures reported by a payment provider.
+ * Base unchecked exception for a provider adapter that cannot return a
+ * definitive normalized provider result.
  *
- * <p>The Payment Gateway owns transport-level error mapping and transaction
- * state changes. Provider implementations should use a more specific subtype
- * whenever possible.</p>
+ * <p>Provider exceptions are part of the SPI control-flow contract; they are not
+ * payment outcomes. The payment gateway must never transition a payment
+ * transaction to {@code SUCCESS} or {@code FAILED} because an exception was
+ * thrown. A terminal transition is allowed only when a provider returns a normal
+ * {@link ProviderResult} with a terminal status.</p>
+ *
+ * <p>Adapters must use the most specific subtype. They remain responsible for
+ * translating PSP SDK exceptions and protocol details, while the gateway remains
+ * responsible for persistence, transaction state, transport responses, and
+ * events.</p>
  */
-public class ProviderException extends RuntimeException {
+public abstract class ProviderException extends RuntimeException {
 
-    public ProviderException(final String message) {
+    protected ProviderException(final String message) {
         super(message);
     }
 
-    public ProviderException(final String message, final Throwable cause) {
+    protected ProviderException(final String message, final Throwable cause) {
         super(message, cause);
     }
 }

@@ -15,6 +15,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import io.labs64.paymentgateway.model.ErrorCode;
 import io.labs64.paymentgateway.model.ErrorResponse;
+import io.labs64.paymentgateway.message.ProviderExecutionMessages;
 import io.labs64.paymentgateway.message.ValidationMessages;
 import io.labs64.paymentgateway.psp.spi.ProviderException;
 import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
@@ -34,6 +35,7 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private final ValidationMessages msg;
+    private final ProviderExecutionMessages providerExecutionMessages;
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(final ApiException ex) {
@@ -56,13 +58,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ProviderExecutionException.class)
     public ResponseEntity<ErrorResponse> handleProviderExecutionException(final ProviderExecutionException ex) {
         log.error("Payment provider execution error", ex);
-        return buildResponse(HttpStatus.BAD_GATEWAY, ErrorCode.PSP_ERROR, ex.getMessage());
+        return buildResponse(HttpStatus.BAD_GATEWAY, ErrorCode.PSP_ERROR, providerExecutionMessages.message(ex.failure()));
     }
 
     @ExceptionHandler(ProviderException.class)
     public ResponseEntity<ErrorResponse> handleProviderException(final ProviderException ex) {
         log.error("Unexpected payment provider error", ex);
-        return buildResponse(HttpStatus.BAD_GATEWAY, ErrorCode.PSP_ERROR, ex.getMessage());
+        return buildResponse(HttpStatus.BAD_GATEWAY, ErrorCode.PSP_ERROR, providerExecutionMessages.unexpected());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

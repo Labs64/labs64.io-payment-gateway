@@ -146,7 +146,8 @@ It covers:
 - the outbound create-session HTTP contract, including amount, currency, metadata, callbacks,
   authorization, and the provider-side idempotency key;
 - replay of the same `/pay` request without a second Stripe call;
-- Stripe 5xx and incomplete-success responses mapped to synchronous `FAILED/PSP_ERROR` results;
+- Stripe 5xx and incomplete-success responses recorded as non-terminal `PENDING`
+  transactions with normalized `PROVIDER_*` status details;
 - paid and unpaid browser returns, cancellation, tenant redirects, and persisted state;
 - valid success/failure webhook signatures, invalid-signature rejection, and protection of a
   terminal successful transaction from a late failure event.

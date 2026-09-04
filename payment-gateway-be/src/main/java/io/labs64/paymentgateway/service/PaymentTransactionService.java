@@ -5,6 +5,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
+import io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure;
 import io.labs64.paymentgateway.psp.spi.ProviderResult;
 import io.labs64.paymentgateway.service.filter.PaymentTransactionFilter;
 import org.springframework.data.domain.Page;
@@ -82,6 +83,20 @@ public interface PaymentTransactionService {
             String tenantId,
             UUID id,
             Consumer<PaymentTransactionEntity> updater);
+
+    /**
+     * Records why a provider invocation did not produce a definitive result.
+     * The transaction remains non-terminal and terminal transactions are left
+     * unchanged.
+     *
+     * @param transaction payment transaction used to identify the locked entity
+     * @param failure normalized provider execution failure
+     * @return current payment transaction with localized status details when it
+     *         was non-terminal
+     */
+    PaymentTransactionEntity recordProviderExecutionFailure(
+            PaymentTransactionEntity transaction,
+            ProviderExecutionFailure failure);
 
     /**
      * Applies a normalized provider result to a payment transaction under a

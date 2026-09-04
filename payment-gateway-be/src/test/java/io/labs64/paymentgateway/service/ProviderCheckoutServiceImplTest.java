@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Consumer;
 
+import io.labs64.paymentgateway.config.PaymentGatewayProperties;
 import io.labs64.paymentgateway.entity.CheckoutSessionEntity;
 import io.labs64.paymentgateway.entity.PaymentEntity;
 import io.labs64.paymentgateway.entity.PaymentProviderEntity;
@@ -24,6 +24,7 @@ import io.labs64.paymentgateway.psp.spi.PaymentNextActionType;
 import io.labs64.paymentgateway.psp.spi.PaymentProvider;
 import io.labs64.paymentgateway.psp.spi.PaymentResult;
 import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
+import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
 import io.labs64.paymentgateway.psp.spi.PaymentTransaction;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutContext;
 import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
@@ -37,7 +38,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,6 +47,7 @@ class ProviderCheckoutServiceImplTest {
 
     private static final String TENANT_ID = "tenant-a";
     private static final String PROVIDER = "paypal";
+    private static final URI FALLBACK_REDIRECT = URI.create("https://checkout.example/error");
 
     @Mock
     private CheckoutSessionRepository checkoutSessionRepository;
@@ -61,7 +62,7 @@ class ProviderCheckoutServiceImplTest {
     private PaymentProviderRegistry providerRegistry;
 
     @Mock
-    private PaymentEventPublisher paymentEventPublisher;
+    private PaymentGatewayProperties properties;
 
     @Mock
     private CheckoutCapableProvider provider;
@@ -112,30 +113,51 @@ class ProviderCheckoutServiceImplTest {
     }
 
     @Test
-    void completeMarksTransactionFailedAndUsesFallbackRedirectWhenProviderCheckoutFails() {
+    void completeKeepsTransactionPendingAndUsesFallbackRedirectWhenProviderOutcomeIsUnknown() {
         final CheckoutSessionEntity session = session(PaymentTransactionStatus.PENDING);
         final ProviderCheckoutContext context = context(session);
         when(checkoutSessionRepository.findById(session.getId())).thenReturn(Optional.of(session));
         when(providerRegistry.getProvider(PROVIDER)).thenReturn(provider);
         mapContext(session, context);
         when(provider.completeCheckout(context))
-                .thenThrow(new ProviderExecutionException("PayPal order capture failed."));
-        when(transactionService.updateIfNonTerminal(eq(TENANT_ID), eq(session.getPaymentTransactionId()), any()))
-                .thenAnswer(invocation -> {
-                    final Consumer<PaymentTransactionEntity> updater = invocation.getArgument(2);
-                    updater.accept(session.getPaymentTransaction());
-                    return session.getPaymentTransaction();
-                });
+                .thenThrow(new ProviderExecutionException(
+                        io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE,
+                        "PayPal order capture failed."));
+        when(properties.getCheckoutFallbackRedirectUrl()).thenReturn(FALLBACK_REDIRECT);
+        when(transactionService.recordProviderExecutionFailure(
+                session.getPaymentTransaction(),
+                io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE))
+                .thenReturn(session.getPaymentTransaction());
 
         final URI redirect = service.complete(PROVIDER, session.getId(), Map.of("token", List.of("paypal-order")));
 
-        assertThat(redirect).isEqualTo(URI.create("/"));
-        assertThat(session.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.FAILED);
-        assertThat(session.getPaymentTransaction().getStatusDetails()).isEqualTo(
-                new StatusDetails().code("PSP_ERROR").message("PayPal order capture failed."));
+        assertThat(redirect).isEqualTo(FALLBACK_REDIRECT);
+        assertThat(session.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.PENDING);
         assertThat(session.getPayment().getStatus()).isEqualTo(PaymentStatus.READY);
-        verify(paymentEventPublisher).publishFinalized(session.getPayment(), session.getPaymentTransaction());
-        verify(paymentEventPublisher, never()).publishClosed(any(), any());
+        verify(transactionService).recordProviderExecutionFailure(
+                session.getPaymentTransaction(), io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE);
+    }
+
+    @Test
+    void completeValidationFailureLeavesTransactionDetailsUnchanged() {
+        final CheckoutSessionEntity session = session(PaymentTransactionStatus.PENDING);
+        final ProviderCheckoutContext context = context(session);
+        session.getPaymentTransaction().setStatusDetails(
+                new StatusDetails().code("AWAITING_CUSTOMER").message("Waiting for customer."));
+        when(checkoutSessionRepository.findById(session.getId())).thenReturn(Optional.of(session));
+        when(providerRegistry.getProvider(PROVIDER)).thenReturn(provider);
+        mapContext(session, context);
+        when(provider.completeCheckout(context))
+                .thenThrow(new ProviderValidationException("Invalid callback token."));
+
+        when(properties.getCheckoutFallbackRedirectUrl()).thenReturn(FALLBACK_REDIRECT);
+        final URI redirect = service.complete(PROVIDER, session.getId(), context.queryParams());
+
+        assertThat(redirect).isEqualTo(FALLBACK_REDIRECT);
+        assertThat(session.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.PENDING);
+        assertThat(session.getPaymentTransaction().getStatusDetails()).isEqualTo(
+                new StatusDetails().code("AWAITING_CUSTOMER").message("Waiting for customer."));
+        verify(transactionService, never()).updateIfNonTerminal(any(), any(), any());
     }
 
     @Test

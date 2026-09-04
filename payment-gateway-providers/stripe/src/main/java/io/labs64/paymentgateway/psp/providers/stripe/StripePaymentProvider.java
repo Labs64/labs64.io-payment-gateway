@@ -15,6 +15,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.stripe.StripeClient;
+import com.stripe.exception.AuthenticationException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
@@ -39,11 +40,22 @@ import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigField;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigSupport;
 import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
+import io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure;
 import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
 import io.labs64.paymentgateway.psp.spi.ProviderWebhookSupport;
 import io.labs64.paymentgateway.psp.spi.StatusDetails;
 import io.labs64.paymentgateway.psp.spi.WebhookRejectedException;
 import io.labs64.paymentgateway.psp.spi.WebhookRequest;
+
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.AWAITING_CUSTOMER;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.CANCELLED;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.COMPLETED;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.EXPIRED;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.PAYMENT_FAILED;
+import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.PROCESSING;
+import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.AUTHENTICATION_FAILED;
+import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.INVALID_RESPONSE;
+import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE;
 
 /**
  * Stripe-hosted Checkout provider.
@@ -105,6 +117,10 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
 
     @Override
     public Optional<CheckoutSessionDraft> prepareCheckoutSession(final CheckoutPreparationContext context) {
+        validateConfig(context.provider().config());
+        requireCurrency(context.payment().purchaseOrder());
+        requirePositiveGrossAmount(context.payment().purchaseOrder());
+
         final Map<String, Object> checkout = context.request().checkout();
         final String returnUrl = requireAbsoluteUri(checkout, RETURN_URL);
         final String cancelUrl = requireAbsoluteUri(checkout, CANCEL_URL);
@@ -125,19 +141,30 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
             final StripeClient client = stripeClient(context.provider().config());
             session = client.v1().checkout().sessions().create(params, requestOptions(context.transaction().id()));
         } catch (StripeException ex) {
-            throw new ProviderExecutionException("Stripe Checkout session creation failed.", ex);
+            throw new ProviderExecutionException(
+                    classifyExecutionFailure(ex),
+                    "Stripe Checkout session creation failed.",
+                    ex);
         }
 
         if (session == null || isBlank(session.getId()) || isBlank(session.getUrl())) {
-            throw new ProviderExecutionException("Stripe returned an incomplete Checkout session.");
+            throw new ProviderExecutionException(
+                    INVALID_RESPONSE,
+                    "Stripe returned an incomplete Checkout session.");
         }
 
         return new PaymentResult(
                 provider(),
                 PaymentTransactionStatus.PENDING,
                 sessionData(session),
-                new StatusDetails("PENDING", "Stripe Checkout is waiting for customer completion."),
+                new StatusDetails(AWAITING_CUSTOMER, "Stripe Checkout is waiting for customer completion."),
                 new PaymentNextAction(PaymentNextActionType.REDIRECT, Map.of("url", session.getUrl())));
+    }
+
+    static ProviderExecutionFailure classifyExecutionFailure(final StripeException exception) {
+        return exception instanceof AuthenticationException
+                ? AUTHENTICATION_FAILED
+                : UNAVAILABLE;
     }
 
     @Override
@@ -148,7 +175,10 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
             final StripeClient client = stripeClient(context.provider().config());
             session = client.v1().checkout().sessions().retrieve(sessionId);
         } catch (StripeException ex) {
-            throw new ProviderExecutionException("Stripe Checkout session retrieval failed.", ex);
+            throw new ProviderExecutionException(
+                    classifyExecutionFailure(ex),
+                    "Stripe Checkout session retrieval failed.",
+                    ex);
         }
 
         ensureSessionMatchesTransaction(session, context.transaction().id());
@@ -167,7 +197,7 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
                 provider(),
                 PaymentTransactionStatus.FAILED,
                 Map.of("status", "CANCELLED"),
-                new StatusDetails("CANCELLED", "Stripe Checkout was cancelled by the customer."),
+                new StatusDetails(CANCELLED, "Stripe Checkout was cancelled by the customer."),
                 redirectToCheckoutPayload(context, CANCEL_URL));
     }
 
@@ -207,7 +237,7 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
                 provider(),
                 status,
                 webhookData(event, stripeObject),
-                webhookStatusDetails(status));
+                webhookStatusDetails(eventType, status));
     }
 
     private SessionCreateParams checkoutSessionParams(final PaymentContext context) {
@@ -324,14 +354,22 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
             final PaymentTransactionStatus status,
             final String stripeStatus) {
         return new StatusDetails(
-                status.name(),
+                PaymentTransactionStatus.SUCCESS.equals(status) ? COMPLETED : PROCESSING,
                 PaymentTransactionStatus.SUCCESS.equals(status)
                         ? "Stripe Checkout payment completed."
                         : "Stripe Checkout payment is still processing: " + stripeStatus);
     }
 
-    private static StatusDetails webhookStatusDetails(final PaymentTransactionStatus status) {
-        return new StatusDetails(status.name(), "Stripe webhook mapped to payment status " + status + ".");
+    private static StatusDetails webhookStatusDetails(
+            final String eventType,
+            final PaymentTransactionStatus status) {
+        final String code = switch (eventType) {
+            case "checkout.session.async_payment_succeeded" -> COMPLETED;
+            case "checkout.session.async_payment_failed" -> PAYMENT_FAILED;
+            case "checkout.session.expired" -> EXPIRED;
+            default -> PaymentTransactionStatus.SUCCESS.equals(status) ? COMPLETED : PROCESSING;
+        };
+        return new StatusDetails(code, "Stripe webhook mapped to payment status " + status + ".");
     }
 
     private static JsonObject payloadObject(final String body) {
