@@ -154,7 +154,7 @@ Reject PayPal browser return with mismatched order token
     ${transaction_response}=    Get Payment Transaction    ${transaction_id}    ${PAYPAL_PSP_SESSION}
     Response Status Should Be    ${transaction_response}    200
     Should Be Equal As Strings    ${transaction_response.json()}[status]    PENDING
-    Should Be Equal As Strings    ${transaction_response.json()}[statusDetails][code]    PENDING
+    Should Be Equal As Strings    ${transaction_response.json()}[statusDetails][code]    AWAITING_CUSTOMER
     Should Be Equal As Strings    ${transaction_response.json()}[pspData][orderId]    ${PAYPAL_ORDER_ID}
     PayPal Payment Should Have Status    ${payment_id}    READY
     PSP API Request Count Should Be    POST    ${PAYPAL_ORDERS_API_PATH}/PAYPAL-ORDER-MISMATCH/capture    0
