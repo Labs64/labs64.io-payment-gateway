@@ -1,11 +1,13 @@
 package io.labs64.paymentgateway.psp.providers.paypal;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import com.paypal.sdk.exceptions.ApiException;
 import io.labs64.paymentgateway.model.OrderItem;
 import io.labs64.paymentgateway.model.PurchaseOrder;
 import io.labs64.paymentgateway.psp.spi.CheckoutPreparationContext;
@@ -27,6 +29,8 @@ import io.labs64.paymentgateway.psp.spi.WebhookRejectedException;
 import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import org.junit.jupiter.api.Test;
 
+import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.AUTHENTICATION_FAILED;
+import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -66,6 +70,23 @@ class PaypalPaymentProviderTest {
         assertThatThrownBy(() -> provider.validateConfig(config("dev")))
                 .isInstanceOf(ProviderValidationException.class)
                 .hasMessage("PayPal environment must be either sandbox or live.");
+    }
+
+    @Test
+    void classifiesUnauthorizedAndForbiddenAsAuthenticationFailures() {
+        for (final int responseCode : List.of(401, 403)) {
+            assertThat(PaypalPaymentProvider.classifyExecutionFailure(apiException(responseCode)))
+                    .as("responseCode=%s", responseCode)
+                    .isEqualTo(AUTHENTICATION_FAILED);
+        }
+    }
+
+    @Test
+    void classifiesOtherApiAndIoFailuresAsUnavailable() {
+        assertThat(PaypalPaymentProvider.classifyExecutionFailure(apiException(500)))
+                .isEqualTo(UNAVAILABLE);
+        assertThat(PaypalPaymentProvider.classifyExecutionFailure(new IOException("Connection failed.")))
+                .isEqualTo(UNAVAILABLE);
     }
 
     @Test
@@ -281,6 +302,15 @@ class PaypalPaymentProviderTest {
                         payloadTransactionId, "PAYMENT.CAPTURE.COMPLETED", "COMPLETED")))))
                 .isInstanceOf(WebhookRejectedException.class)
                 .hasMessage("PayPal webhook transaction does not match restored transaction.");
+    }
+
+    private static ApiException apiException(final int responseCode) {
+        return new ApiException("PayPal request failed.") {
+            @Override
+            public int getResponseCode() {
+                return responseCode;
+            }
+        };
     }
 
     private static Map<String, String> config(final String environment) {

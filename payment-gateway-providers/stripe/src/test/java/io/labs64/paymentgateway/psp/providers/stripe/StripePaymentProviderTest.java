@@ -11,6 +11,10 @@ import java.util.stream.Collectors;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import com.stripe.exception.ApiConnectionException;
+import com.stripe.exception.ApiException;
+import com.stripe.exception.AuthenticationException;
+import com.stripe.exception.PermissionException;
 import io.labs64.paymentgateway.psp.spi.CheckoutPreparationContext;
 import io.labs64.paymentgateway.psp.spi.CheckoutSessionDraft;
 import io.labs64.paymentgateway.model.PurchaseOrder;
@@ -28,6 +32,8 @@ import io.labs64.paymentgateway.psp.spi.WebhookRejectedException;
 import io.labs64.paymentgateway.psp.spi.WebhookRequest;
 import org.junit.jupiter.api.Test;
 
+import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.AUTHENTICATION_FAILED;
+import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -77,6 +83,26 @@ class StripePaymentProviderTest {
                 "webhookSecret", "invalid")))
                 .isInstanceOf(ProviderValidationException.class)
                 .hasMessageContaining("webhookSecret");
+    }
+
+    @Test
+    void classifiesAuthenticationAndPermissionFailuresAsAuthenticationFailures() {
+        assertThat(StripePaymentProvider.classifyExecutionFailure(
+                new AuthenticationException("Invalid API key.", null, null, 401)))
+                .isEqualTo(AUTHENTICATION_FAILED);
+        assertThat(StripePaymentProvider.classifyExecutionFailure(
+                new PermissionException("Insufficient permissions.", null, null, 403)))
+                .isEqualTo(AUTHENTICATION_FAILED);
+    }
+
+    @Test
+    void classifiesOtherApiAndConnectionFailuresAsUnavailable() {
+        assertThat(StripePaymentProvider.classifyExecutionFailure(
+                new ApiException("Stripe server error.", null, null, 500, null)))
+                .isEqualTo(UNAVAILABLE);
+        assertThat(StripePaymentProvider.classifyExecutionFailure(
+                new ApiConnectionException("Connection failed.")))
+                .isEqualTo(UNAVAILABLE);
     }
 
     @Test

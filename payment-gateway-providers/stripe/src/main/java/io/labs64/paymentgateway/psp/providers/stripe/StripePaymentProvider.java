@@ -15,6 +15,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.stripe.StripeClient;
+import com.stripe.exception.AuthenticationException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
@@ -39,6 +40,7 @@ import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigField;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigSupport;
 import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
+import io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure;
 import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
 import io.labs64.paymentgateway.psp.spi.ProviderWebhookSupport;
 import io.labs64.paymentgateway.psp.spi.StatusDetails;
@@ -51,6 +53,7 @@ import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.COMPLETE
 import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.EXPIRED;
 import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.PAYMENT_FAILED;
 import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.PROCESSING;
+import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.AUTHENTICATION_FAILED;
 import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.INVALID_RESPONSE;
 import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE;
 
@@ -139,7 +142,7 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
             session = client.v1().checkout().sessions().create(params, requestOptions(context.transaction().id()));
         } catch (StripeException ex) {
             throw new ProviderExecutionException(
-                    UNAVAILABLE,
+                    classifyExecutionFailure(ex),
                     "Stripe Checkout session creation failed.",
                     ex);
         }
@@ -158,6 +161,12 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
                 new PaymentNextAction(PaymentNextActionType.REDIRECT, Map.of("url", session.getUrl())));
     }
 
+    static ProviderExecutionFailure classifyExecutionFailure(final StripeException exception) {
+        return exception instanceof AuthenticationException
+                ? AUTHENTICATION_FAILED
+                : UNAVAILABLE;
+    }
+
     @Override
     public PaymentResult completeCheckout(final ProviderCheckoutContext context) {
         final String sessionId = requireQueryParam(context, STRIPE_SESSION_ID);
@@ -167,7 +176,7 @@ public class StripePaymentProvider implements PaymentProvider, ProviderConfigSup
             session = client.v1().checkout().sessions().retrieve(sessionId);
         } catch (StripeException ex) {
             throw new ProviderExecutionException(
-                    UNAVAILABLE,
+                    classifyExecutionFailure(ex),
                     "Stripe Checkout session retrieval failed.",
                     ex);
         }

@@ -21,6 +21,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.paypal.sdk.Environment;
 import com.paypal.sdk.PaypalServerSdkClient;
+import com.paypal.sdk.exceptions.ApiException;
 import com.paypal.sdk.http.response.ApiResponse;
 import com.paypal.sdk.models.Address;
 import com.paypal.sdk.models.AmountBreakdown;
@@ -68,6 +69,7 @@ import io.labs64.paymentgateway.psp.spi.ProviderCheckoutSupport;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigField;
 import io.labs64.paymentgateway.psp.spi.ProviderConfigSupport;
 import io.labs64.paymentgateway.psp.spi.ProviderExecutionException;
+import io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure;
 import io.labs64.paymentgateway.psp.spi.ProviderValidationException;
 import io.labs64.paymentgateway.psp.spi.ProviderWebhookSupport;
 import io.labs64.paymentgateway.psp.spi.StatusDetails;
@@ -81,6 +83,7 @@ import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.COMPLETE
 import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.DECLINED;
 import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.PAYMENT_FAILED;
 import static io.labs64.paymentgateway.psp.spi.PaymentStatusDetailCodes.PROCESSING;
+import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.AUTHENTICATION_FAILED;
 import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.INVALID_RESPONSE;
 import static io.labs64.paymentgateway.psp.spi.ProviderExecutionFailure.UNAVAILABLE;
 
@@ -269,9 +272,9 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
                     .getOrdersController()
                     .createOrder(input);
             return response.getResult();
-        } catch (com.paypal.sdk.exceptions.ApiException | IOException ex) {
+        } catch (ApiException | IOException ex) {
             throw new ProviderExecutionException(
-                    UNAVAILABLE,
+                    classifyExecutionFailure(ex),
                     "PayPal order creation failed.",
                     ex);
         }
@@ -299,12 +302,22 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
                     .getOrdersController()
                     .captureOrder(input);
             return response.getResult();
-        } catch (com.paypal.sdk.exceptions.ApiException | IOException ex) {
+        } catch (ApiException | IOException ex) {
             throw new ProviderExecutionException(
-                    UNAVAILABLE,
+                    classifyExecutionFailure(ex),
                     "PayPal order capture failed.",
                     ex);
         }
+    }
+
+    static ProviderExecutionFailure classifyExecutionFailure(final Exception exception) {
+        if (exception instanceof ApiException apiException) {
+            final int responseCode = apiException.getResponseCode();
+            if (responseCode == 401 || responseCode == 403) {
+                return AUTHENTICATION_FAILED;
+            }
+        }
+        return UNAVAILABLE;
     }
 
     private OrderRequest toOrderRequest(final PaymentContext context) {
