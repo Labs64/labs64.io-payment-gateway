@@ -2,7 +2,6 @@ package io.labs64.paymentgateway.psp.providers.paypal;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.LinkedHashMap;
@@ -355,7 +354,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
         final BigDecimal grossAmount = requirePositiveGrossAmount(purchaseOrder);
         final AmountWithBreakdown.Builder builder = new AmountWithBreakdown.Builder(
                 currency,
-                toMajorUnits(grossAmount));
+                PaypalMoneyConverter.toMajorUnits(grossAmount, currency));
 
         final AmountBreakdown breakdown = toBreakdown(purchaseOrder, currency, items);
         if (breakdown != null) {
@@ -373,9 +372,9 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
             return null;
         }
 
-        final BigDecimal itemTotal = items.stream()
-                .map(item -> fromMajorUnits(item.getUnitAmount().getValue())
-                        .multiply(new BigDecimal(item.getQuantity())))
+        final BigDecimal itemTotal = purchaseOrder.getItems().stream()
+                .map(item -> requireItemPrice(item)
+                        .multiply(BigDecimal.valueOf(requireItemQuantity(item))))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         final BigDecimal taxTotal = purchaseOrder.getTaxAmount() != null
                 ? BigDecimal.valueOf(purchaseOrder.getTaxAmount())
@@ -664,7 +663,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
         if (purchaseOrder == null || StringUtils.isBlank(purchaseOrder.getCurrency())) {
             throw new ProviderValidationException("PayPal payment requires purchaseOrder.currency.");
         }
-        return purchaseOrder.getCurrency().trim();
+        return PaypalMoneyConverter.normalizeCurrencyCode(purchaseOrder.getCurrency());
     }
 
     private static BigDecimal requirePositiveGrossAmount(final PurchaseOrder purchaseOrder) {
@@ -702,17 +701,7 @@ public class PaypalPaymentProvider implements PaymentProvider, ProviderConfigSup
     }
 
     private static Money toMoney(final String currency, final BigDecimal minorUnits) {
-        return new Money.Builder(currency, toMajorUnits(minorUnits)).build();
-    }
-
-    private static String toMajorUnits(final BigDecimal minorUnits) {
-        return minorUnits.movePointLeft(2)
-                .setScale(2, RoundingMode.UNNECESSARY)
-                .toPlainString();
-    }
-
-    private static BigDecimal fromMajorUnits(final String majorUnits) {
-        return new BigDecimal(majorUnits).movePointRight(2);
+        return new Money.Builder(currency, PaypalMoneyConverter.toMajorUnits(minorUnits, currency)).build();
     }
 
     private static String limit(final String value, final int maxLength) {
