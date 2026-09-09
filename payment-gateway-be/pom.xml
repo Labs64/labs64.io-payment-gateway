@@ -24,7 +24,6 @@
         <auditflow-api.version>0.1.0-SNAPSHOT</auditflow-api.version>
         <!-- DEPENDENCIES -->
         <java.version>25</java.version>
-        <protobuf-java.version>4.35.1</protobuf-java.version>
         <logstash.version>9.0</logstash.version>
         <labs64-openapi.version>0.1.0-SNAPSHOT</labs64-openapi.version>
         <openapitools.version>0.2.11</openapitools.version>
