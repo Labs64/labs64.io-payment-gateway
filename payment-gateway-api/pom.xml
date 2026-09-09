@@ -55,7 +55,7 @@
         <jakarta.validation-api.version>3.1.1</jakarta.validation-api.version>
 
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
-        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+        <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
         <openapi-generator-maven-plugin.version>7.25.0</openapi-generator-maven-plugin.version>
         <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
