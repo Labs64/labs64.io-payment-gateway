@@ -32,7 +32,7 @@
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <lombok.version>1.18.48</lombok.version>
         <payment-provider.version>0.1.0-SNAPSHOT</payment-provider.version>
-        <netty.version>4.2.17.Final</netty.version>
+        <netty.version>4.2.18.Final</netty.version>
         <!-- Jackson is NOT pinned here on purpose. Spring Boot's BOM manages the Jackson 3
              line (jackson-bom) and the Jackson 2 annotations line (jackson-2-bom) as a
              coordinated pair. Overriding tools.jackson.core:jackson-databind alone to 3.2.1
