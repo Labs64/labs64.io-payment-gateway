@@ -65,6 +65,8 @@ class PaymentMapperTest {
         final Recurrence recurrence = Objects.requireNonNull(dto.getRecurrence());
 
         assertThat(dto.getId()).isEqualTo(entity.getId());
+        assertThat(dto.get$Schema().toString())
+                .isEqualTo("https://labs64.io/schemas/payment-gateway/Payment/1.0.0.json");
         assertThat(dto.getPaymentProviderId()).isEqualTo(PAYMENT_PROVIDER_ID);
         assertThat(dto.getProvider()).isEqualTo("stripe");
         assertThat(dto.getStatus()).isEqualTo(PaymentStatus.READY);

@@ -45,6 +45,8 @@ class PaymentProviderMapperTest {
 
         final PaymentProvider dto = mapper.toDto(entity);
 
+        assertThat(dto.get$Schema().toString())
+                .isEqualTo("https://labs64.io/schemas/payment-gateway/PaymentProvider/1.0.0.json");
         assertThat(dto.getId()).isEqualTo(PAYMENT_PROVIDER_ID);
         assertThat(dto.getProvider()).isEqualTo("stripe");
         assertThat(dto.getName()).isEqualTo("Stripe");

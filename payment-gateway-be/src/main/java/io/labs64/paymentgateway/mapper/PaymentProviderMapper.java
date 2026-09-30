@@ -32,6 +32,7 @@ public interface PaymentProviderMapper {
         }
     }
 
+    @Mapping(target = "$schema", ignore = true)
     @Mapping(target = "icon", ignore = true)
     @Mapping(target = "recurring", ignore = true)
     @Mapping(target = "config", ignore = true)

@@ -11,6 +11,7 @@ import org.mapstruct.Mapping;
 @Mapper(config = MapperConfigBase.class)
 public interface PaymentDefinitionMapper {
 
+    @Mapping(target = "$schema", ignore = true)
     @Mapping(target = "icon", ignore = true)
     PaymentDefinition toDto(PaymentGatewayProperties.PaymentDefinition source);
 

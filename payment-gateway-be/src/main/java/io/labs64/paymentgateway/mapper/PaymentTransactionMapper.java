@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 @Mapper(config = MapperConfigBase.class)
 public interface PaymentTransactionMapper {
 
+    @Mapping(target = "$schema", ignore = true)
     @Mapping(target = "paymentId", expression = "java(resolvePaymentId(entity))")
     PaymentTransaction toDto(PaymentTransactionEntity entity);
 

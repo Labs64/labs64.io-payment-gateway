@@ -29,6 +29,7 @@ public interface PaymentMapper {
     PaymentEntity toEntity(CreatePaymentRequest source);
 
     @Mapping(target = "provider", source = "paymentProvider.provider")
+    @Mapping(target = "$schema", ignore = true)
     @Mapping(target = "purchaseOrder", source = "purchaseOrder", qualifiedByName = "mapToPurchaseOrder")
     @Mapping(target = "billingInfo", source = "billingInfo", qualifiedByName = "mapToBillingInfo")
     @Mapping(target = "shippingInfo", source = "shippingInfo", qualifiedByName = "mapToShippingInfo")
