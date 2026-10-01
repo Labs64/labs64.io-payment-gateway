@@ -27,6 +27,8 @@ class PaymentTransactionMapperTest {
 
         final PaymentTransaction dto = mapper.toDto(entity);
 
+        assertThat(dto.get$Schema().toString())
+                .isEqualTo("https://labs64.io/schemas/payment-gateway/PaymentTransaction/1.0.0.json");
         assertThat(dto.getId()).isEqualTo(entity.getId());
         assertThat(dto.getPaymentId()).isEqualTo(entity.getPayment().getId());
         assertThat(dto.getStatus()).isEqualTo(PaymentTransactionStatus.FAILED);

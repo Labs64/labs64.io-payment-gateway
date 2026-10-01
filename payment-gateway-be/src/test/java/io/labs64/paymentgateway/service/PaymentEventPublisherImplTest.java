@@ -4,6 +4,8 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.labs64.auditflow.model.AuditEvent;
 import io.labs64.paymentgateway.correlation.CorrelationContextHolder;
 import io.labs64.paymentgateway.entity.PaymentEntity;
@@ -11,11 +13,14 @@ import io.labs64.paymentgateway.entity.PaymentProviderEntity;
 import io.labs64.paymentgateway.entity.PaymentTransactionEntity;
 import io.labs64.paymentgateway.event.payment.PaymentEvent;
 import io.labs64.paymentgateway.event.payment.PaymentEventMapper;
-import io.labs64.paymentgateway.event.payment.PaymentSnapshot;
-import io.labs64.paymentgateway.event.payment.PaymentTransactionSnapshot;
 import io.labs64.paymentgateway.integration.auditflow.AuditFlowProperties;
 import io.labs64.paymentgateway.integration.auditflow.AuditFlowPublisher;
+import io.labs64.paymentgateway.mapper.PaymentJsonMapper;
+import io.labs64.paymentgateway.mapper.PaymentMapperImpl;
+import io.labs64.paymentgateway.mapper.PaymentTransactionMapperImpl;
+import io.labs64.paymentgateway.model.Payment;
 import io.labs64.paymentgateway.model.PaymentStatus;
+import io.labs64.paymentgateway.model.PaymentTransaction;
 import io.labs64.paymentgateway.model.PaymentTransactionStatus;
 import io.labs64.paymentgateway.model.StatusDetails;
 import org.junit.jupiter.api.AfterEach;
@@ -55,7 +60,11 @@ class PaymentEventPublisherImplTest {
         properties.setSourceSystem(SOURCE_SYSTEM);
         publisher = new PaymentEventPublisherImpl(
                 applicationEventPublisher,
-                new PaymentEventMapper(properties),
+                new PaymentEventMapper(
+                        properties,
+                        new PaymentMapperImpl(new PaymentJsonMapper(
+                                new ObjectMapper().registerModule(new JavaTimeModule()))),
+                        new PaymentTransactionMapperImpl()),
                 auditFlowPublisher);
     }
 
@@ -65,7 +74,7 @@ class PaymentEventPublisherImplTest {
     }
 
     @Test
-    void publishFinalizedBuildsAuditEventWithDomainSnapshots() {
+    void publishFinalizedBuildsAuditEventWithCanonicalDtos() {
         CorrelationContextHolder.set(CORRELATION_ID);
         final PaymentEntity payment = payment();
         final PaymentTransactionEntity transaction = transaction(payment);
@@ -76,9 +85,8 @@ class PaymentEventPublisherImplTest {
         verify(applicationEventPublisher).publishEvent(captor.capture());
 
         final AuditEvent event = captor.getValue().auditEvent();
-        final PaymentSnapshot paymentSnapshot = (PaymentSnapshot) event.getExtra().get("payment");
-        final PaymentTransactionSnapshot transactionSnapshot =
-                (PaymentTransactionSnapshot) event.getExtra().get("transaction");
+        final Payment paymentDto = (Payment) event.getExtra().get("payment");
+        final PaymentTransaction transactionDto = (PaymentTransaction) event.getExtra().get("transaction");
 
         assertThat(event.getEventType()).isEqualTo("payment.finalized");
         assertThat(event.getSourceSystem()).isEqualTo(SOURCE_SYSTEM);
@@ -87,13 +95,18 @@ class PaymentEventPublisherImplTest {
         assertThat(event.getEventId()).isNotNull();
         assertThat(event.getEventTime()).isNotNull();
         assertThat(event.getExtra()).containsEntry("eventVersion", 1);
-        assertThat(paymentSnapshot.id()).isEqualTo(payment.getId());
-        assertThat(paymentSnapshot.paymentProviderId()).isEqualTo(PAYMENT_PROVIDER_ID);
-        assertThat(paymentSnapshot.provider()).isEqualTo(PROVIDER);
-        assertThat(paymentSnapshot.purchaseOrder()).containsEntry("grossAmount", 3000L);
-        assertThat(transactionSnapshot.id()).isEqualTo(transaction.getId());
-        assertThat(transactionSnapshot.status()).isEqualTo(PaymentTransactionStatus.SUCCESS);
-        assertThat(transactionSnapshot.statusDetails())
+        assertThat(paymentDto.get$Schema().toString())
+                .isEqualTo("https://labs64.io/schemas/payment-gateway/Payment/1.0.0.json");
+        assertThat(paymentDto.getId()).isEqualTo(payment.getId());
+        assertThat(paymentDto.getPaymentProviderId()).isEqualTo(PAYMENT_PROVIDER_ID);
+        assertThat(paymentDto.getProvider()).isEqualTo(PROVIDER);
+        assertThat(paymentDto.getDescription()).isEqualTo("Order #10001");
+        assertThat(paymentDto.getPurchaseOrder().getGrossAmount()).isEqualTo(3000L);
+        assertThat(transactionDto.get$Schema().toString())
+                .isEqualTo("https://labs64.io/schemas/payment-gateway/PaymentTransaction/1.0.0.json");
+        assertThat(transactionDto.getId()).isEqualTo(transaction.getId());
+        assertThat(transactionDto.getStatus()).isEqualTo(PaymentTransactionStatus.SUCCESS);
+        assertThat(transactionDto.getStatusDetails())
                 .isEqualTo(new StatusDetails().code("SUCCESS").message("Success"));
     }
 
@@ -136,6 +149,7 @@ class PaymentEventPublisherImplTest {
                         .provider(PROVIDER)
                         .build())
                 .status(PaymentStatus.READY)
+                .description("Order #10001")
                 .purchaseOrder(Map.of("grossAmount", 3000L, "currency", "USD"))
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())

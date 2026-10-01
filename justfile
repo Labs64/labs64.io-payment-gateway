@@ -66,6 +66,16 @@ doctor:
     @just --version
     @git --version
 
+# Generate JSON Schema contracts from OpenAPI into a labs64.io checkout
+schemas-generate output_root:
+    test -d "{{output_root}}" || (echo "Output root does not exist: {{output_root}}" >&2; exit 2)
+    mvn -ntp --file payment-gateway-api/pom.xml exec:java@generate-contract-schemas -Dcontract-schema.output-root="{{output_root}}"
+
+# Validate and preview JSON Schema generation without writing files
+schemas-dry-run output_root:
+    test -d "{{output_root}}" || (echo "Output root does not exist: {{output_root}}" >&2; exit 2)
+    mvn -B -ntp --file payment-gateway-api/pom.xml exec:java@dry-run-contract-schemas -Dcontract-schema.output-root="{{output_root}}"
+
 # Run E2E tests via the sibling labs64.io-tests repository
 test-e2e:
     @just -f ../labs64.io-tests/justfile test-module payment-gateway

@@ -4,10 +4,13 @@ import io.labs64.auditflow.client.AuditFlowClient;
 import io.labs64.paymentgateway.event.payment.PaymentEventMapper;
 import io.labs64.paymentgateway.integration.auditflow.AuditFlowConfiguration;
 import io.labs64.paymentgateway.integration.auditflow.AuditFlowPublisher;
+import io.labs64.paymentgateway.mapper.PaymentMapper;
+import io.labs64.paymentgateway.mapper.PaymentTransactionMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class PaymentEventPublisherConfigurationTest {
 
@@ -34,6 +37,8 @@ class PaymentEventPublisherConfigurationTest {
     @Test
     void usesAuditFlowPublisherWhenIntegrationIsEnabledAndConfigured() {
         contextRunner
+                .withBean(PaymentMapper.class, () -> mock(PaymentMapper.class))
+                .withBean(PaymentTransactionMapper.class, () -> mock(PaymentTransactionMapper.class))
                 .withPropertyValues(
                         "labs64.auditflow.enabled=true",
                         "labs64.auditflow.url=http://auditflow.test",

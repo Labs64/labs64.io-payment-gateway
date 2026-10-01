@@ -28,7 +28,11 @@ class CheckoutSessionConfirmationMapperTest {
 
         final CheckoutSessionConfirmation dto = mapper.toDto(entity);
 
+        assertThat(dto.get$Schema().toString())
+                .isEqualTo("https://labs64.io/schemas/payment-gateway/CheckoutSessionConfirmation/1.0.0.json");
         assertThat(dto.getSessionId()).isEqualTo(entity.getId());
+        assertThat(dto.getPayment().get$Schema().toString())
+                .isEqualTo("https://labs64.io/schemas/payment-gateway/ConfirmationPayment/1.0.0.json");
         assertThat(dto.getPayment().getId()).isEqualTo(entity.getPaymentId());
         assertThat(dto.getPayment().getProvider()).isEqualTo("paypal");
         assertThat(dto.getPayment().getStatus()).isEqualTo(PaymentStatus.CLOSED);
@@ -36,6 +40,8 @@ class CheckoutSessionConfirmationMapperTest {
         assertThat(dto.getPayment().getDescription()).isEqualTo("Order #10001");
         assertThat(dto.getPayment().getAmount()).isEqualTo(3000L);
         assertThat(dto.getPayment().getCurrency()).isEqualTo("USD");
+        assertThat(dto.getPaymentTransaction().get$Schema().toString())
+                .isEqualTo("https://labs64.io/schemas/payment-gateway/ConfirmationPaymentTransaction/1.0.0.json");
         assertThat(dto.getPaymentTransaction().getId()).isEqualTo(entity.getPaymentTransactionId());
         assertThat(dto.getPaymentTransaction().getStatus()).isEqualTo(PaymentTransactionStatus.SUCCESS);
         assertThat(dto.getPaymentTransaction().getStatusDetails()).isEqualTo(new StatusDetails().code("SUCCESS").message("Captured"));

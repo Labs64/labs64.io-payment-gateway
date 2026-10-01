@@ -4,6 +4,7 @@ on:
   push:
     branches: [ "master" ]
     paths:
+      - "payment-gateway-api/**"
       - "payment-gateway-be/**"
       - "payment-gateway-providers/**"
       - "pom.xml"
@@ -11,6 +12,7 @@ on:
       - ".github/compose/**"
   pull_request:
     paths:
+      - "payment-gateway-api/**"
       - "payment-gateway-be/**"
       - "payment-gateway-providers/**"
       - "pom.xml"

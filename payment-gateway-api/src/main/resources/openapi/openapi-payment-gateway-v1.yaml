@@ -978,6 +978,7 @@ components:
       type: object
       additionalProperties: false
       required:
+        - $schema
         - provider
         - name
         - description
@@ -985,6 +986,13 @@ components:
         - supportedCurrencies
         - supportedCountries
       properties:
+        $schema:
+          type: string
+          format: uri
+          description: Canonical URI of the immutable JSON Schema contract for this payment definition.
+          readOnly: true
+          const: "https://labs64.io/schemas/payment-gateway/PaymentDefinition/1.0.0.json"
+          default: "https://labs64.io/schemas/payment-gateway/PaymentDefinition/1.0.0.json"
         provider:
           type: string
           description: Globally supported payment provider identifier.
@@ -1027,6 +1035,10 @@ components:
           example:
             - US
             - DE
+      x-labs64:
+        schema:
+          object: PaymentDefinition
+          version: "1.0.0"
 
     PaymentDefinitionListResponse:
       type: object
@@ -1045,12 +1057,20 @@ components:
       type: object
       additionalProperties: false
       required:
+        - $schema
         - id
         - provider
         - name
         - description
         - recurring
       properties:
+        $schema:
+          type: string
+          format: uri
+          description: Canonical URI of the immutable JSON Schema contract for this payment provider.
+          readOnly: true
+          const: "https://labs64.io/schemas/payment-gateway/PaymentProvider/1.0.0.json"
+          default: "https://labs64.io/schemas/payment-gateway/PaymentProvider/1.0.0.json"
         id:
           $ref: "#/components/schemas/UUID"
           description: Unique tenant payment provider identifier.
@@ -1109,6 +1129,10 @@ components:
           description: Tenant payment provider last update timestamp.
           readOnly: true
           example: "2026-02-01T14:30:00Z"
+      x-labs64:
+        schema:
+          object: PaymentProvider
+          version: "1.0.0"
 
     PaymentProvidersResponse:
       allOf:
@@ -1464,6 +1488,7 @@ components:
       type: object
       additionalProperties: false
       required:
+        - $schema
         - id
         - paymentProviderId
         - provider
@@ -1472,6 +1497,13 @@ components:
         - createdAt
         - updatedAt
       properties:
+        $schema:
+          type: string
+          format: uri
+          description: Canonical URI of the immutable JSON Schema contract for this payment representation.
+          readOnly: true
+          const: "https://labs64.io/schemas/payment-gateway/Payment/1.0.0.json"
+          default: "https://labs64.io/schemas/payment-gateway/Payment/1.0.0.json"
         id:
           $ref: "#/components/schemas/UUID"
           description: Unique payment identifier.
@@ -1486,6 +1518,11 @@ components:
           type: string
           description: Globally supported payment provider identifier used by the tenant payment provider.
           example: stripe
+        description:
+          type: string
+          nullable: true
+          description: Human-readable payment description.
+          example: "Order #10001"
         status:
           $ref: "#/components/schemas/PaymentStatus"
           readOnly: true
@@ -1542,6 +1579,10 @@ components:
           format: date-time
           readOnly: true
           example: "2026-02-10T12:34:56Z"
+      x-labs64:
+        schema:
+          object: Payment
+          version: "1.0.0"
 
     PaymentListResponse:
       allOf:
@@ -1563,10 +1604,18 @@ components:
       type: object
       additionalProperties: false
       required:
+        - $schema
         - sessionId
         - payment
         - paymentTransaction
       properties:
+        $schema:
+          type: string
+          format: uri
+          description: Canonical URI of the immutable JSON Schema contract for this checkout session confirmation.
+          readOnly: true
+          const: "https://labs64.io/schemas/payment-gateway/CheckoutSessionConfirmation/1.0.0.json"
+          default: "https://labs64.io/schemas/payment-gateway/CheckoutSessionConfirmation/1.0.0.json"
         sessionId:
           $ref: "#/components/schemas/UUID"
           description: Checkout session identifier used by the public confirmation page.
@@ -1575,11 +1624,16 @@ components:
           $ref: "#/components/schemas/ConfirmationPayment"
         paymentTransaction:
           $ref: "#/components/schemas/ConfirmationPaymentTransaction"
+      x-labs64:
+        schema:
+          object: CheckoutSessionConfirmation
+          version: "1.0.0"
 
     ConfirmationPayment:
       type: object
       additionalProperties: false
       required:
+        - $schema
         - id
         - provider
         - status
@@ -1588,6 +1642,13 @@ components:
         - currency
         - createdAt
       properties:
+        $schema:
+          type: string
+          format: uri
+          description: Canonical URI of the immutable JSON Schema contract for this public payment confirmation projection.
+          readOnly: true
+          const: "https://labs64.io/schemas/payment-gateway/ConfirmationPayment/1.0.0.json"
+          default: "https://labs64.io/schemas/payment-gateway/ConfirmationPayment/1.0.0.json"
         id:
           $ref: "#/components/schemas/UUID"
           description: Payment identifier.
@@ -1619,15 +1680,27 @@ components:
           type: string
           format: date-time
           readOnly: true
+      x-labs64:
+        schema:
+          object: ConfirmationPayment
+          version: "1.0.0"
 
     ConfirmationPaymentTransaction:
       type: object
       additionalProperties: false
       required:
+        - $schema
         - id
         - status
         - createdAt
       properties:
+        $schema:
+          type: string
+          format: uri
+          description: Canonical URI of the immutable JSON Schema contract for this public transaction confirmation projection.
+          readOnly: true
+          const: "https://labs64.io/schemas/payment-gateway/ConfirmationPaymentTransaction/1.0.0.json"
+          default: "https://labs64.io/schemas/payment-gateway/ConfirmationPaymentTransaction/1.0.0.json"
         id:
           $ref: "#/components/schemas/UUID"
           description: Payment transaction identifier.
@@ -1644,6 +1717,10 @@ components:
           type: string
           format: date-time
           readOnly: true
+      x-labs64:
+        schema:
+          object: ConfirmationPaymentTransaction
+          version: "1.0.0"
 
     PaymentStatus:
       type: string
@@ -1715,12 +1792,20 @@ components:
       type: object
       additionalProperties: false
       required:
+        - $schema
         - id
         - paymentId
         - status
         - createdAt
         - updatedAt
       properties:
+        $schema:
+          type: string
+          format: uri
+          description: Canonical URI of the immutable JSON Schema contract for this payment transaction.
+          readOnly: true
+          const: "https://labs64.io/schemas/payment-gateway/PaymentTransaction/1.0.0.json"
+          default: "https://labs64.io/schemas/payment-gateway/PaymentTransaction/1.0.0.json"
         id:
           $ref: "#/components/schemas/UUID"
           description: Unique payment transaction identifier.
@@ -1763,6 +1848,10 @@ components:
           format: date-time
           readOnly: true
           example: "2026-02-10T12:34:56Z"
+      x-labs64:
+        schema:
+          object: PaymentTransaction
+          version: "1.0.0"
 
     PaymentTransactionStatus:
       type: string
