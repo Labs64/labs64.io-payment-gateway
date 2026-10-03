@@ -26,9 +26,9 @@
         <java.version>25</java.version>
         <logstash.version>9.0</logstash.version>
         <labs64-openapi.version>0.1.0-SNAPSHOT</labs64-openapi.version>
-        <openapitools.version>0.2.11</openapitools.version>
+        <openapitools.version>0.2.12</openapitools.version>
         <mapstruct.version>1.7.0.Beta2</mapstruct.version>
-        <jackson-datatype-jsr310.version>2.22.2</jackson-datatype-jsr310.version>
+        <jackson-datatype-jsr310.version>2.22.3</jackson-datatype-jsr310.version>
         <commons-lang3.version>3.21.0</commons-lang3.version>
         <lombok.version>1.18.48</lombok.version>
         <payment-provider.version>0.1.0-SNAPSHOT</payment-provider.version>

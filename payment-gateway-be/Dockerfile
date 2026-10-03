@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/* && 
 # OpenTelemetry Java Agent — bundled but inert. Activated at deploy time via
 # JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar (observability is an
 # infrastructure concern; the same image runs with and without it). See OBSERVABILITY.md.
-ARG OTEL_JAVAAGENT_VERSION=2.29.0
+ARG OTEL_JAVAAGENT_VERSION=2.31.1
 ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${OTEL_JAVAAGENT_VERSION}/opentelemetry-javaagent.jar /otel/opentelemetry-javaagent.jar
 RUN chmod 444 /otel/opentelemetry-javaagent.jar
 
