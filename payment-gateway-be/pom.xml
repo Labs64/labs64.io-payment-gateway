@@ -42,6 +42,13 @@
              died with NoClassDefFoundError and blocked the whole Helm release. To move ahead
              of Boot's Jackson, import tools.jackson:jackson-bom (which bumps both) rather
              than pinning a single artifact. -->
+        <!-- Security overrides ahead of Spring Boot 4.1.1's BOM (Boot 4.1.2 is expected to absorb
+             them; drop these properties then). Keep the pairs in step with the Jackson note above:
+             stay on the same Jackson minor line Boot ships (3.1.x with 2.21.x). Fixes: Tomcat
+             CVE-2026-65905/65182/68525, Jackson CVE-2026-89425/89407/91777/91776/68497. -->
+        <jackson-bom.version>3.1.7</jackson-bom.version>
+        <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
+        <tomcat.version>11.0.26</tomcat.version>
         <auth-context.version>0.1.0-SNAPSHOT</auth-context.version>
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
         <!-- PLUGINS -->
@@ -80,7 +87,7 @@
         <!-- No in-app OpenTelemetry SDK on the classpath (guardrail #4). Tracing and
              log-trace correlation are infrastructure-owned: the bundled OTel Java Agent
              (activated via JAVA_TOOL_OPTIONS when observability.enabled) auto-instruments
-             HTTP/AMQP/Redis and injects trace_id/span_id into the logback MDC. Metrics stay
+             HTTP/JDBC/Redis and injects trace_id/span_id into the logback MDC. Metrics stay
              on Micrometer + /actuator/prometheus (see micrometer-registry-prometheus below).
              Matches the auditflow reference — see OBSERVABILITY.md / RFC 03. -->
         <!-- Spring Boot Starter -->

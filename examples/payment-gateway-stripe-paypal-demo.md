@@ -19,7 +19,7 @@ The intended demo story is:
 Complete this section first.
 
 - The Kubernetes context points to the demo cluster.
-- Payment Gateway, API Gateway, mock OIDC, PostgreSQL, Redis, and RabbitMQ are
+- Payment Gateway, API Gateway, mock OIDC, PostgreSQL, and Redis are
    healthy.
 - `gateway.localhost` resolves on the machine running the demo.
 - `curl`, `jq`, `just`, and Stripe CLI are installed.

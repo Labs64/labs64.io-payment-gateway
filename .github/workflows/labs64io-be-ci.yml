@@ -41,7 +41,7 @@ jobs:
       artifact-name: payment-gateway-be-test-reports
       compose-file: .github/compose/payment-gateway-deps.yml
       compose-project: payment-gateway
-      # DB_HOST/PORT, DB_USERNAME/DB_PASSWORD, REDIS_*, RABBITMQ_* all match
+      # DB_HOST/PORT, DB_USERNAME/DB_PASSWORD and REDIS_* all match
       # the app's own application.yml defaults — the compose Postgres
       # container is seeded with paymentgateway/paymentgateway to match.
       docker-build-context: ./payment-gateway-be

@@ -9,7 +9,7 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 ### Ecosystem role
 
 - Receives payment requests from checkout-be and other modules.
-- Publishes payment events to RabbitMQ → consumed by `auditflow-be` for audit logging.
+- Publishes payment lifecycle events to `auditflow-be` over AuditFlow's HTTP API as a `service:payment-gateway` principal (`integration/auditflow`; RFC 09). It has **no message-broker dependency**.
 - PSP webhooks arrive at `WebhookController` → processed by `WebhookService`.
 - Swagger UI at `gateway.localhost/payment-gateway/v3/api-docs` aggregates the API docs.
 
@@ -65,7 +65,7 @@ cd payment-gateway-be
 just build              # mvn clean package -DskipTests
 just test               # mvn clean verify
 just unit-test          # mvn test (unit tests only)
-just infra-up           # start PostgreSQL + Redis + RabbitMQ + Cerbos
+just infra-up           # start PostgreSQL + Redis + Cerbos
 just run                # build + mvn spring-boot:run -Dspring-boot.run.profiles=local
 just infra-down         # stop infrastructure
 just infra-reset        # stop infrastructure + remove volumes
@@ -75,12 +75,12 @@ just dev-down           # stop the debug Compose stack
 just docu               # open Swagger UI
 ```
 
-Local URLs: backend Swagger `http://localhost:8080/swagger-ui/index.html`, RabbitMQ UI `http://localhost:15672`.
+Local URL: backend Swagger `http://localhost:8080/swagger-ui/index.html`.
 
 ## Conventions
 
 - **Java 25** and **Maven 3.6.3+** enforced by `maven-enforcer-plugin`.
-- **Spring Boot 4.1.0** with Spring Cloud 2025.x. Use reactive WebClient for HTTP calls.
+- **Spring Boot 4.1.x** (no Spring Cloud dependency). Use reactive WebClient for HTTP calls.
 - **Credentials from environment variables only** — never hardcode, never commit defaults.
 - Backend tests: JUnit 5 + Spring Boot Test alongside source in `src/test/java/`.
 - All Dockerfiles run as non-root user `l64user` (uid/gid 1064).
