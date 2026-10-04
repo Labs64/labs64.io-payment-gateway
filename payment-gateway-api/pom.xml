@@ -6,7 +6,7 @@
 
     <groupId>io.labs64</groupId>
     <artifactId>payment-gateway-api</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>${revision}</version>
     <packaging>jar</packaging>
 
     <name>Labs64.IO :: Payment Gateway :: API</name>
@@ -46,6 +46,9 @@
     </distributionManagement>
 
     <properties>
+        <!-- The version comes from the release tag (-Drevision=<tag>), shared with the
+             backend and the providers. 0.0.0-SNAPSHOT means "built from source, unreleased". -->
+        <revision>0.0.0-SNAPSHOT</revision>
         <payment-gateway.version>v1</payment-gateway.version>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -55,11 +58,14 @@
         <jakarta.validation-api.version>3.1.1</jakarta.validation-api.version>
 
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
+        <flatten-maven-plugin.version>1.8.0</flatten-maven-plugin.version>
         <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.6.0</maven-surefire-plugin.version>
         <openapi-generator-maven-plugin.version>7.25.0</openapi-generator-maven-plugin.version>
         <exec-maven-plugin.version>3.6.4</exec-maven-plugin.version>
-        <openapi-schema-generator.version>0.1.0-SNAPSHOT</openapi-schema-generator.version>
+        <!-- Commons release this standalone pom runs its schema generator from; keep it on
+             the same version as the labs64io-parent the backend inherits. -->
+        <openapi-schema-generator.version>0.0.0-SNAPSHOT</openapi-schema-generator.version>
         <contract-schema.input>${project.basedir}/src/main/resources/openapi/openapi-payment-gateway-${payment-gateway.version}.yaml</contract-schema.input>
         <build-helper-maven-plugin.version>3.6.2</build-helper-maven-plugin.version>
         <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
@@ -124,6 +130,45 @@
                                 </requireJavaVersion>
                             </rules>
                         </configuration>
+                    </execution>
+                    <!-- A release (-Drevision=<tag>) may only be built from released inputs. -->
+                    <execution>
+                        <id>enforce-release-inputs</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireReleaseDeps>
+                                    <onlyWhenRelease>true</onlyWhenRelease>
+                                </requireReleaseDeps>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Installs the pom with ${revision} replaced by the literal version. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>${flatten-maven-plugin.version}</version>
+                <configuration>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten-clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>

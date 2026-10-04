@@ -9,21 +9,20 @@ on:
 
 jobs:
   build-and-push:
-    uses: Labs64/labs64.io-workspace/.github/workflows/docker-publish.yml@master
+    uses: Labs64/labs64.io-workspace/.github/workflows/docker-publish.yml@v1
     with:
       image: labs64/payment-gateway
       context: ./payment-gateway-be
       mode: release
       version: ${{ github.event.release.tag_name }}
       build-command: mvn -B -pl payment-gateway-be -am package
-      java-version: "25"
     secrets: inherit
 
   # Opens a PR in labs64.io-helm-charts pinning the digest into charts/payment-gateway.
   propagate-to-chart:
     name: Pin digest in charts/payment-gateway
     needs: build-and-push
-    uses: Labs64/labs64.io-workspace/.github/workflows/chart-update-dispatch.yml@master
+    uses: Labs64/labs64.io-workspace/.github/workflows/chart-update-dispatch.yml@v1
     with:
       chart: payment-gateway
       version: ${{ github.event.release.tag_name }}

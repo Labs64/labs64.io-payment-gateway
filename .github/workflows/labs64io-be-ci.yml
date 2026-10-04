@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   build-test:
-    uses: Labs64/labs64.io-workspace/.github/workflows/java-ci.yml@master
+    uses: Labs64/labs64.io-workspace/.github/workflows/java-ci.yml@v1
     secrets:
       L64_PUB_CI_USERNAME: ${{ secrets.L64_PUB_CI_USERNAME }}
       L64_PUB_CI_PASSWORD: ${{ secrets.L64_PUB_CI_PASSWORD }}
@@ -57,7 +57,7 @@ jobs:
     name: Edge image (labs64/payment-gateway)
     needs: build-test
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    uses: Labs64/labs64.io-workspace/.github/workflows/docker-publish.yml@master
+    uses: Labs64/labs64.io-workspace/.github/workflows/docker-publish.yml@v1
     with:
       image: labs64/payment-gateway
       context: ./payment-gateway-be
@@ -65,5 +65,4 @@ jobs:
       # The Dockerfile copies target/*.jar; -am so payment-gateway-providers is
       # built into the reactor first.
       build-command: mvn -B -ntp -DskipTests -pl payment-gateway-be -am package
-      java-version: "25"
     secrets: inherit

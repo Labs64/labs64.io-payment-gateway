@@ -17,7 +17,8 @@ independent from OpenAPI Generator implementation details.
 <dependency>
     <groupId>io.labs64</groupId>
     <artifactId>payment-gateway-api</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <!-- the Payment Gateway release you integrate with; 0.0.0-SNAPSHOT when built from source -->
+    <version>X.Y.Z</version>
 </dependency>
 ```
 

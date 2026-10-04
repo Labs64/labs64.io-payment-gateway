@@ -4,60 +4,30 @@
 
     <groupId>io.labs64</groupId>
     <artifactId>payment-gateway</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <!-- Set by the release tag (-Drevision=<tag>); the 0.0.0-SNAPSHOT default is inherited. -->
+    <version>${revision}</version>
     <packaging>jar</packaging>
 
     <name>Labs64.IO :: Payment Gateway :: Backend</name>
     <description>Labs64.IO - Payment Gateway</description>
 
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.1</version>
+        <groupId>io.labs64</groupId>
+        <artifactId>labs64io-parent</artifactId>
+        <version>0.0.0-SNAPSHOT</version>
         <relativePath />
     </parent>
 
     <properties>
         <!-- API VERSIONS -->
         <payment-gateway.version>v1</payment-gateway.version>
-        <payment-gateway-api.version>0.1.0-SNAPSHOT</payment-gateway-api.version>
-        <auditflow-api.version>0.1.0-SNAPSHOT</auditflow-api.version>
-        <!-- DEPENDENCIES -->
-        <java.version>25</java.version>
-        <logstash.version>9.0</logstash.version>
-        <labs64-openapi.version>0.1.0-SNAPSHOT</labs64-openapi.version>
-        <openapitools.version>0.2.12</openapitools.version>
-        <mapstruct.version>1.7.0.Beta2</mapstruct.version>
-        <jackson-datatype-jsr310.version>2.22.3</jackson-datatype-jsr310.version>
-        <commons-lang3.version>3.21.0</commons-lang3.version>
-        <lombok.version>1.18.48</lombok.version>
-        <payment-provider.version>0.1.0-SNAPSHOT</payment-provider.version>
-        <netty.version>4.2.18.Final</netty.version>
-        <!-- Jackson is NOT pinned here on purpose. Spring Boot's BOM manages the Jackson 3
-             line (jackson-bom) and the Jackson 2 annotations line (jackson-2-bom) as a
-             coordinated pair. Overriding tools.jackson.core:jackson-databind alone to 3.2.1
-             left com.fasterxml.jackson.core:jackson-annotations at Boot's 2.21.4, and
-             databind 3.2.x calls JacksonAnnotationIntrospector.findApplyView(), which needs
-             @JsonApplyView — added only in annotations 2.22. The Flyway pre-install Job then
-             died with NoClassDefFoundError and blocked the whole Helm release. To move ahead
-             of Boot's Jackson, import tools.jackson:jackson-bom (which bumps both) rather
-             than pinning a single artifact. -->
-        <!-- Security overrides ahead of Spring Boot 4.1.1's BOM (Boot 4.1.2 is expected to absorb
-             them; drop these properties then). Keep the pairs in step with the Jackson note above:
-             stay on the same Jackson minor line Boot ships (3.1.x with 2.21.x). Fixes: Tomcat
-             CVE-2026-65905/65182/68525, Jackson CVE-2026-89425/89407/91777/91776/68497. -->
-        <jackson-bom.version>3.1.7</jackson-bom.version>
-        <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
-        <tomcat.version>11.0.26</tomcat.version>
-        <auth-context.version>0.1.0-SNAPSHOT</auth-context.version>
-        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
-        <!-- PLUGINS -->
-        <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
-        <openapi-generator-maven-plugin.version>7.25.0</openapi-generator-maven-plugin.version>
-        <build-helper-maven-plugin.version>3.6.2</build-helper-maven-plugin.version>
-        <maven-dependency-plugin.version>3.11.0</maven-dependency-plugin.version>
-        <exec-maven-plugin.version>3.6.4</exec-maven-plugin.version>
-        <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
+        <!-- Same repository, same release: the contract and the providers carry this module's version. -->
+        <payment-gateway-api.version>${project.version}</payment-gateway-api.version>
+        <!-- The one cross-module pin. Point it at a released AuditFlow version before
+             releasing: a release build refuses -SNAPSHOT inputs. -->
+        <auditflow-api.version>0.0.0-SNAPSHOT</auditflow-api.version>
+        <!-- Shared dependency/plugin versions and Spring Boot BOM overrides come from labs64io-parent -->
+        <payment-provider.version>${project.version}</payment-provider.version>
         <openapi.contract.directory>${project.build.directory}/payment-gateway-api</openapi.contract.directory>
         <openapi.source>${openapi.contract.directory}/openapi/openapi-payment-gateway-${payment-gateway.version}.yaml</openapi.source>
         <openapi.generated>${project.build.directory}/generated-openapi/openapi-payment-gateway-v1.yaml</openapi.generated>
@@ -111,7 +81,6 @@
         <dependency>
             <groupId>io.labs64</groupId>
             <artifactId>auth-context-core</artifactId>
-            <version>${auth-context.version}</version>
         </dependency>
         <!-- Trusted gateway auth-context: X-Auth-* parsing, fail-closed
              enforcement and propagation. Replaces the former in-app Spring Security
@@ -119,7 +88,6 @@
         <dependency>
             <groupId>io.labs64</groupId>
             <artifactId>auth-context-spring-boot-starter</artifactId>
-            <version>${auth-context.version}</version>
         </dependency>
         <dependency>
             <groupId>io.projectreactor.netty</groupId>
@@ -140,7 +108,6 @@
         <dependency>
             <groupId>io.labs64</groupId>
             <artifactId>openapi-spring-boot-starter</artifactId>
-            <version>${labs64-openapi.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openapitools</groupId>
@@ -150,7 +117,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
-            <version>${jackson-datatype-jsr310.version}</version>
+            <version>${jackson-datatype.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -258,6 +225,8 @@
         </dependency>
     </dependencies>
 
+    <!-- Needed here (not only in the parent): Maven must reach Labs64 Nexus to find
+         io.labs64:labs64io-parent in the first place. -->
     <repositories>
         <repository>
             <id>labs64-nexus</id>
@@ -280,26 +249,6 @@
     <build>
         <finalName>${project.artifactId}</finalName>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <version>${maven-enforcer-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>enforce-maven</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <requireMavenVersion>
-                                    <version>3.6.3</version>
-                                </requireMavenVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

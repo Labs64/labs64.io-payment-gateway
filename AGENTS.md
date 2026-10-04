@@ -80,6 +80,8 @@ Local URL: backend Swagger `http://localhost:8080/swagger-ui/index.html`.
 ## Conventions
 
 - **Java 25** and **Maven 3.6.3+** enforced by `maven-enforcer-plugin`.
+- **Versions and the build parent.** The backend inherits `io.labs64:labs64io-parent` (`labs64.io-commons`): the Spring Boot line, BOM security overrides, shared dependency/plugin versions and the commons libraries all come from that one parent version — never re-pin them here. No pom carries a version (`<version>${revision}</version>`, default `0.0.0-SNAPSHOT`): a release is a GitHub Release whose tag `X.Y.Z` becomes the jar, image and chart `appVersion`. A release build refuses `-SNAPSHOT` inputs, so the parent and `auditflow-api.version` (the one cross-module pin, in `payment-gateway-be/pom.xml`) must point at a released version before tagging.
+  `payment-gateway-api` is a standalone pom; its `openapi-schema-generator.version` names the same commons version as the parent.
 - **Spring Boot 4.1.x** (no Spring Cloud dependency). Use reactive WebClient for HTTP calls.
 - **Credentials from environment variables only** — never hardcode, never commit defaults.
 - Backend tests: JUnit 5 + Spring Boot Test alongside source in `src/test/java/`.

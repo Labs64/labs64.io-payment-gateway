@@ -21,3 +21,6 @@ target/
 
 # --- Logs ---
 *.log
+
+# flatten-maven-plugin output (the pom with ${revision} resolved); regenerated on every build
+.flattened-pom.xml
