@@ -19,7 +19,7 @@
 
     <properties>
         <paypal.version>2.4.0</paypal.version>
-        <okhttp.version>4.12.0</okhttp.version>
+        <okhttp.version>5.5.0</okhttp.version>
     </properties>
 
     <dependencies>
