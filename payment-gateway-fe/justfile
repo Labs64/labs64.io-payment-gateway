@@ -1,5 +1,5 @@
 APP_NAME := "payment-gateway"
 
-# build application
+# Install the npm dependencies with a clean install
 build:
     npm ci

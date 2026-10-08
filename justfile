@@ -6,6 +6,7 @@ DEFAULT_FORWARD_PORT := "8020"
 HELM_JUSTFILE := "../labs64.io-helm-charts/justfile"
 WORKSPACE_JUSTFILE := "../labs64.io-workspace/justfile"
 
+# List available recipes
 default:
     @just --list
 
@@ -43,7 +44,7 @@ status:
 logs:
     just --justfile {{HELM_JUSTFILE}} logs {{APP}}
 
-# Forward Payment Gateway from Kubernetes, prompting for a local port when omitted
+# Forward a local port to the Payment Gateway service, asking for the port if none is given
 port-forward port="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -66,7 +67,7 @@ doctor:
     @just --version
     @git --version
 
-# Generate JSON Schema contracts from OpenAPI into a labs64.io checkout
+# Generate JSON Schema contracts from the OpenAPI spec into the given output directory
 schemas-generate output_root:
     test -d "{{output_root}}" || (echo "Output root does not exist: {{output_root}}" >&2; exit 2)
     mvn -ntp --file payment-gateway-api/pom.xml exec:java@generate-contract-schemas -Dcontract-schema.output-root="{{output_root}}"

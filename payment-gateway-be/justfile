@@ -7,109 +7,109 @@ COMPOSE_BASE := "-f docker-compose.yml"
 COMPOSE_APP  := "-f docker-compose.yml -f docker-compose.app.yml"
 COMPOSE_DEV  := "-f docker-compose.yml -f docker-compose.dev.yml"
 
-# show available recipes
+# List available recipes
 default:
     @just --list
 
 # ── Build ────────────────────────────────────────────────────────────
 
-# compile and package (skip tests)
+# Compile and package (skip tests)
 build:
     mvn -f ../pom.xml -pl payment-gateway-be -am clean package -DskipTests
 
-# compile, run tests, and package
+# Compile, run tests, and package
 test:
     mvn -f ../pom.xml -pl payment-gateway-be -am clean verify
 
-# run only unit tests (no integration tests)
+# Run the unit tests only, without integration tests
 unit-test:
     mvn -f ../pom.xml -pl payment-gateway-be -am test
 
 # ── Docker ───────────────────────────────────────────────────────────
 
-# build docker image
+# Build the Docker image
 docker-build: build
     docker build -t {{APP_NAME}}:{{TAG}} .
     docker images | grep "{{APP_NAME}}"
 
-# build and push docker image to registry
+# Build the Docker image and push it to the registry
 docker-push: docker-build
     docker tag {{APP_NAME}}:{{TAG}} {{REGISTRY}}/{{APP_NAME}}:{{TAG}}
     docker push {{REGISTRY}}/{{APP_NAME}}:{{TAG}}
 
 # ── Docker Compose ───────────────────────────────────────────────────
 
-# start shared local infrastructure only
+# Start the shared local infrastructure containers
 infra-up:
     {{COMPOSE}} {{COMPOSE_BASE}} up -d
     {{COMPOSE}} {{COMPOSE_BASE}} ps
 
-# stop local infrastructure (keeps volumes)
+# Stop the local infrastructure, keeping volumes
 infra-down:
     {{COMPOSE}} {{COMPOSE_BASE}} down
 
-# tail logs from local infrastructure
+# Follow the local infrastructure logs
 infra-logs:
     {{COMPOSE}} {{COMPOSE_BASE}} logs -f
 
-# stop the Compose project and remove its volumes (destructive)
+# Stop the Compose project and delete its volumes and orphan containers
 infra-reset:
     {{COMPOSE}} {{COMPOSE_BASE}} down -v --remove-orphans
 
-# build and start the production-like application image with infrastructure
+# Build the app and start it with its infrastructure as a production-like stack
 smoke-up: build
     {{COMPOSE}} {{COMPOSE_APP}} up -d --build --remove-orphans
     {{COMPOSE}} {{COMPOSE_APP}} ps
 
-# stop the production-like application stack (keeps volumes)
+# Stop the production-like stack, keeping volumes
 smoke-down:
     {{COMPOSE}} {{COMPOSE_APP}} down --remove-orphans
 
-# tail logs from the production-like application stack
+# Follow the production-like stack logs
 smoke-logs:
     {{COMPOSE}} {{COMPOSE_APP}} logs -f
 
-# start the debug application container with infrastructure
+# Build the app and start the debug app container with its infrastructure
 dev-up: build
     {{COMPOSE}} {{COMPOSE_DEV}} up -d --remove-orphans
     {{COMPOSE}} {{COMPOSE_DEV}} ps
 
-# watch for a completed executable JAR and then restart the debug application
+# Restart the debug app container whenever a new executable JAR is built
 dev-watch: build
     {{COMPOSE}} {{COMPOSE_DEV}} up -d --remove-orphans --force-recreate app
     bash ./docker/watch-jar.sh
 
-# stop the debug application stack (keeps volumes)
+# Stop the debug stack, keeping volumes
 dev-down:
     {{COMPOSE}} {{COMPOSE_DEV}} down --remove-orphans
 
-# tail logs from the debug application stack
+# Follow the debug stack logs
 dev-logs:
     {{COMPOSE}} {{COMPOSE_DEV}} logs -f
 
 # ── Run ──────────────────────────────────────────────────────────────
 
-# build reactor artifacts and run application with local profile
+# Install the reactor modules, then run the app with the local Spring profile
 run:
     mvn -f ../pom.xml -pl payment-gateway-be -am install -DskipTests
     mvn spring-boot:run -Dspring-boot.run.profiles=local -f pom.xml
 
 # ── Dev Tools ────────────────────────────────────────────────────────
 
-# open Swagger UI in browser
+# Open Swagger UI in the browser
 docu:
     open "http://localhost:8080/swagger-ui/index.html"
 
-# clean build artifacts
+# Remove the build artifacts
 clean:
     mvn -f ../pom.xml -pl payment-gateway-be -am clean
 
-# check for dependency, plugin, and property version updates
+# Show available dependency, plugin and property updates
 check-updates:
     mvn versions:display-plugin-updates -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*' -f pom.xml
     mvn versions:display-property-updates -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*' -f pom.xml
     mvn versions:display-dependency-updates -DprocessDependencyManagement=false -Dmaven.version.ignore='(?i).*[.-]?(alpha|beta|RC|M)\d*' -f pom.xml
 
-# scan docker image for CVEs (requires docker scout)
+# Build the Docker image and scan it for CVEs with Docker Scout
 scan: docker-build
     docker scout cves {{APP_NAME}}:{{TAG}}
