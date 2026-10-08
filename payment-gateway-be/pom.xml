@@ -25,7 +25,7 @@
         <payment-gateway-api.version>${project.version}</payment-gateway-api.version>
         <!-- The one cross-module pin. Point it at a released AuditFlow version before
              releasing: a release build refuses -SNAPSHOT inputs. -->
-        <auditflow-api.version>0.0.18</auditflow-api.version>
+        <auditflow-api.version>0.0.19</auditflow-api.version>
         <!-- Shared dependency/plugin versions and Spring Boot BOM overrides come from labs64io-parent -->
         <payment-provider.version>${project.version}</payment-provider.version>
         <openapi.contract.directory>${project.build.directory}/payment-gateway-api</openapi.contract.directory>
