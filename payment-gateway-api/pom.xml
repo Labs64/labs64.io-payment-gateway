@@ -65,7 +65,7 @@
         <exec-maven-plugin.version>3.6.4</exec-maven-plugin.version>
         <!-- Commons release this standalone pom runs its schema generator from; keep it on
              the same version as the labs64io-parent the backend inherits. -->
-        <openapi-schema-generator.version>0.0.4</openapi-schema-generator.version>
+        <openapi-schema-generator.version>0.1.0</openapi-schema-generator.version>
         <contract-schema.input>${project.basedir}/src/main/resources/openapi/openapi-payment-gateway-${payment-gateway.version}.yaml</contract-schema.input>
         <build-helper-maven-plugin.version>3.6.2</build-helper-maven-plugin.version>
         <maven-source-plugin.version>3.4.0</maven-source-plugin.version>

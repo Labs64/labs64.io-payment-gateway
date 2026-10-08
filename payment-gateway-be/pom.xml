@@ -14,7 +14,7 @@
     <parent>
         <groupId>io.labs64</groupId>
         <artifactId>labs64io-parent</artifactId>
-        <version>0.0.4</version>
+        <version>0.1.0</version>
         <relativePath />
     </parent>
 
@@ -25,7 +25,7 @@
         <payment-gateway-api.version>${project.version}</payment-gateway-api.version>
         <!-- The one cross-module pin. Point it at a released AuditFlow version before
              releasing: a release build refuses -SNAPSHOT inputs. -->
-        <auditflow-api.version>0.0.19</auditflow-api.version>
+        <auditflow-api.version>0.1.2</auditflow-api.version>
         <!-- Shared dependency/plugin versions and Spring Boot BOM overrides come from labs64io-parent -->
         <payment-provider.version>${project.version}</payment-provider.version>
         <openapi.contract.directory>${project.build.directory}/payment-gateway-api</openapi.contract.directory>
@@ -224,27 +224,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <!-- Needed here (not only in the parent): Maven must reach Labs64 Nexus to find
-         io.labs64:labs64io-parent in the first place. -->
-    <repositories>
-        <repository>
-            <id>labs64-nexus</id>
-            <name>Labs64 Nexus Releases</name>
-            <url>https://nexus.labs64.com/repository/labs64.io-releases/</url>
-        </repository>
-        <repository>
-            <id>labs64-nexus-snapshots</id>
-            <name>Labs64 Nexus Snapshots</name>
-            <url>https://nexus.labs64.com/repository/labs64.io-snapshots/</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
 
     <build>
         <finalName>${project.artifactId}</finalName>
