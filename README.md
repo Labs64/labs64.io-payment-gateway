@@ -10,6 +10,14 @@
 
 The Labs64 Unified Payment Gateway Platform is a strategic solution within the Labs64 IO Ecosystem, aimed at consolidating various Payment Service Providers (PSPs) into a single, cohesive and flexible infrastructure. This gateway enables seamless payment processing, improved operational efficiency, and enhanced scalability for businesses seeking to manage and optimize their digital payment flows.
 
+## Get started
+
+| You want to… | Do this |
+|---|---|
+| Call the API on a running install | The [Labs64.IO Quickstart](https://labs64.io/docs/getting-started/quickstart/) installs Payment Gateway behind the gateway on any Kubernetes cluster in about five minutes |
+| Run it locally and step through a payment | `just dev-up` in `payment-gateway-be/` (JDK 25, Maven, Docker), then follow one of the [examples](#examples) |
+| Change the code | [`AGENTS.md`](AGENTS.md) for layout, commands and tests; [`CONTRIBUTING.md`](CONTRIBUTING.md) for pull requests |
+
 ## Modules
 
 | Path | Purpose |
