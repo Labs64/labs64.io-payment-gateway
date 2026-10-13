@@ -18,11 +18,25 @@
 
 ## Why Payment Gateway?
 
-Integrating each payment provider separately means separate APIs, separate webhook formats and separate retry bugs, and a double charge is one network timeout away. Payment Gateway puts one contract in front of all of them:
+Adding a payment provider is easy. Living with three of them is not: different APIs, different webhook formats, different failure modes, and a double charge is always one network timeout away. Payment Gateway gives your applications one contract and keeps the provider-specific mess behind it.
 
-1. **One REST API.** Create a payment, pay it, read the result; the same calls for Stripe, PayPal or your own provider.
-2. **Safe to retry.** Pay with an `Idempotency-Key`: a replay returns the original transaction instead of charging again.
-3. **One result shape.** Provider responses and webhooks are normalized to the same payment and transaction states.
+1. **One REST API.** Create a payment, pay it, read the result: the same calls for Stripe, PayPal or a provider you add yourself.
+2. **Safe to retry.** Pay with an `Idempotency-Key` and a replay returns the original transaction instead of charging again.
+3. **One result shape.** Provider responses and webhooks are normalized into the same payment and transaction states, so your code does not care who processed the money.
+
+- You have one provider and one application and are happy with its SDK: the abstraction would be overhead.
+- You need a hosted storefront, subscriptions billing UI or invoicing: this is the payment API layer, not a billing suite.
+
+**A good fit if**
+
+- You take payments through more than one provider, or expect to switch or add one without touching every application.
+- Several applications or merchants (tenants) need payments, and you want credentials and rules kept per tenant.
+- You want payment lifecycle events in your audit trail without writing the glue.
+
+**Probably not what you need if**
+
+- You have one provider and one application and are happy with its SDK: the abstraction would be overhead.
+- You need a hosted storefront, subscriptions billing UI or invoicing: this is the payment API layer, not a billing suite.
 
 ## Get started
 
@@ -47,16 +61,17 @@ Not sure? Start with **3** to watch a payment go through in two minutes, or **1*
 
 ### 1. `install.sh`: the quick ecosystem start
 
-One script installs Payment Gateway, AuditFlow and the authenticating API gateway on any Kubernetes cluster, then proves it with a real request. No cluster? A throwaway one on your laptop is enough:
+One script installs Payment Gateway, AuditFlow and the authenticating API gateway on any Kubernetes cluster, then proves it with a real request.
 
 ```bash
-k3d cluster create labs64io-demo -p "8000:80@loadbalancer" --k3s-arg "--disable=traefik@server:0"   # optional
+# No cluster yet? A throwaway one needs only Docker and k3d:
+k3d cluster create labs64io-demo -p "8000:80@loadbalancer" --k3s-arg "--disable=traefik@server:0"
 
 curl -fsSL https://raw.githubusercontent.com/Labs64/labs64.io-helm-charts/master/install.sh -o install.sh
 bash install.sh
 ```
 
-Press Enter three times to take the defaults. You finish with a gateway you can `curl`, interactive API docs and a working token flow:
+Press Enter three times to take the defaults. A few minutes later you should see:
 
 ```text
   PASS  Obtained a demo access token from mock-oidc
@@ -67,19 +82,22 @@ Press Enter three times to take the defaults. You finish with a gateway you can 
    API docs:  http://localhost:8000/swagger-ui/
 ```
 
-Payment Gateway is then at `http://localhost:8000/payment-gateway/api/v1/`. The same script later runs `status`, `stop`, `start` and `uninstall`. This is an evaluation install with a demo identity provider: keep it on a local or private cluster. Details: [Quickstart](https://labs64.io/docs/getting-started/quickstart/) · [`install.sh`](https://github.com/Labs64/labs64.io-helm-charts/blob/master/install.sh).
+Payment Gateway is then at `http://localhost:8000/payment-gateway/api/v1/`. The same script later runs `status`, `stop`, `start` and `uninstall`. This is an evaluation install with a demo identity provider: keep it on a local or private cluster. Details: [Quickstart](https://labs64.io/docs/getting-started/quickstart.html) · [`install.sh`](https://github.com/Labs64/labs64.io-helm-charts/blob/master/install.sh).
 
 ### 2. Kubernetes: on your own cluster
 
-Install Payment Gateway from its Helm chart and point it at your infrastructure:
+You have a cluster, PostgreSQL and a Redis-compatible store. Install Payment Gateway from its chart and point it at them:
 
 ```bash
 helm repo add labs64io https://labs64.github.io/labs64.io-helm-charts
 helm repo update
-helm install my-payments labs64io/payment-gateway -n labs64io --create-namespace
+
+helm install my-payments labs64io/payment-gateway -n labs64io --create-namespace \
+  --set global.postgresql.host=postgres.mycompany.internal \
+  --set global.redis.host=redis.mycompany.internal
 ```
 
-Payment Gateway needs PostgreSQL and a Redis-compatible store (used for idempotency). The [`preflight`](https://labs64.io/docs/getting-started/deploy-to-kubernetes/) chart checks both from inside your cluster before you install. Guides: [Deploy to your Kubernetes cluster](https://labs64.io/docs/getting-started/deploy-to-kubernetes/) · [Helm chart on Artifact Hub](https://artifacthub.io/packages/helm/labs64io-helm-charts/payment-gateway).
+Database credentials go in a Kubernetes Secret (see the chart's values). The `preflight` chart can check both services from inside your cluster before you install. Guides: [Deploy to your Kubernetes cluster](https://labs64.io/docs/getting-started/deploy-to-kubernetes.html) · [Helm chart on Artifact Hub](https://artifacthub.io/packages/helm/labs64io-helm-charts/payment-gateway).
 
 ### 3. Docker: on your machine
 
@@ -145,7 +163,7 @@ cd payment-gateway-be && cp .env.example .env
 docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
 ```
 
-[`AGENTS.md`](AGENTS.md) describes the layout, commands and tests; [`CONTRIBUTING.md`](CONTRIBUTING.md) covers pull requests; the [Contributing guide](https://labs64.io/docs/development/contributing/) covers the workflow.
+[`AGENTS.md`](AGENTS.md) describes the layout, commands and tests; [`CONTRIBUTING.md`](CONTRIBUTING.md) covers pull requests; the [Contributing guide](https://labs64.io/docs/development/contributing.html) covers the workflow.
 
 ### Where next?
 
@@ -156,7 +174,9 @@ Everything below is in the [Payment Gateway documentation](https://labs64.io/doc
 | Take real payments with Stripe or PayPal | [Configuring providers](https://labs64.io/docs/modules/payment-gateway/#configuration) and the [Stripe and PayPal demo runbook](examples/payment-gateway-stripe-paypal-demo.md) |
 | Handle provider webhooks and returns | [REST APIs](https://labs64.io/docs/modules/payment-gateway/#rest-apis) |
 | Follow payments in my audit log | [Events](https://labs64.io/docs/modules/payment-gateway/#events) |
-| Compare all the ways to run Labs64.IO | [Choose a deployment path](https://labs64.io/docs/getting-started/choose-a-deployment-path/) |
+| Compare all the ways to run Labs64.IO | [Choose a deployment path](https://labs64.io/docs/getting-started/choose-a-deployment-path.html) |
+
+Something not working? [Troubleshooting your first run](https://labs64.io/docs/getting-started/troubleshooting.html) covers the usual suspects, and you are always welcome to [open an issue](https://github.com/Labs64/labs64.io-payment-gateway/issues).
 
 ## Features
 
@@ -203,6 +223,16 @@ The complete list is in the [documentation](https://labs64.io/docs/modules/payme
 
 Details and the request flow are in the [architecture documentation](https://labs64.io/docs/modules/payment-gateway/#architecture).
 
+## Before you take real payments
+
+The Docker path above is for evaluation. A few things matter before real money flows:
+
+- **Put it behind the API Gateway.** The service trusts the `X-Auth-*` headers it receives; without a gateway that authenticates callers, anyone who can reach it can claim any identity.
+- **Protect provider credentials.** They live in each tenant's provider configuration: restrict who can read and write `/payment-providers`, and keep the database encrypted and backed up.
+- **Make webhooks reachable and verified.** Providers must be able to reach `/providers/{provider}/webhooks`, and each provider's signing secret must be configured so signatures are checked.
+- **Test with the provider's sandbox first.** Stripe and PayPal both have test modes; the [demo runbook](examples/payment-gateway-stripe-paypal-demo.md) walks through them.
+- **Always send an `Idempotency-Key`** from the code that calls `pay`.
+
 ## Using Payment Gateway with AI agents
 
 Payment Gateway gives an agent a payments API that is safe to call more than once.
@@ -234,11 +264,11 @@ Payment Gateway is one module of the [Labs64.IO Ecosystem](https://labs64.io); [
 
 ## Contributing
 
-Contributions of all sizes are welcome. Fork, branch, run the tests described in [`AGENTS.md`](AGENTS.md), and open a pull request; to add a payment provider, start with the SPI in [`payment-gateway-providers/providers-spi`](payment-gateway-providers/providers-spi/). If you are unsure whether something fits, open an issue first.
+We would love your help. The most valuable contribution is a new payment provider. Fork the repository, make your change on a branch, run the checks described in [`AGENTS.md`](AGENTS.md) and open a pull request. Start from the SPI in [`payment-gateway-providers/providers-spi`](payment-gateway-providers/providers-spi/) and the `noop` module as a template. Not sure whether an idea fits? Open an issue first and we will talk it through; that is a perfectly good way to start.
 
 ## License
 
-The core of the *Labs64.IO Ecosystem* is entirely open source and free forever. Community modules are licensed under [Apache License 2.0](LICENSE).
+Everything in this repository is open source under the [Apache License 2.0](LICENSE): you can use it, change it and ship it commercially. The core of the *Labs64.IO Ecosystem* is free forever; community modules are Apache-2.0 licensed.
 
 ---
 
