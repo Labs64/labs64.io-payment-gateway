@@ -246,10 +246,3 @@ The core of the *Labs64.IO Ecosystem* is entirely open source and free forever. 
   <a href="https://labs64.io"><img alt="Labs64.IO" src="https://labs64.io/docs/assets/images/labs64-logo.png" width="110"></a><br>
   <sub>Made by the <a href="https://labs64.io">Labs64</a> team and community.</sub>
 </p>
-
----
-
-<p align="center">
-  <a href="https://labs64.io"><img alt="Labs64.IO" src="https://labs64.io/docs/assets/images/labs64-logo.png" width="110"></a><br>
-  <sub>Made by the <a href="https://labs64.io">Labs64</a> team and community.</sub>
-</p>
