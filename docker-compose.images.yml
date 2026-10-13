@@ -1,0 +1,59 @@
+# Run Payment Gateway from the published Docker Hub image: no JDK, no Maven, no local build.
+#
+#   docker compose -f docker-compose.images.yml up -d
+#
+# Starts the service with PostgreSQL and Valkey (Redis-compatible) next to it, using the
+# built-in NoOp payment provider, so you can walk through a payment without a PSP account.
+# Pin a release with PAYMENT_GATEWAY_VERSION=0.0.3 (default: latest).
+#
+# This is an evaluation setup: authorization is disabled because there is no API gateway
+# in front of it, and every request runs as the fixed development tenant `t_dev`. Do not
+# expose it. For the full stack (gateway, authentication, Cerbos) use the Labs64.IO
+# Quickstart: https://labs64.io/docs/getting-started/quickstart/
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: paymentgateway
+      POSTGRES_PASSWORD: paymentgateway
+      POSTGRES_DB: paymentgateway
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U paymentgateway -d paymentgateway"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: valkey/valkey:9.1-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  payment-gateway:
+    image: labs64/payment-gateway:${PAYMENT_GATEWAY_VERSION:-latest}
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: paymentgateway
+      DB_USERNAME: paymentgateway
+      DB_PASSWORD: paymentgateway
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      LABS64_AUTH_AUTHZ_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/liveness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
