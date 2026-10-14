@@ -1,164 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640" role="img" aria-labelledby="t d">
+<svg viewBox="0 0 1200 640" xmlns="http://www.w3.org/2000/svg" width="1200" height="640" role="img" aria-labelledby="t d">
 <title id="t">Labs64.IO Payment Gateway</title>
-<desc id="d">Shops, apps and billing services call one payment API; Payment Gateway creates the payment, pays it idempotently, routes it to Stripe, PayPal or another provider and confirms the result.</desc>
+<desc id="d">A shop retries POST /payments three times with the same Idempotency-Key; Payment Gateway replays the same answer and prints exactly one receipt: $30.00, routed to Stripe, confirmed, charged once.</desc>
 <defs>
-  <radialGradient id="g1" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#E14817" stop-opacity=".45"/><stop offset="1" stop-color="#E14817" stop-opacity="0"/></radialGradient>
-  <radialGradient id="g2" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#F2951C" stop-opacity=".22"/><stop offset="1" stop-color="#F2951C" stop-opacity="0"/></radialGradient>
-  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#F8EDE5" stroke-opacity=".06"/></pattern>
-  <filter id="glow" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-  <clipPath id="win"><rect width="1200" height="640" rx="18"/></clipPath>
-  <path id="pi0" d="M280,300 C355,300 355,355 430,355"/>
-  <path id="pi1" d="M280,370 C355,370 355,385 430,385"/>
-  <path id="pi2" d="M280,440 C355,440 355,425 430,425"/>
-  <path id="pi3" d="M280,510 C355,510 355,455 430,455"/>
-  <path id="po0" d="M770,355 C845,355 845,300 920,300"/>
-  <path id="po1" d="M770,385 C845,385 845,370 920,370"/>
-  <path id="po2" d="M770,425 C845,425 845,440 920,440"/>
-  <path id="po3" d="M770,455 C845,455 845,510 920,510"/>
-  <style>
+<radialGradient id="hg1" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#E14817" stop-opacity=".45"/><stop offset="1" stop-color="#E14817" stop-opacity="0"/></radialGradient>
+<radialGradient id="hg2" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#F2951C" stop-opacity=".22"/><stop offset="1" stop-color="#F2951C" stop-opacity="0"/></radialGradient>
+<pattern id="hgrid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#F8EDE5" stroke-opacity=".06"/></pattern>
+<filter id="hglow" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<clipPath id="hwin"><rect width="1200" height="640" rx="18"/></clipPath>
+<clipPath id="hslot"><rect x="700" y="264" width="420" height="320"/></clipPath><style>
     .sans{font-family:Roboto,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace}
-    @media (prefers-reduced-motion: reduce){ animate, animateMotion{display:none} }
+    text{white-space:pre}
+    @media (prefers-reduced-motion: reduce){ animate, animateMotion, animateTransform{display:none} }
   </style>
 </defs>
-<g clip-path="url(#win)">
-  <rect width="1200" height="640" fill="#170A05"/>
-  <rect width="1200" height="640" fill="url(#grid)"/>
-  <ellipse cx="180" cy="40" rx="420" ry="300" fill="url(#g1)"/>
-  <ellipse cx="1040" cy="560" rx="360" ry="260" fill="url(#g2)"/>
-  <rect width="1200" height="44" fill="#22100A"/>
-  <line x1="0" y1="44" x2="1200" y2="44" stroke="#F8EDE5" stroke-opacity=".1"/>
-  <circle cx="28" cy="22" r="6" fill="#E14817"/><circle cx="50" cy="22" r="6" fill="#F2951C"/><circle cx="72" cy="22" r="6" fill="#87888A"/>
-  <text x="600" y="27" text-anchor="middle" class="mono" font-size="13" fill="#87888A" letter-spacing=".5">labs64.io-payment-gateway · POST /payments</text>
-  <text x="64" y="100" class="sans" font-size="13" font-weight="500" letter-spacing="3.6" fill="#F08B53">LABS64.IO  ·  PAYMENT GATEWAY</text>
-  <text x="64" y="156" class="sans" font-size="48" font-weight="700" letter-spacing="-1.4" fill="#F8EDE5">One API. Every payment provider.</text>
-  <text x="64" y="212" class="sans" font-size="48" font-weight="700" letter-spacing="-1.4" fill="#E14817">Charged once, never twice.</text>
-  <text x="1136" y="212" text-anchor="end" class="mono" font-size="14" fill="#F8EDE5" fill-opacity=".6">idempotent  ·  multi-tenant  ·  PSP-agnostic</text>
-<use href="#pi0" fill="none" stroke="#F8EDE5" stroke-opacity=".22" stroke-width="1.5"/>
-<use href="#po0" fill="none" stroke="#F8EDE5" stroke-opacity=".22" stroke-width="1.5"/>
-<use href="#pi1" fill="none" stroke="#F8EDE5" stroke-opacity=".22" stroke-width="1.5"/>
-<use href="#po1" fill="none" stroke="#F8EDE5" stroke-opacity=".22" stroke-width="1.5"/>
-<use href="#pi2" fill="none" stroke="#F8EDE5" stroke-opacity=".22" stroke-width="1.5"/>
-<use href="#po2" fill="none" stroke="#F8EDE5" stroke-opacity=".22" stroke-width="1.5"/>
-<use href="#pi3" fill="none" stroke="#F8EDE5" stroke-opacity=".22" stroke-width="1.5"/>
-<use href="#po3" fill="none" stroke="#F8EDE5" stroke-opacity=".22" stroke-width="1.5"/>
-<text x="64" y="262" class="mono" font-size="12" letter-spacing="2.4" fill="#87888A">WHO PAYS THROUGH IT</text>
-<rect x="64" y="274" width="216" height="52" rx="10" fill="#F8EDE5" fill-opacity=".05" stroke="#F8EDE5" stroke-opacity=".2"/>
-<circle cx="86" cy="300" r="4" fill="#E14817"/>
-<text x="102" y="297" class="sans" font-size="15" font-weight="700" fill="#F8EDE5">Web shop</text>
-<text x="102" y="315" class="mono" font-size="11.5" fill="#F08B53">order #1001 · $30.00</text>
-<rect x="64" y="274" width="216" height="52" rx="10" fill="none" stroke="#E14817" stroke-width="2" opacity="0">
-      <animate attributeName="opacity" dur="6.0s" begin="0.0s" repeatCount="indefinite" values="0;1;0;0" keyTimes="0;0.05;0.1500;1"/></rect>
-<rect x="64" y="344" width="216" height="52" rx="10" fill="#F8EDE5" fill-opacity=".05" stroke="#F8EDE5" stroke-opacity=".2"/>
-<circle cx="86" cy="370" r="4" fill="#E14817"/>
-<text x="102" y="367" class="sans" font-size="15" font-weight="700" fill="#F8EDE5">Mobile app</text>
-<text x="102" y="385" class="mono" font-size="11.5" fill="#F08B53">in-app purchase</text>
-<rect x="64" y="344" width="216" height="52" rx="10" fill="none" stroke="#E14817" stroke-width="2" opacity="0">
-      <animate attributeName="opacity" dur="6.0s" begin="0.25s" repeatCount="indefinite" values="0;1;0;0" keyTimes="0;0.05;0.1500;1"/></rect>
-<rect x="64" y="414" width="216" height="52" rx="10" fill="#F8EDE5" fill-opacity=".05" stroke="#F8EDE5" stroke-opacity=".2"/>
-<circle cx="86" cy="440" r="4" fill="#E14817"/>
-<text x="102" y="437" class="sans" font-size="15" font-weight="700" fill="#F8EDE5">Subscription billing</text>
-<text x="102" y="455" class="mono" font-size="11.5" fill="#F08B53">monthly renewal</text>
-<rect x="64" y="414" width="216" height="52" rx="10" fill="none" stroke="#E14817" stroke-width="2" opacity="0">
-      <animate attributeName="opacity" dur="6.0s" begin="0.5s" repeatCount="indefinite" values="0;1;0;0" keyTimes="0;0.05;0.1500;1"/></rect>
-<rect x="64" y="484" width="216" height="52" rx="10" fill="#F8EDE5" fill-opacity=".05" stroke="#F8EDE5" stroke-opacity=".2"/>
-<circle cx="86" cy="510" r="4" fill="#E14817"/>
-<text x="102" y="507" class="sans" font-size="15" font-weight="700" fill="#F8EDE5">Marketplace</text>
-<text x="102" y="525" class="mono" font-size="11.5" fill="#F08B53">seller payout split</text>
-<rect x="64" y="484" width="216" height="52" rx="10" fill="none" stroke="#E14817" stroke-width="2" opacity="0">
-      <animate attributeName="opacity" dur="6.0s" begin="0.75s" repeatCount="indefinite" values="0;1;0;0" keyTimes="0;0.05;0.1500;1"/></rect>
-<rect x="430" y="262" width="340" height="286" rx="14" fill="#F8EDE5" fill-opacity=".05" stroke="#F08B53" stroke-opacity=".55"/>
-<text x="454" y="293" class="mono" font-size="12" letter-spacing="2.4" fill="#F08B53">PAYMENT GATEWAY</text>
-<rect x="454" y="308" width="64" height="34" rx="8" fill="#F8EDE5" fill-opacity=".05" stroke="#F8EDE5" stroke-opacity=".2"/>
-<rect x="454" y="308" width="64" height="34" rx="8" fill="#E14817" opacity="0">
-  <animate attributeName="opacity" dur="6.0s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0.0000;0.1917;0.2167;0.3167;0.3417;1.0000"/></rect>
-<text x="486" y="330" text-anchor="middle" class="mono" font-size="12" font-weight="500" fill="#F8EDE5">Create</text>
-<rect x="530" y="308" width="64" height="34" rx="8" fill="#F8EDE5" fill-opacity=".05" stroke="#F8EDE5" stroke-opacity=".2"/>
-<rect x="530" y="308" width="64" height="34" rx="8" fill="#E14817" opacity="0">
-  <animate attributeName="opacity" dur="6.0s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0.0000;0.3083;0.3333;0.4333;0.4583;1.0000"/></rect>
-<text x="562" y="330" text-anchor="middle" class="mono" font-size="12" font-weight="500" fill="#F8EDE5">Pay</text>
-<rect x="606" y="308" width="64" height="34" rx="8" fill="#F8EDE5" fill-opacity=".05" stroke="#F8EDE5" stroke-opacity=".2"/>
-<rect x="606" y="308" width="64" height="34" rx="8" fill="#E14817" opacity="0">
-  <animate attributeName="opacity" dur="6.0s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0.0000;0.4250;0.4500;0.5500;0.5750;1.0000"/></rect>
-<text x="638" y="330" text-anchor="middle" class="mono" font-size="12" font-weight="500" fill="#F8EDE5">Route</text>
-<rect x="682" y="308" width="64" height="34" rx="8" fill="#F8EDE5" fill-opacity=".05" stroke="#F8EDE5" stroke-opacity=".2"/>
-<rect x="682" y="308" width="64" height="34" rx="8" fill="#E14817" opacity="0">
-  <animate attributeName="opacity" dur="6.0s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0.0000;0.5417;0.5667;0.6667;0.6917;1.0000"/></rect>
-<text x="714" y="330" text-anchor="middle" class="mono" font-size="12" font-weight="500" fill="#F8EDE5">Confirm</text>
-<rect x="454" y="360" width="292" height="34" rx="8" fill="none" stroke="#F8EDE5" stroke-opacity=".2" stroke-dasharray="4 4"/>
-<text x="600" y="382" text-anchor="middle" class="mono" font-size="11.5" fill="#F8EDE5" fill-opacity=".7">Idempotency-Key · safe to retry</text>
-<rect x="454" y="410" width="292" height="122" rx="10" fill="#0A0402" fill-opacity=".6" stroke="#F8EDE5" stroke-opacity=".15"/>
-<g class="mono" font-size="12.5" fill="#F8EDE5">
-  <text x="470" y="436" fill-opacity=".5">{</text>
-  <text x="486" y="458"><tspan fill="#F08B53">"provider"</tspan>: "stripe",</text>
-  <text x="486" y="480"><tspan fill="#F08B53">"amount"</tspan>: 3000, "currency": "USD",</text>
-  <g><text x="486" y="502"><tspan fill="#F08B53">"status"</tspan>: "READY"</text>
-    <animate attributeName="opacity" dur="6.0s" repeatCount="indefinite" values="1;1;0;0;1;1" keyTimes="0.0000;0.3083;0.3333;0.9333;0.9833;1.0000"/></g>
-  <g opacity="0"><text x="486" y="502"><tspan fill="#F08B53">"status"</tspan>: <tspan fill="#E14817" font-weight="700">"CLOSED"</tspan></text>
-    <animate attributeName="opacity" dur="6.0s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0.0000;0.3083;0.3333;0.9333;0.9833;1.0000"/></g>
-  <text x="470" y="524" fill-opacity=".5">}</text>
-</g>
-<text x="920" y="262" class="mono" font-size="12" letter-spacing="2.4" fill="#87888A">PAYMENT PROVIDERS</text>
-<rect x="920" y="274" width="216" height="52" rx="10" fill="#F8EDE5" fill-opacity=".05" stroke="#F8EDE5" stroke-opacity=".2"/>
-<text x="942" y="297" class="sans" font-size="15" font-weight="700" fill="#F8EDE5">Stripe</text>
-<text x="942" y="315" class="mono" font-size="11.5" fill="#F08B53">cards, wallets</text>
-<path d="M1112,295 l5,5 l-5,5" fill="none" stroke="#E14817" stroke-width="2" stroke-linecap="round"/>
-<rect x="920" y="274" width="216" height="52" rx="10" fill="none" stroke="#E14817" stroke-width="2" opacity="0">
-      <animate attributeName="opacity" dur="6.0s" begin="4.4s" repeatCount="indefinite" values="0;1;0;0" keyTimes="0;0.05;0.1500;1"/></rect>
-<rect x="920" y="344" width="216" height="52" rx="10" fill="#F8EDE5" fill-opacity=".05" stroke="#F8EDE5" stroke-opacity=".2"/>
-<text x="942" y="367" class="sans" font-size="15" font-weight="700" fill="#F8EDE5">PayPal</text>
-<text x="942" y="385" class="mono" font-size="11.5" fill="#F08B53">wallets, checkout</text>
-<path d="M1112,365 l5,5 l-5,5" fill="none" stroke="#E14817" stroke-width="2" stroke-linecap="round"/>
-<rect x="920" y="344" width="216" height="52" rx="10" fill="none" stroke="#E14817" stroke-width="2" opacity="0">
-      <animate attributeName="opacity" dur="6.0s" begin="4.6000000000000005s" repeatCount="indefinite" values="0;1;0;0" keyTimes="0;0.05;0.1500;1"/></rect>
-<rect x="920" y="414" width="216" height="52" rx="10" fill="#F8EDE5" fill-opacity=".05" stroke="#F8EDE5" stroke-opacity=".2"/>
-<text x="942" y="437" class="sans" font-size="15" font-weight="700" fill="#F8EDE5">NoOp</text>
-<text x="942" y="455" class="mono" font-size="11.5" fill="#F08B53">test mode, no PSP</text>
-<path d="M1112,435 l5,5 l-5,5" fill="none" stroke="#E14817" stroke-width="2" stroke-linecap="round"/>
-<rect x="920" y="414" width="216" height="52" rx="10" fill="none" stroke="#E14817" stroke-width="2" opacity="0">
-      <animate attributeName="opacity" dur="6.0s" begin="4.800000000000001s" repeatCount="indefinite" values="0;1;0;0" keyTimes="0;0.05;0.1500;1"/></rect>
-<rect x="920" y="484" width="216" height="52" rx="10" fill="#F8EDE5" fill-opacity=".05" stroke="#F8EDE5" stroke-opacity=".2"/>
-<text x="942" y="507" class="sans" font-size="15" font-weight="700" fill="#F8EDE5">Your provider</text>
-<text x="942" y="525" class="mono" font-size="11.5" fill="#F08B53">plug in via the SPI</text>
-<path d="M1112,505 l5,5 l-5,5" fill="none" stroke="#E14817" stroke-width="2" stroke-linecap="round"/>
-<rect x="920" y="484" width="216" height="52" rx="10" fill="none" stroke="#E14817" stroke-width="2" opacity="0">
-      <animate attributeName="opacity" dur="6.0s" begin="5.0s" repeatCount="indefinite" values="0;1;0;0" keyTimes="0;0.05;0.1500;1"/></rect>
-<circle r="5" fill="#F8EDE5" opacity="0" filter="url(#glow)">
-      <animateMotion dur="6.0s" begin="0.0s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2000;1" calcMode="linear"><mpath href="#pi0"/></animateMotion>
-      <animate attributeName="opacity" dur="6.0s" begin="0.0s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.1800;0.2000;1"/>
-    </circle>
-<circle r="5" fill="#F8EDE5" opacity="0" filter="url(#glow)">
-      <animateMotion dur="6.0s" begin="0.25s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2000;1" calcMode="linear"><mpath href="#pi1"/></animateMotion>
-      <animate attributeName="opacity" dur="6.0s" begin="0.25s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.1800;0.2000;1"/>
-    </circle>
-<circle r="5" fill="#F8EDE5" opacity="0" filter="url(#glow)">
-      <animateMotion dur="6.0s" begin="0.5s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2000;1" calcMode="linear"><mpath href="#pi2"/></animateMotion>
-      <animate attributeName="opacity" dur="6.0s" begin="0.5s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.1800;0.2000;1"/>
-    </circle>
-<circle r="5" fill="#F8EDE5" opacity="0" filter="url(#glow)">
-      <animateMotion dur="6.0s" begin="0.75s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2000;1" calcMode="linear"><mpath href="#pi3"/></animateMotion>
-      <animate attributeName="opacity" dur="6.0s" begin="0.75s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.1800;0.2000;1"/>
-    </circle>
-<circle r="5" fill="#E14817" opacity="0" filter="url(#glow)">
-      <animateMotion dur="6.0s" begin="3.2s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2000;1" calcMode="linear"><mpath href="#po0"/></animateMotion>
-      <animate attributeName="opacity" dur="6.0s" begin="3.2s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.1800;0.2000;1"/>
-    </circle>
-<circle r="5" fill="#E14817" opacity="0" filter="url(#glow)">
-      <animateMotion dur="6.0s" begin="3.4000000000000004s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2000;1" calcMode="linear"><mpath href="#po1"/></animateMotion>
-      <animate attributeName="opacity" dur="6.0s" begin="3.4000000000000004s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.1800;0.2000;1"/>
-    </circle>
-<circle r="5" fill="#E14817" opacity="0" filter="url(#glow)">
-      <animateMotion dur="6.0s" begin="3.6s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2000;1" calcMode="linear"><mpath href="#po2"/></animateMotion>
-      <animate attributeName="opacity" dur="6.0s" begin="3.6s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.1800;0.2000;1"/>
-    </circle>
-<circle r="5" fill="#E14817" opacity="0" filter="url(#glow)">
-      <animateMotion dur="6.0s" begin="3.8000000000000003s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.2000;1" calcMode="linear"><mpath href="#po3"/></animateMotion>
-      <animate attributeName="opacity" dur="6.0s" begin="3.8000000000000003s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.02;0.1800;0.2000;1"/>
-    </circle>
+<g clip-path="url(#hwin)">
+<rect width="1200" height="640" fill="#170A05"/><rect width="1200" height="640" fill="url(#hgrid)"/>
+<ellipse cx="180" cy="40" rx="420" ry="300" fill="url(#hg1)"/><ellipse cx="1040" cy="560" rx="360" ry="260" fill="url(#hg2)"/>
+<rect width="1200" height="44" fill="#22100A"/><line x1="0" y1="44" x2="1200" y2="44" stroke="#F8EDE5" stroke-opacity=".1"/>
+<circle cx="28" cy="22" r="6" fill="#E14817"/><circle cx="50" cy="22" r="6" fill="#F2951C"/><circle cx="72" cy="22" r="6" fill="#87888A"/>
+<text x="600" y="27" class="mono" font-size="13" fill="#87888A" text-anchor="middle" letter-spacing="0.5">labs64.io-payment-gateway · POST /payments</text>
+<text x="64" y="100" class="sans" font-size="13" font-weight="500" fill="#F08B53" letter-spacing="3.6">LABS64.IO  ·  PAYMENT GATEWAY</text>
+<text x="64" y="156" class="sans" font-size="48" font-weight="700" fill="#F8EDE5" letter-spacing="-1.4">One API. Every payment provider.</text>
+<text x="64" y="212" class="sans" font-size="48" font-weight="700" fill="#E14817" letter-spacing="-1.4">Charged once, never twice.</text>
+<text x="1136" y="212" class="mono" font-size="14" fill="#F8EDE5" fill-opacity="0.6" text-anchor="end">idempotent  ·  multi-tenant  ·  PSP-agnostic</text>
+<rect x="64" y="256" width="560" height="296" rx="12" fill="#22100A" stroke="#F8EDE5" stroke-opacity=".12"/><text x="88" y="288" class="mono" font-size="13" fill="#87888A"># the network is flaky, so your shop retries</text><g opacity=".35"><animate attributeName="opacity" values=".35;.35;1;1;.35" keyTimes="0;0.017;0.033;.95;1" dur="6s" begin="0s" repeatCount="indefinite"/><text x="88" y="326" class="mono" font-size="15" font-weight="500" fill="#F8EDE5">POST /payments</text><text x="88" y="350" class="mono" font-size="13" fill="#F08B53">Idempotency-Key: 7f3a-91c2</text><rect x="300" y="311" width="88" height="22" rx="11" fill="none" stroke="#F8EDE5" stroke-opacity=".3"/><text x="308" y="327" class="mono" font-size="12" fill="#F8EDE5" fill-opacity="0.8">attempt 1</text><text x="600" y="350" class="mono" font-size="13" fill="#F8EDE5" text-anchor="end">201 Created</text></g><g opacity=".35"><animate attributeName="opacity" values=".35;.35;1;1;.35" keyTimes="0;0.250;0.267;.95;1" dur="6s" begin="0s" repeatCount="indefinite"/><text x="88" y="394" class="mono" font-size="15" font-weight="500" fill="#F8EDE5">POST /payments</text><text x="88" y="418" class="mono" font-size="13" fill="#F08B53">Idempotency-Key: 7f3a-91c2</text><rect x="300" y="379" width="72" height="22" rx="11" fill="none" stroke="#F8EDE5" stroke-opacity=".3"/><text x="308" y="395" class="mono" font-size="12" fill="#F8EDE5" fill-opacity="0.8">retry 2</text><text x="600" y="418" class="mono" font-size="13" fill="#E14817" text-anchor="end">↩ 200 · replayed</text></g><g opacity=".35"><animate attributeName="opacity" values=".35;.35;1;1;.35" keyTimes="0;0.483;0.500;.95;1" dur="6s" begin="0s" repeatCount="indefinite"/><text x="88" y="462" class="mono" font-size="15" font-weight="500" fill="#F8EDE5">POST /payments</text><text x="88" y="486" class="mono" font-size="13" fill="#F08B53">Idempotency-Key: 7f3a-91c2</text><rect x="300" y="447" width="72" height="22" rx="11" fill="none" stroke="#F8EDE5" stroke-opacity=".3"/><text x="308" y="463" class="mono" font-size="12" fill="#F8EDE5" fill-opacity="0.8">retry 3</text><text x="600" y="486" class="mono" font-size="13" fill="#E14817" text-anchor="end">↩ 200 · replayed</text></g><text x="88" y="536" class="mono" font-size="12" fill="#87888A">same key → same payment → same answer</text><rect x="700" y="252" width="400" height="22" rx="11" fill="#2b150c" stroke="#F8EDE5" stroke-opacity=".25"/><g clip-path="url(#hslot)"><g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,-300;0,0" keyTimes="0;.88;.92;1" dur="6s" repeatCount="indefinite"/><polygon points="730,264 1070,264 1070,548 1061.5,560 1053,548 1044.5,560 1036,548 1027.5,560 1019,548 1010.5,560 1002,548 993.5,560 985,548 976.5,560 968,548 959.5,560 951,548 942.5,560 934,548 925.5,560 917,548 908.5,560 900,548 891.5,560 883,548 874.5,560 866,548 857.5,560 849,548 840.5,560 832,548 823.5,560 815,548 806.5,560 798,548 789.5,560 781,548 772.5,560 764,548 755.5,560 747,548 738.5,560 730,548 730,548" fill="#F8EDE5"/><text x="900" y="296" class="mono" font-size="12" fill="#6b5a50" text-anchor="middle" letter-spacing="2">LABS64.IO · PAYMENT</text><text x="900" y="346" class="sans" font-size="44" font-weight="700" fill="#170A05" text-anchor="middle" letter-spacing="-1">$30.00</text><text x="900" y="372" class="mono" font-size="13" fill="#6b5a50" text-anchor="middle">order #1001 · Pro plan</text><path d="M752,392 H1048" stroke="#170A05" stroke-opacity=".3" stroke-dasharray="4 5"/><text x="756" y="420" class="mono" font-size="14" fill="#6b5a50">payment</text><text x="1044" y="420" class="mono" font-size="14" font-weight="500" fill="#170A05" text-anchor="end">pay_8Q2c41</text><text x="756" y="448" class="mono" font-size="14" fill="#6b5a50">provider</text><text x="1044" y="448" class="mono" font-size="14" font-weight="500" fill="#170A05" text-anchor="end">Stripe</text><text x="756" y="476" class="mono" font-size="14" fill="#6b5a50">status</text><text x="1044" y="476" class="mono" font-size="14" font-weight="500" fill="#1F9D55" text-anchor="end">CONFIRMED</text><text x="756" y="504" class="mono" font-size="14" fill="#6b5a50">charged</text><text x="1044" y="504" class="mono" font-size="14" font-weight="500" fill="#170A05" text-anchor="end">1 ×</text><g opacity="0" transform="rotate(-9 960 500)"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.5;.53;.94;1" dur="6s" begin="0s" repeatCount="indefinite"/><rect x="880" y="474" width="160" height="40" rx="6" fill="none" stroke="#E14817" stroke-width="3"/><text x="960" y="500" class="mono" font-size="15" font-weight="500" fill="#E14817" text-anchor="middle" letter-spacing="2">NEVER TWICE</text></g></g></g>
 <text x="64" y="598" class="mono" font-size="13" fill="#87888A">Apache-2.0 · Spring Boot · PostgreSQL · Valkey</text>
-<text x="1136" y="598" text-anchor="end" class="mono" font-size="13" fill="#F08B53">labs64.io/docs</text>
-<rect x="0" y="636" width="1200" height="4" fill="#E14817" opacity=".9">
-  <animate attributeName="width" dur="6.0s" repeatCount="indefinite" values="0;1200" calcMode="linear"/></rect>
-</g>
-<rect x=".5" y=".5" width="1199" height="639" rx="18" fill="none" stroke="#F8EDE5" stroke-opacity=".12"/>
-</svg>
+<text x="1136" y="598" class="mono" font-size="13" fill="#F08B53" text-anchor="end">labs64.io/docs</text>
+<rect x="0" y="636" width="1200" height="4" fill="#E14817" opacity=".9"><animate attributeName="width" dur="6s" repeatCount="indefinite" values="0;1200"/></rect>
+</g><rect x=".5" y=".5" width="1199" height="639" rx="18" fill="none" stroke="#F8EDE5" stroke-opacity=".12"/></svg>

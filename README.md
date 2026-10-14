@@ -9,7 +9,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![📖 Documentation](https://img.shields.io/badge/📖-Documentation-AB6543.svg)](https://labs64.io/docs/modules/payment-gateway/)
 
-<p align="center"><img src="docs/assets/payment-gateway-hero.svg" alt="Payment Gateway: shops, apps and billing services call one payment API; it creates the payment, pays it idempotently and routes it to Stripe, PayPal, a test provider or your own." width="880"></p>
+<p align="center"><img src="docs/assets/payment-gateway-hero.svg" alt="Payment Gateway: A shop retries POST /payments three times with the same Idempotency-Key; Payment Gateway replays the same answer and prints exactly one receipt: $30.00, routed to Stripe, confirmed, charged once." width="880"></p>
 
 [**Get started**](#get-started) · [Features](#features) · [Architecture](#architecture) · [AI agents](#using-payment-gateway-with-ai-agents) · [Ecosystem](#the-labs64io-ecosystem) · [Documentation](https://labs64.io/docs/modules/payment-gateway/) · [labs64.io](https://labs64.io)
 
