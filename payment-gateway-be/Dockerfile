@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/* && 
 # JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar (observability is an
 # infrastructure concern; the same image runs with and without it). See OBSERVABILITY.md.
 # renovate: datasource=github-releases depName=open-telemetry/opentelemetry-java-instrumentation extractVersion=^v(?<version>.*)$
-ARG OTEL_JAVAAGENT_VERSION=2.32.0
+ARG OTEL_JAVAAGENT_VERSION=2.33.0
 ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${OTEL_JAVAAGENT_VERSION}/opentelemetry-javaagent.jar /otel/opentelemetry-javaagent.jar
 RUN chmod 444 /otel/opentelemetry-javaagent.jar
 
