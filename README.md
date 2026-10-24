@@ -11,7 +11,7 @@
 
 <p align="center"><img src="docs/assets/payment-gateway-hero.svg" alt="Payment Gateway: A shop retries POST /payments three times with the same Idempotency-Key; Payment Gateway replays the same answer and prints exactly one receipt: $30.00, routed to Stripe, confirmed, charged once." width="880"></p>
 
-[Why Payment Gateway?](#why-payment-gateway) · [Documentation](https://labs64.io/docs/modules/payment-gateway/) · [Build and test](#build-and-test) · [Ecosystem](#the-labs64io-ecosystem) · [labs64.io](https://labs64.io)
+[**Get started**](https://labs64.io/docs/modules/payment-gateway/#quick-start) · [Features](#features) · [Architecture](https://labs64.io/docs/modules/payment-gateway/#architecture) · [AI agents](#using-payment-gateway-with-ai-agents) · [Ecosystem](#the-labs64io-ecosystem) · [Documentation](https://labs64.io/docs/modules/payment-gateway/) · [labs64.io](https://labs64.io)
 
 > [!NOTE]
 > Stripe, PayPal and a NoOp test provider ship in the box; add your own through the provider SPI. Every provider is configured **per tenant**, so one deployment can serve many merchants.
@@ -24,6 +24,9 @@ Adding a payment provider is easy. Living with three of them is not: different A
 2. **Safe to retry.** Pay with an `Idempotency-Key` and a replay returns the original transaction instead of charging again.
 3. **One result shape.** Provider responses and webhooks are normalized into the same payment and transaction states, so your code does not care who processed the money.
 
+- You have one provider and one application and are happy with its SDK: the abstraction would be overhead.
+- You need a hosted storefront, subscriptions billing UI or invoicing: this is the payment API layer, not a billing suite.
+
 **A good fit if**
 
 - You take payments through more than one provider, or expect to switch or add one without touching every application.
@@ -35,47 +38,65 @@ Adding a payment provider is easy. Living with three of them is not: different A
 - You have one provider and one application and are happy with its SDK: the abstraction would be overhead.
 - You need a hosted storefront, subscriptions billing UI or invoicing: this is the payment API layer, not a billing suite.
 
-## Documentation
+## Features
 
-Install, configure and operate Payment Gateway in the **[Payment Gateway documentation](https://labs64.io/docs/modules/payment-gateway/)**.
+- **Provider abstraction**: one `PaymentProvider` SPI; Stripe, PayPal and NoOp ship as modules, and adding a PSP is a new module, not a fork.
+- **Idempotent payments**: Redis-backed `Idempotency-Key` handling; a replay returns the first result.
+- **Webhooks and returns**: PSP webhooks and browser returns are handled per provider; terminal transactions are never overwritten by a late event.
+- **Multi-tenant**: tenant, scopes and provider credentials come from the trusted gateway headers and per-tenant provider config.
+- **Payment lifecycle events**: `payment.created`, `payment.finalized` and `payment.closed` can be published to AuditFlow over its HTTP API.
+- **Recurring payments**: a payment can carry a recurrence rule (duration or cron).
+- **OpenAPI-first**: the contract is the source of truth; models and server interfaces are generated from it.
+- **Observable**: Actuator health, Micrometer tracing over OTLP and a Prometheus endpoint.
 
-[Quick Start](https://labs64.io/docs/modules/payment-gateway/#quick-start) · [Configuration](https://labs64.io/docs/modules/payment-gateway/#configuration) · [REST APIs](https://labs64.io/docs/modules/payment-gateway/#rest-apis) · [Before you take real payments](https://labs64.io/docs/modules/payment-gateway/#before-you-take-real-payments)
+The complete list is in the [documentation](https://labs64.io/docs/modules/payment-gateway/).
 
-New to Labs64.IO? The [Quickstart](https://labs64.io/docs/getting-started/quickstart.html) puts the platform on any Kubernetes cluster in about five minutes.
+## Before you take real payments
 
-## Build and test
+The Docker path above is for evaluation. A few things matter before real money flows:
 
-```bash
-cd payment-gateway-be
-just test          # mvn clean verify
-just unit-test     # unit tests only
-just infra-up      # PostgreSQL, Redis and Cerbos
-just run           # build and run with the local profile
-```
+- **Put it behind the API Gateway.** The service trusts the `X-Auth-*` headers it receives; without a gateway that authenticates callers, anyone who can reach it can claim any identity.
+- **Protect provider credentials.** They live in each tenant's provider configuration: restrict who can read and write `/payment-providers`, and keep the database encrypted and backed up.
+- **Make webhooks reachable and verified.** Providers must be able to reach `/providers/{provider}/webhooks`, and each provider's signing secret must be configured so signatures are checked.
+- **Test with the provider's sandbox first.** Stripe and PayPal both have test modes; the [demo runbook](examples/payment-gateway-stripe-paypal-demo.md) walks through them.
+- **Always send an `Idempotency-Key`** from the code that calls `pay`.
 
-Needs JDK 25, Maven 3.6.3+ and Docker. [`CONTRIBUTING.md`](CONTRIBUTING.md) covers pull requests. Working on the code with an AI agent? [`AGENTS.md`](AGENTS.md) and [`CLAUDE.md`](CLAUDE.md) describe the layout, conventions and checks.
+## Using Payment Gateway with AI agents
+
+Payment Gateway gives an agent a payments API that is safe to call more than once.
+
+- **Machine-readable contract.** The OpenAPI v1 spec is served by the running service and lives in [`openapi-payment-gateway-v1.yaml`](payment-gateway-api/src/main/resources/openapi/openapi-payment-gateway-v1.yaml). Generated clients and tool definitions work against it directly.
+- **Retries are safe.** Always send an `Idempotency-Key` on `POST /payments/{id}/pay`; an agent that times out and retries gets the original transaction, not a second charge.
+- **Least privilege.** Operations require scopes such as `payment:write` and `payment:pay`; give an agent only the scopes its task needs.
+- **Discover what a tenant can use.** `GET /payment-definitions` lists supported providers; `GET /payment-providers` lists the tenant's configured ones.
+- **Working on the code with an agent?** [`AGENTS.md`](AGENTS.md) and [`CLAUDE.md`](CLAUDE.md) describe the layout, conventions and test commands.
 
 ## The Labs64.IO Ecosystem
 
-This repository is part of the [Labs64.IO Ecosystem](https://labs64.io): open-source building blocks for secure commerce platforms. Every module is documented at [labs64.io/docs](https://labs64.io/docs/).
+Payment Gateway is one module of the [Labs64.IO Ecosystem](https://labs64.io); [every module is documented here](https://labs64.io/docs/).
 
-| Module | What it does |
-|---|---|
-| [**AuditFlow**](https://github.com/Labs64/labs64.io-auditflow) | Publish once, route anywhere, lose nothing |
-| [**Auth Gateway**](https://github.com/Labs64/labs64.io-authproxy) | One authenticated edge for every module |
-| [**Payment Gateway**](https://github.com/Labs64/labs64.io-payment-gateway) | One API across multiple payment providers |
-| [**Checkout**](https://github.com/Labs64/labs64.io-checkout) | Whitelabel checkout and order workflow |
-| [**Customer Portal**](https://github.com/Labs64/labs64.io-customer-portal) | Self-service portal for your customers |
-
-Built on [Commons](https://github.com/Labs64/labs64.io-commons), deployed with [Helm Charts](https://github.com/Labs64/labs64.io-helm-charts), developed in the [Workspace](https://github.com/Labs64/labs64.io-workspace), verified by [Tests](https://github.com/Labs64/labs64.io-tests) and documented in [Docs](https://github.com/Labs64/labs64.io-docs). Also from Labs64: [NetLicensing](https://netlicensing.io) for licensing-as-a-service and [GuideChimp](https://www.labs64.com/guidechimp/) for guided product tours.
+| Module | What it does | Link |
+|---|---|---|
+| **AuditFlow** | Audit-event routing pipeline | [labs64.io-auditflow](https://github.com/Labs64/labs64.io-auditflow) |
+| **API Gateway** | Authenticating, policy-enforcing edge for all modules | [labs64.io-authproxy](https://github.com/Labs64/labs64.io-authproxy) |
+| **Payment Gateway** | One API over multiple payment providers | [labs64.io-payment-gateway](https://github.com/Labs64/labs64.io-payment-gateway) |
+| **Checkout** | Embeddable, brandable checkout | [labs64.io-checkout](https://github.com/Labs64/labs64.io-checkout) |
+| **Customer Portal** | Customer self-service UI | [labs64.io-customer-portal](https://github.com/Labs64/labs64.io-customer-portal) |
+| **Commons** | Shared Java and Python libraries | [labs64.io-commons](https://github.com/Labs64/labs64.io-commons) |
+| **Helm Charts** | Kubernetes deployment for every module | [labs64.io-helm-charts](https://github.com/Labs64/labs64.io-helm-charts) |
+| **Workspace** | Dev container and multi-repo tooling | [labs64.io-workspace](https://github.com/Labs64/labs64.io-workspace) |
+| **Tests** | Cross-module regression suite | [labs64.io-tests](https://github.com/Labs64/labs64.io-tests) |
+| **Docs** | Published documentation | [labs64.io-docs](https://github.com/Labs64/labs64.io-docs) |
+| **NetLicensing** | Licensing-as-a-Service: license and entitlement management | [netlicensing.io](https://netlicensing.io) |
+| **GuideChimp** | Interactive guided product tours | [labs64.com/guidechimp](https://www.labs64.com/guidechimp/) |
 
 ## Contributing
 
-We would love your help. The most valuable contribution is a new payment provider: start from the SPI in [`payment-gateway-providers/providers-spi`](payment-gateway-providers/providers-spi/) and use the `noop` module as a template. Fork the repository, make your change on a branch, run the checks described in [`AGENTS.md`](AGENTS.md) and open a pull request. Not sure whether an idea fits? Open an issue first.
+We would love your help. The most valuable contribution is a new payment provider. Fork the repository, make your change on a branch, run the checks described in [`AGENTS.md`](AGENTS.md) and open a pull request. Start from the SPI in [`payment-gateway-providers/providers-spi`](payment-gateway-providers/providers-spi/) and the `noop` module as a template. Not sure whether an idea fits? Open an issue first and we will talk it through; that is a perfectly good way to start.
 
 ## License
 
-Open source under the [Apache License 2.0](LICENSE): use it, change it and ship it commercially.
+Everything in this repository is open source under the [Apache License 2.0](LICENSE): you can use it, change it and ship it commercially. The core of the *Labs64.IO Ecosystem* is free forever; community modules are Apache-2.0 licensed.
 
 ---
 
