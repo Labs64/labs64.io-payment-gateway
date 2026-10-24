@@ -156,9 +156,9 @@ Run it through the shared test orchestrator:
 
 ```bash
 cd ../labs64.io-tests
-just test-up
+just enable-psp-stub
 just test-psp
-just test-down
+just disable-psp-stub
 ```
 
 This deterministic suite verifies our integration contract and state transitions. It does not

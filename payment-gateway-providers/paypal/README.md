@@ -168,9 +168,9 @@ completed and denied events; verification rejection; and terminal-state protecti
 
 ```bash
 cd ../labs64.io-tests
-just test-up
+just enable-psp-stub
 just test-psp
-just test-down
+just disable-psp-stub
 ```
 
 The deterministic suite verifies our integration and state transitions. It does not prove that
