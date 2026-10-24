@@ -11,7 +11,7 @@
 
 <p align="center"><img src="docs/assets/payment-gateway-hero.svg" alt="Payment Gateway: A shop retries POST /payments three times with the same Idempotency-Key; Payment Gateway replays the same answer and prints exactly one receipt: $30.00, routed to Stripe, confirmed, charged once." width="880"></p>
 
-[**Get started**](https://labs64.io/docs/modules/payment-gateway/#quick-start) · [Features](#features) · [Architecture](https://labs64.io/docs/modules/payment-gateway/#architecture) · [AI agents](#using-payment-gateway-with-ai-agents) · [Ecosystem](#the-labs64io-ecosystem) · [Documentation](https://labs64.io/docs/modules/payment-gateway/) · [labs64.io](https://labs64.io)
+[**Get started**](https://labs64.io/docs/modules/payment-gateway/#quick-start) · [Features](#features) · [Architecture](https://labs64.io/docs/modules/payment-gateway/#architecture) · [AI agents](#using-it-with-ai-agents) · [Ecosystem](#the-labs64io-ecosystem) · [Documentation](https://labs64.io/docs/modules/payment-gateway/) · [labs64.io](https://labs64.io)
 
 > [!NOTE]
 > Stripe, PayPal and a NoOp test provider ship in the box; add your own through the provider SPI. Every provider is configured **per tenant**, so one deployment can serve many merchants.
@@ -61,15 +61,9 @@ The Docker path above is for evaluation. A few things matter before real money f
 - **Test with the provider's sandbox first.** Stripe and PayPal both have test modes; the [demo runbook](examples/payment-gateway-stripe-paypal-demo.md) walks through them.
 - **Always send an `Idempotency-Key`** from the code that calls `pay`.
 
-## Using Payment Gateway with AI agents
+## Using it with AI agents
 
-Payment Gateway gives an agent a payments API that is safe to call more than once.
-
-- **Machine-readable contract.** The OpenAPI v1 spec is served by the running service and lives in [`openapi-payment-gateway-v1.yaml`](payment-gateway-api/src/main/resources/openapi/openapi-payment-gateway-v1.yaml). Generated clients and tool definitions work against it directly.
-- **Retries are safe.** Always send an `Idempotency-Key` on `POST /payments/{id}/pay`; an agent that times out and retries gets the original transaction, not a second charge.
-- **Least privilege.** Operations require scopes such as `payment:write` and `payment:pay`; give an agent only the scopes its task needs.
-- **Discover what a tenant can use.** `GET /payment-definitions` lists supported providers; `GET /payment-providers` lists the tenant's configured ones.
-- **Working on the code with an agent?** [`AGENTS.md`](AGENTS.md) and [`CLAUDE.md`](CLAUDE.md) describe the layout, conventions and test commands.
+The API is safe to retry with an `Idempotency-Key`, and the OpenAPI spec is enough to generate a client or tool definition. The [guide for AI agents](https://labs64.io/docs/introduction/ai-agents.html) covers authentication, retries and errors across all modules. Working on this repository with an agent? [`AGENTS.md`](AGENTS.md) and [`CLAUDE.md`](CLAUDE.md) describe the layout, conventions and test commands.
 
 ## The Labs64.IO Ecosystem
 
