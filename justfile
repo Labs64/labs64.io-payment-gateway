@@ -12,8 +12,8 @@ default:
 
 # Bootstrap the local cluster and shared tools, then deploy Payment Gateway
 up:
-    just --justfile {{HELM_JUSTFILE}} cluster-up
-    just --justfile {{HELM_JUSTFILE}} repo-update
+    just --justfile {{HELM_JUSTFILE}} start-cluster
+    just --justfile {{HELM_JUSTFILE}} update-repos
     just --justfile {{HELM_JUSTFILE}} generate-secrets
     just --justfile {{HELM_JUSTFILE}} install-tools
     just deploy
