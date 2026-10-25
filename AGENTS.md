@@ -18,8 +18,8 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 | Path | Service | Stack | Port | Role |
 |------|---------|-------|------|------|
 | `payment-gateway-api/` | Shared API contract | Java 17, Maven | — | Canonical OpenAPI spec + validated shared models |
-| `payment-gateway-be/` | Backend | Java 25, Spring Boot 4.1.0, Maven | 8080 | REST API, idempotency, webhooks, provider registry |
-| `payment-gateway-providers/` | PSP modules | Java 25, Maven | — | `providers-spi/` (the SPI) + one module per PSP (`noop/`, `paypal/`, `stripe/`) |
+| `payment-gateway-be/` | Backend | Java, Spring Boot, Maven (versions: the `labs64io-parent` pom) | 8080 | REST API, idempotency, webhooks, provider registry |
+| `payment-gateway-providers/` | PSP modules | Java, Maven | — | `providers-spi/` (the SPI) + one module per PSP (`noop/`, `paypal/`, `stripe/`) |
 | `payment-gateway-fe/` | Frontend | (stub — just a justfile) | — | Placeholder |
 | `tests/` | Tests | Robot Framework | — | Module-level e2e/integration tests |
 | `examples/` | Examples | — | — | Integration examples |
@@ -34,7 +34,7 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 
 ## Backend (`payment-gateway-be`) details
 
-- **Build is OpenAPI-first.** Models and API interfaces are generated from `openapi-payment-gateway.yaml` by `openapi-generator-maven-plugin`. Generated sources live under `target/generated-sources` and are git-ignored.
+- **Build is OpenAPI-first.** Models and API interfaces are generated from `openapi-payment-gateway-v1.yaml` by `openapi-generator-maven-plugin`. Generated sources live under `target/generated-sources` and are git-ignored.
 - **Shared contract.** `payment-gateway-api` owns the canonical OpenAPI document and generates Java 17-compatible validated models in `io.labs64.paymentgateway.model`. It intentionally does not provide an HTTP client yet.
 - **Backend generation.** `payment-gateway-be` depends on `payment-gateway-api` for models and generates only Spring server interfaces from the same contract (`generateModels=false`).
 - **Package**: `io.labs64.paymentgateway`
@@ -53,7 +53,7 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 
 ### Dockerfile
 
-- Base: `eclipse-temurin:25-jre`
+- Base: a Temurin JRE image (the tag is pinned in the Dockerfile; it is not restated here)
 - Non-root user: `l64user` (uid/gid 1064)
 - Healthcheck: `/actuator/health/liveness`
 - Entrypoint: `java ${JAVA_OPTS} -jar app.jar`
@@ -79,10 +79,10 @@ Local URL: backend Swagger `http://localhost:8080/swagger-ui/index.html`.
 
 ## Conventions
 
-- **Java 25** and **Maven 3.6.3+** enforced by `maven-enforcer-plugin`.
+- The Java and Maven versions are enforced by `maven-enforcer-plugin`; the numbers live in the poms, not here.
 - **Versions and the build parent.** The backend inherits `io.labs64:labs64io-parent` (`labs64.io-commons`): the Spring Boot line, BOM security overrides, shared dependency/plugin versions and the commons libraries all come from that one parent version — never re-pin them here. No pom carries a version (`<version>${revision}</version>`, default `0.0.0-SNAPSHOT`): a release is a GitHub Release whose tag `X.Y.Z` becomes the jar, image and chart `appVersion`. A release build refuses `-SNAPSHOT` inputs, so the parent and `auditflow-api.version` (the one cross-module pin, in `payment-gateway-be/pom.xml`) must point at a released version before tagging.
   `payment-gateway-api` is a standalone pom; its `openapi-schema-generator.version` names the same commons version as the parent.
-- **Spring Boot 4.1.x** (no Spring Cloud dependency). Use reactive WebClient for HTTP calls.
+- No Spring Cloud dependency. Use reactive WebClient for HTTP calls.
 - **Credentials from environment variables only** — never hardcode, never commit defaults.
 - Backend tests: JUnit 5 + Spring Boot Test alongside source in `src/test/java/`.
 - All Dockerfiles run as non-root user `l64user` (uid/gid 1064).
@@ -99,3 +99,9 @@ Local URL: backend Swagger `http://localhost:8080/swagger-ui/index.html`.
 | Add a REST controller | `payment-gateway-be/src/main/java/io/labs64/paymentgateway/controller/` |
 | Modify idempotency logic | `payment-gateway-be/src/main/java/io/labs64/paymentgateway/idempotency/` |
 | Change webhook handling | `payment-gateway-be/src/main/java/io/labs64/paymentgateway/service/WebhookServiceImpl.java` |
+
+## Working rules for every change
+
+- Judge the change against the **Quality bar for every change** in `labs64.io-workspace/AGENTS.md` (stability of the ecosystem, no regression, no network surprises, performance, HA and resilience, testability, maintainability), and say in the pull request how each applies, or why it does not.
+- Every pull request is assigned to its author and added to the `Labs64.IO` GitHub Project (`labs64.io-workspace/AGENTS.md`, "Pull requests").
+- Before you push: `cd payment-gateway-be && just test`; a change to `payment-gateway-api` or a provider also needs `mvn verify` in that module. Money moves here: idempotency, webhook authenticity (PSP signatures) and never logging card or credential data are part of every review.
