@@ -55,7 +55,7 @@ The complete list is in the [documentation](https://labs64.io/docs/modules/payme
 
 The Docker path above is for evaluation. A few things matter before real money flows:
 
-- **Put it behind the API Gateway.** The service trusts the `X-Auth-*` headers it receives; without a gateway that authenticates callers, anyone who can reach it can claim any identity.
+- **Put it behind the Auth Gateway.** The service trusts the `X-Auth-*` headers it receives; without a gateway that authenticates callers, anyone who can reach it can claim any identity.
 - **Protect provider credentials.** They live in each tenant's provider configuration: restrict who can read and write `/payment-providers`, and keep the database encrypted and backed up.
 - **Make webhooks reachable and verified.** Providers must be able to reach `/providers/{provider}/webhooks`, and each provider's signing secret must be configured so signatures are checked.
 - **Test with the provider's sandbox first.** Stripe and PayPal both have test modes; the [demo runbook](examples/payment-gateway-stripe-paypal-demo.md) walks through them.

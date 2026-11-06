@@ -43,11 +43,11 @@ Unified payment gateway for the Labs64.IO ecosystem. Consolidates multiple Payme
 - **PSP integration**: SPI-based plugin system. The SPI lives in its own module `payment-gateway-providers/providers-spi/` (package `io.labs64.paymentgateway.psp.spi`: `PaymentProvider`, `Payment`, `PaymentContext`, `PaymentResult`, `PaymentTransaction`, `ProviderCheckoutSupport`, `ProviderWebhookSupport`, `PaymentWebhookResult`, …).
 - **Current providers**: `NoopPaymentProvider` (`payment-gateway-providers/noop/`), `PaypalPaymentProvider` (`payment-gateway-providers/paypal/`), and `StripePaymentProvider` (`payment-gateway-providers/stripe/`). Add new providers as a new module under `payment-gateway-providers/<name>/`.
 - **Provider registry**: `PaymentProviderRegistry` in `payment-gateway-be` `psp/internal/` manages provider lookup.
-- **Idempotency**: Redis-backed idempotency with `IdempotencyInterceptor`, `IdempotencyService`, `IdempotencyCleanupScheduler`.
+- **Idempotency**: Redis-backed idempotency with `IdempotencyInterceptor`, `IdempotencyService`. Entries expire through the Redis TTL (`payment-gateway.idempotency.redisTtl`); no scheduler cleans them up.
 - **Correlation**: `CorrelationTraceService` + `CorrelationContextHolder` for request tracing.
-- **Multi-tenancy & security**: trusted gateway auth-context (`X-Auth-*`, `auth-context-spring-boot-starter`); `AuthContextHolder` supplies tenant + roles (dev fallback: `labs64.tenant.default` in the `local` profile). Path-level RBAC is enforced at the Traefik gateway; PSP webhooks / redirect returns / payment-definitions are public paths (webhook authenticity = PSP signature checks).
+- **Multi-tenancy & security**: trusted gateway auth-context (`X-Auth-*`, `auth-context-spring-boot-starter`); `AuthContextHolder` supplies tenant + roles (dev fallback: `labs64.tenant.default` in the `local` profile). Path-level RBAC is enforced at the Auth Gateway; PSP webhooks / redirect returns / payment-definitions are public paths (webhook authenticity = PSP signature checks).
 - **Cross-cutting**: `CorrelationIdFilter`, `GlobalExceptionHandler`, `CorsConfig`, `FasterxmlJacksonConfig`.
-- **Observability**: Actuator + Micrometer Tracing (OTLP/HTTP) + Prometheus scrape at `/actuator/prometheus`.
+- **Observability**: Actuator + Micrometer metrics + Prometheus scrape at `/actuator/prometheus`. Tracing comes from the OpenTelemetry Java agent bundled in the image and activated at deploy time; there is no in-app tracer.
 - **Database**: PostgreSQL (payments, transactions, providers).
 - **Cache**: Redis (idempotency).
 
