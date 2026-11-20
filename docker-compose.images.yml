@@ -6,7 +6,7 @@
 # built-in NoOp payment provider, so you can walk through a payment without a PSP account.
 # Pin a release with PAYMENT_GATEWAY_VERSION=0.0.3 (default: latest).
 #
-# This is an evaluation setup: authorization is disabled because there is no API gateway
+# This is an evaluation setup: authorization is disabled because there is no Auth Gateway
 # in front of it, and every request runs as the fixed development tenant `t_dev`. Do not
 # expose it. For the full stack (gateway, authentication, Cerbos) use the Labs64.IO
 # Quickstart: https://labs64.io/docs/getting-started/quickstart/
