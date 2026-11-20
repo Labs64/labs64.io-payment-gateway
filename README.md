@@ -3,11 +3,11 @@
 **One API for every payment provider: charged once, never twice.**
 *Part of the [Labs64.IO Ecosystem](https://labs64.io): the payments layer your shop, app or billing service calls.*
 
-[![CI](https://github.com/Labs64/labs64.io-payment-gateway/actions/workflows/labs64io-be-ci.yml/badge.svg)](https://github.com/Labs64/labs64.io-payment-gateway/actions/workflows/labs64io-be-ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/Labs64/labs64.io-payment-gateway/labs64io-be-ci.yml?label=CI&logo=github)](https://github.com/Labs64/labs64.io-payment-gateway/actions/workflows/labs64io-be-ci.yml)
 [![Docker Image Version](https://img.shields.io/docker/v/labs64/payment-gateway?label=Docker&logo=docker&logoColor=white&color=1C90ED)](https://hub.docker.com/r/labs64/payment-gateway)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/labs64io-helm-charts)](https://artifacthub.io/packages/helm/labs64io-helm-charts/payment-gateway)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![📖 Documentation](https://img.shields.io/badge/📖-Documentation-AB6543.svg)](https://labs64.io/docs/modules/payment-gateway/)
+[![Labs64.IO Ecosystem](https://img.shields.io/badge/Labs64.IO-Ecosystem-E14817.svg?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii01IC01IDE1NSAxNTUiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0zIDNoMTM5djEzOUgzWk02OSAzdjEzOWg3VjNaTTQzIDQzdjU5aDI2VjQzWk03NiA0M3Y1OWgyNlY0M1oiLz48cGF0aCBmaWxsPSIjYmJiIiBkPSJNNDkgNDloNDd2NDdINDlaIi8%2BPC9zdmc%2B)](https://labs64.io/docs/services/)
 
 <p align="center"><img src="docs/assets/payment-gateway-hero.svg" alt="Payment Gateway: A shop retries POST /payments three times with the same Idempotency-Key; Payment Gateway replays the same answer and prints exactly one receipt: $30.00, routed to Stripe, confirmed, charged once." width="880"></p>
 
